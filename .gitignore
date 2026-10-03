@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# local data / vector indices
+data/
+*.db
+*.sqlite3
+
+# model weights
+*.gguf
+*.bin
+*.safetensors
+*.pt
+
+.env

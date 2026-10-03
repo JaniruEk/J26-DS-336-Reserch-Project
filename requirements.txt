@@ -1,0 +1,9 @@
+chromadb
+spacy
+tiktoken
+pytest
+scikit-learn
+joblib
+fastapi
+uvicorn
+httpx
