@@ -1,0 +1,72 @@
+[
+ {
+  "question": "What is the total number of tracks in the catalogue?",
+  "sql": "SELECT COUNT(*) FROM Track;",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "List all artist names.",
+  "sql": "SELECT Name FROM Artist;",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "Show the first name, last name and title of every employee.",
+  "sql": "SELECT FirstName, LastName, Title FROM Employee;",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "Which customers are from Canada?",
+  "sql": "SELECT FirstName, LastName FROM Customer WHERE Country = 'Canada';",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "List all track names in the Rock genre.",
+  "sql": "SELECT t.Name FROM Track t JOIN Genre g ON t.GenreId = g.GenreId WHERE g.Name = 'Rock';",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "Which albums were made by AC/DC?",
+  "sql": "SELECT a.Title FROM Album a JOIN Artist ar ON a.ArtistId = ar.ArtistId WHERE ar.Name = 'AC/DC';",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "Show each invoice total with the name of the customer who was billed.",
+  "sql": "SELECT c.FirstName, c.LastName, i.Total FROM Customer c JOIN Invoice i ON c.CustomerId = i.CustomerId;",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "Which employees support customers from Canada?",
+  "sql": "SELECT e.FirstName, e.LastName FROM Employee e JOIN Customer c ON e.EmployeeId = c.SupportRepId WHERE c.Country = 'Canada';",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "List every track with its album title and artist name.",
+  "sql": "SELECT t.Name, a.Title, ar.Name FROM Track t JOIN Album a ON t.AlbumId = a.AlbumId JOIN Artist ar ON a.ArtistId = ar.ArtistId;",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "Which tracks are in the Music playlist?",
+  "sql": "SELECT t.Name FROM Playlist p JOIN PlaylistTrack pt ON p.PlaylistId = pt.PlaylistId JOIN Track t ON pt.TrackId = t.TrackId WHERE p.Name = 'Music';",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "Which customers bought tracks from the Rock genre?",
+  "sql": "SELECT DISTINCT c.FirstName, c.LastName FROM Customer c JOIN Invoice i ON c.CustomerId = i.CustomerId JOIN InvoiceLine il ON i.InvoiceId = il.InvoiceId JOIN Track t ON il.TrackId = t.TrackId JOIN Genre g ON t.GenreId = g.GenreId WHERE g.Name = 'Rock';",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "Which customers have spent more than $40 in total?",
+  "sql": "SELECT c.CustomerId, c.FirstName, c.LastName, SUM(i.Total) AS TotalSpent FROM Customer c JOIN Invoice i ON c.CustomerId = i.CustomerId GROUP BY c.CustomerId HAVING SUM(i.Total) > 40;",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "What is the total revenue per billing country?",
+  "sql": "SELECT BillingCountry, SUM(Total) FROM Invoice GROUP BY BillingCountry;",
+  "db": "data/chinook.db"
+ },
+ {
+  "question": "How many tracks does each genre have?",
+  "sql": "SELECT g.Name, COUNT(t.TrackId) FROM Genre g JOIN Track t ON g.GenreId = t.GenreId GROUP BY g.GenreId;",
+  "db": "data/chinook.db"
+ }
+]

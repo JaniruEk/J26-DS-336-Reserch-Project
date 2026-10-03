@@ -1,0 +1,602 @@
+[
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "Give the names of countries that are in Europe and have a population equal to 80000.",
+  "sql": "SELECT Name FROM country WHERE continent  =  \"Europe\" AND Population  =  \"80000\""
+ },
+ {
+  "db": "data/spider/flight_2/flight_2.sqlite",
+  "question": "Which airline has abbreviation 'UAL'?",
+  "sql": "SELECT Airline FROM AIRLINES WHERE Abbreviation  =  \"UAL\""
+ },
+ {
+  "db": "data/spider/tvshow/tvshow.sqlite",
+  "question": "What is the Package Option of TV Channel with serial name \"Sky Radio\"?",
+  "sql": "SELECT Package_Option FROM TV_Channel WHERE series_name = \"Sky Radio\";"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "What are the names and areas of countries with the top 5 largest area?",
+  "sql": "SELECT Name ,  SurfaceArea FROM country ORDER BY SurfaceArea DESC LIMIT 5"
+ },
+ {
+  "db": "data/spider/network_1/network_1.sqlite",
+  "question": "Show the ID of the high schooler named Kyle.",
+  "sql": "SELECT ID FROM Highschooler WHERE name  =  \"Kyle\""
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What is the horsepower of the car with the largest accelerate?",
+  "sql": "SELECT T1.horsepower FROM CARS_DATA AS T1 ORDER BY T1.accelerate DESC LIMIT 1;"
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "What are all the possible breed type and size type combinations?",
+  "sql": "SELECT DISTINCT breed_code ,  size_code FROM dogs"
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "What type of pet is the youngest animal, and how much does it weigh?",
+  "sql": "SELECT pettype ,  weight FROM pets ORDER BY pet_age LIMIT 1"
+ },
+ {
+  "db": "data/spider/orchestra/orchestra.sqlite",
+  "question": "What is the name of the conductor who has worked the greatest number of years?",
+  "sql": "SELECT Name FROM conductor ORDER BY Year_of_Work DESC LIMIT 1"
+ },
+ {
+  "db": "data/spider/museum_visit/museum_visit.sqlite",
+  "question": "Find the names of the visitors whose membership level is higher than 4, and order the results by the level from high to low.",
+  "sql": "SELECT name FROM visitor WHERE Level_of_membership  >  4 ORDER BY Level_of_membership DESC"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "What is the name of country that has the shortest life expectancy in Asia?",
+  "sql": "SELECT Name FROM country WHERE Continent  =  \"Asia\" ORDER BY LifeExpectancy LIMIT 1"
+ },
+ {
+  "db": "data/spider/tvshow/tvshow.sqlite",
+  "question": "What is the produdction code and channel of the most recent cartoon ?",
+  "sql": "select production_code ,  channel from cartoon order by original_air_date desc limit 1"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "Give the country codes for countries in which people speak langauges that are not English.",
+  "sql": "SELECT DISTINCT CountryCode FROM countrylanguage WHERE LANGUAGE != \"English\""
+ },
+ {
+  "db": "data/spider/employee_hire_evaluation/employee_hire_evaluation.sqlite",
+  "question": "Sort all the shops by number products in descending order, and return the name, location and district of each shop.",
+  "sql": "SELECT name ,  LOCATION ,  district FROM shop ORDER BY number_products DESC"
+ },
+ {
+  "db": "data/spider/orchestra/orchestra.sqlite",
+  "question": "What are the names of conductors, sorted descending by the number of years they have worked?",
+  "sql": "SELECT Name FROM conductor ORDER BY Year_of_Work DESC"
+ },
+ {
+  "db": "data/spider/flight_2/flight_2.sqlite",
+  "question": "What are flight numbers of flights departing from Airport \"APG\"?",
+  "sql": "SELECT FlightNo FROM FLIGHTS WHERE SourceAirport  =  \"APG\""
+ },
+ {
+  "db": "data/spider/singer/singer.sqlite",
+  "question": "What is the name of the singer who is worth the most?",
+  "sql": "SELECT Name FROM singer ORDER BY Net_Worth_Millions DESC LIMIT 1"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "What are the names of all the countries that became independent after 1950?",
+  "sql": "SELECT Name FROM country WHERE IndepYear  >  1950"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "What are the population, name and leader of the country with the largest area?",
+  "sql": "SELECT Name ,  population ,  HeadOfState FROM country ORDER BY SurfaceArea DESC LIMIT 1"
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "Find the distinct breed type and size type combinations for dogs.",
+  "sql": "SELECT DISTINCT breed_code ,  size_code FROM dogs"
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "What is the id and weight of every pet who is older than 1?",
+  "sql": "SELECT petid ,  weight FROM pets WHERE pet_age  >  1"
+ },
+ {
+  "db": "data/spider/cre_Doc_Template_Mgt/cre_Doc_Template_Mgt.sqlite",
+  "question": "Return the ids of templates that have the code PP or PPT.",
+  "sql": "SELECT template_id FROM Templates WHERE template_type_code  =  \"PP\" OR template_type_code  =  \"PPT\""
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "Which professionals live in a city containing the substring 'West'? List his or her role, street, city and state.",
+  "sql": "SELECT role_code ,  street ,  city ,  state FROM professionals WHERE city LIKE '%West%'"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "What are the names of the nations with the 3 lowest populations?",
+  "sql": "SELECT Name FROM country ORDER BY Population ASC LIMIT 3"
+ },
+ {
+  "db": "data/spider/tvshow/tvshow.sqlite",
+  "question": "What is Weekly Rank of TV series with Episode \"A Love of a Lifetime\"?",
+  "sql": "SELECT Weekly_Rank FROM TV_series WHERE Episode = \"A Love of a Lifetime\";"
+ },
+ {
+  "db": "data/spider/course_teach/course_teach.sqlite",
+  "question": "List the names of teachers in ascending order of age.",
+  "sql": "SELECT Name FROM teacher ORDER BY Age ASC"
+ },
+ {
+  "db": "data/spider/student_transcripts_tracking/student_transcripts_tracking.sqlite",
+  "question": "What are the names of the sections in reverse alphabetical order?",
+  "sql": "SELECT section_name FROM Sections ORDER BY section_name DESC"
+ },
+ {
+  "db": "data/spider/tvshow/tvshow.sqlite",
+  "question": "list all cartoon titles and their directors ordered by their air date",
+  "sql": "SELECT title ,  Directed_by FROM Cartoon ORDER BY Original_air_date"
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "Return the first name, last name and email of the owners living in a state whose name contains the substring 'North'.",
+  "sql": "SELECT first_name ,  last_name ,  email_address FROM Owners WHERE state LIKE '%North%'"
+ },
+ {
+  "db": "data/spider/poker_player/poker_player.sqlite",
+  "question": "What are the earnings of poker players, ordered descending by value?",
+  "sql": "SELECT Earnings FROM poker_player ORDER BY Earnings DESC"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "What are the regions that use English or Dutch?",
+  "sql": "SELECT DISTINCT T1.Region FROM country AS T1 JOIN countrylanguage AS T2 ON T1.Code  =  T2.CountryCode WHERE T2.Language  =  \"English\" OR T2.Language  =  \"Dutch\""
+ },
+ {
+  "db": "data/spider/student_transcripts_tracking/student_transcripts_tracking.sqlite",
+  "question": "What are the names of all courses that have some students enrolled?",
+  "sql": "SELECT DISTINCT T1.course_name FROM Courses AS T1 JOIN Student_Enrolment_Courses AS T2 ON T1.course_id  =  T2.course_id"
+ },
+ {
+  "db": "data/spider/cre_Doc_Template_Mgt/cre_Doc_Template_Mgt.sqlite",
+  "question": "Show all paragraph texts for the document \"Customer reviews\".",
+  "sql": "SELECT T1.paragraph_text FROM Paragraphs AS T1 JOIN Documents AS T2 ON T1.document_id  =  T2.document_id WHERE T2.document_name  =  \"Customer reviews\""
+ },
+ {
+  "db": "data/spider/flight_2/flight_2.sqlite",
+  "question": "Give the flight numbers of flights leaving from Aberdeen.",
+  "sql": "SELECT T1.FlightNo FROM FLIGHTS AS T1 JOIN AIRPORTS AS T2 ON T1.SourceAirport   =  T2.AirportCode WHERE T2.City  =  \"Aberdeen\""
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "Which model of the car has the minimum horsepower?",
+  "sql": "SELECT T1.Model FROM CAR_NAMES AS T1 JOIN CARS_DATA AS T2 ON T1.MakeId  =  T2.Id ORDER BY T2.horsepower ASC LIMIT 1;"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "What is the official language used in the country the name of whose head of state is Beatrix.",
+  "sql": "SELECT T2.Language FROM country AS T1 JOIN countrylanguage AS T2 ON T1.Code  =  T2.CountryCode WHERE T1.HeadOfState  =  \"Beatrix\" AND T2.IsOfficial  =  \"T\""
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What is the largest amount of horsepower for the models with 3 cylinders and what make is it?",
+  "sql": "SELECT T2.horsepower ,  T1.Make FROM CAR_NAMES AS T1 JOIN CARS_DATA AS T2 ON T1.MakeId  =  T2.Id WHERE T2.cylinders  =  3 ORDER BY T2.horsepower DESC LIMIT 1;"
+ },
+ {
+  "db": "data/spider/tvshow/tvshow.sqlite",
+  "question": "which countries' tv channels are playing some cartoon written by Todd Casey?",
+  "sql": "SELECT T1.country FROM TV_Channel AS T1 JOIN cartoon AS T2 ON T1.id = T2.Channel WHERE T2.written_by  =  'Todd Casey'"
+ },
+ {
+  "db": "data/spider/flight_2/flight_2.sqlite",
+  "question": "What are flight numbers of Airline \"United Airlines\"?",
+  "sql": "SELECT T1.FlightNo FROM FLIGHTS AS T1 JOIN AIRLINES AS T2 ON T2.uid  =  T1.Airline WHERE T2.Airline  =  \"United Airlines\""
+ },
+ {
+  "db": "data/spider/poker_player/poker_player.sqlite",
+  "question": "Return the money rank of the poker player with the greatest height.",
+  "sql": "SELECT T2.Money_Rank FROM people AS T1 JOIN poker_player AS T2 ON T1.People_ID  =  T2.People_ID ORDER BY T1.Height DESC LIMIT 1"
+ },
+ {
+  "db": "data/spider/singer/singer.sqlite",
+  "question": "Show titles of songs and names of singers.",
+  "sql": "SELECT T2.Title ,  T1.Name FROM singer AS T1 JOIN song AS T2 ON T1.Singer_ID  =  T2.Singer_ID"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "Which regions speak Dutch or English?",
+  "sql": "SELECT DISTINCT T1.Region FROM country AS T1 JOIN countrylanguage AS T2 ON T1.Code  =  T2.CountryCode WHERE T2.Language  =  \"English\" OR T2.Language  =  \"Dutch\""
+ },
+ {
+  "db": "data/spider/flight_2/flight_2.sqlite",
+  "question": "Which airlines have a flight with destination airport AHD?",
+  "sql": "SELECT T1.Airline FROM AIRLINES AS T1 JOIN FLIGHTS AS T2 ON T1.uid  =  T2.Airline WHERE T2.DestAirport  =  \"AHD\""
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "What are the different first names and ages of the students who do have pets?",
+  "sql": "SELECT DISTINCT T1.fname ,  T1.age FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid"
+ },
+ {
+  "db": "data/spider/flight_2/flight_2.sqlite",
+  "question": "What are airlines that have flights arriving at airport 'AHD'?",
+  "sql": "SELECT T1.Airline FROM AIRLINES AS T1 JOIN FLIGHTS AS T2 ON T1.uid  =  T2.Airline WHERE T2.DestAirport  =  \"AHD\""
+ },
+ {
+  "db": "data/spider/tvshow/tvshow.sqlite",
+  "question": "List the Episode of all  TV series showed on TV Channel with series name \"Sky Radio\".",
+  "sql": "SELECT T2.Episode FROM TV_Channel AS T1 JOIN TV_series AS T2 ON T1.id = T2.Channel WHERE T1.series_name = \"Sky Radio\";"
+ },
+ {
+  "db": "data/spider/tvshow/tvshow.sqlite",
+  "question": "What is the TV Channel of TV series with Episode \"A Love of a Lifetime\"? List the TV Channel's series name.",
+  "sql": "SELECT T1.series_name FROM TV_Channel AS T1 JOIN TV_series AS T2 ON T1.id = T2.Channel WHERE T2.Episode = \"A Love of a Lifetime\";"
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "List each owner's first name, last name, and the size of his for her dog.",
+  "sql": "SELECT T1.first_name ,  T1.last_name ,  T2.size_code FROM Owners AS T1 JOIN Dogs AS T2 ON T1.owner_id  =  T2.owner_id"
+ },
+ {
+  "db": "data/spider/singer/singer.sqlite",
+  "question": "Show distinct names of singers that have songs with sales more than 300000.",
+  "sql": "SELECT DISTINCT T1.Name FROM singer AS T1 JOIN song AS T2 ON T1.Singer_ID  =  T2.Singer_ID WHERE T2.Sales  >  300000"
+ },
+ {
+  "db": "data/spider/poker_player/poker_player.sqlite",
+  "question": "Return the names of all the poker players.",
+  "sql": "SELECT T1.Name FROM people AS T1 JOIN poker_player AS T2 ON T1.People_ID  =  T2.People_ID"
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "What is the id of the pet owned by the student whose last name is 'Smith'?",
+  "sql": "SELECT T2.petid FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid WHERE T1.Lname  =  'Smith'"
+ },
+ {
+  "db": "data/spider/poker_player/poker_player.sqlite",
+  "question": "What are the names of poker players?",
+  "sql": "SELECT T1.Name FROM people AS T1 JOIN poker_player AS T2 ON T1.People_ID  =  T2.People_ID"
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "What are the cost and treatment type description of each treatment?",
+  "sql": "SELECT T1.cost_of_treatment ,  T2.treatment_type_description FROM Treatments AS T1 JOIN treatment_types AS T2 ON T1.treatment_type_code  =  T2.treatment_type_code"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What is the accelerate of the car make amc hornet sportabout (sw)?",
+  "sql": "SELECT T1.Accelerate FROM CARS_DATA AS T1 JOIN CAR_NAMES AS T2 ON T1.Id  =  T2.MakeId WHERE T2.Make  =  'amc hornet sportabout (sw)';"
+ },
+ {
+  "db": "data/spider/tvshow/tvshow.sqlite",
+  "question": "What is the name of the series that has the episode \"A Love of a Lifetime\"?",
+  "sql": "SELECT T1.series_name FROM TV_Channel AS T1 JOIN TV_series AS T2 ON T1.id = T2.Channel WHERE T2.Episode = \"A Love of a Lifetime\";"
+ },
+ {
+  "db": "data/spider/battle_death/battle_death.sqlite",
+  "question": "What are the different ids and names of the battles that lost any 'Brig' type shipes?",
+  "sql": "SELECT DISTINCT T1.id ,  T1.name FROM battle AS T1 JOIN ship AS T2 ON T1.id  =  T2.lost_in_battle WHERE T2.ship_type  =  'Brig'"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What is the model of the car with the smallest amount of horsepower?",
+  "sql": "SELECT T1.Model FROM CAR_NAMES AS T1 JOIN CARS_DATA AS T2 ON T1.MakeId  =  T2.Id ORDER BY T2.horsepower ASC LIMIT 1;"
+ },
+ {
+  "db": "data/spider/orchestra/orchestra.sqlite",
+  "question": "What are the names of conductors as well as the corresonding orchestras that they have conducted?",
+  "sql": "SELECT T1.Name ,  T2.Orchestra FROM conductor AS T1 JOIN orchestra AS T2 ON T1.Conductor_ID  =  T2.Conductor_ID"
+ },
+ {
+  "db": "data/spider/battle_death/battle_death.sqlite",
+  "question": "What are the death and injury situations caused by the ship with tonnage 't'?",
+  "sql": "SELECT T1.killed ,  T1.injured FROM death AS T1 JOIN ship AS t2 ON T1.caused_by_ship_id  =  T2.id WHERE T2.tonnage  =  't'"
+ },
+ {
+  "db": "data/spider/poker_player/poker_player.sqlite",
+  "question": "What are the names of poker players in descending order of earnings?",
+  "sql": "SELECT T1.Name FROM people AS T1 JOIN poker_player AS T2 ON T1.People_ID  =  T2.People_ID ORDER BY T2.Earnings DESC"
+ },
+ {
+  "db": "data/spider/student_transcripts_tracking/student_transcripts_tracking.sqlite",
+  "question": "What are the first, middle, and last names for everybody enrolled in a Bachelors program?",
+  "sql": "SELECT DISTINCT T1.first_name ,  T1.middle_name ,  T1.last_name FROM Students AS T1 JOIN Student_Enrolment AS T2 ON T1.student_id  =  T2.student_id JOIN Degree_Programs AS T3 ON T2.degree_program_id  =  T3.degree_program_id WHERE T3.degree_summary_name  =  'Bachelor'"
+ },
+ {
+  "db": "data/spider/student_transcripts_tracking/student_transcripts_tracking.sqlite",
+  "question": "Who is enrolled in a Bachelor degree program? List the first name, middle name, last name.",
+  "sql": "SELECT DISTINCT T1.first_name ,  T1.middle_name ,  T1.last_name FROM Students AS T1 JOIN Student_Enrolment AS T2 ON T1.student_id  =  T2.student_id JOIN Degree_Programs AS T3 ON T2.degree_program_id  =  T3.degree_program_id WHERE T3.degree_summary_name  =  'Bachelor'"
+ },
+ {
+  "db": "data/spider/course_teach/course_teach.sqlite",
+  "question": "Show names of teachers and the courses they are arranged to teach in ascending alphabetical order of the teacher's name.",
+  "sql": "SELECT T3.Name ,  T2.Course FROM course_arrange AS T1 JOIN course AS T2 ON T1.Course_ID  =  T2.Course_ID JOIN teacher AS T3 ON T1.Teacher_ID  =  T3.Teacher_ID ORDER BY T3.Name"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "Which models are lighter than 3500 but not built by the 'Ford Motor Company'?",
+  "sql": "SELECT DISTINCT T1.model FROM MODEL_LIST AS T1 JOIN CAR_NAMES AS T2 ON T1.Model  =  T2.Model JOIN CARS_DATA AS T3 ON T2.MakeId  =  T3.Id JOIN CAR_MAKERS AS T4 ON T1.Maker  =  T4.Id WHERE T3.weight  <  3500 AND T4.FullName != 'Ford Motor Company';"
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "Find the last name of the student who has a cat that is age 3.",
+  "sql": "SELECT T1.lname FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T3.petid  =  T2.petid WHERE T3.pet_age  =  3 AND T3.pettype  =  'cat'"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "Return the different names of cities that are in Asia and for which Chinese is the official language.",
+  "sql": "SELECT DISTINCT T3.Name FROM country AS T1 JOIN countrylanguage AS T2 ON T1.Code  =  T2.CountryCode JOIN city AS T3 ON T1.Code  =  T3.CountryCode WHERE T2.IsOfficial  =  'T' AND T2.Language  =  'Chinese' AND T1.Continent  =  \"Asia\""
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "Find the first name of students who have cat or dog pet.",
+  "sql": "SELECT DISTINCT T1.Fname FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T3.petid  =  T2.petid WHERE T3.pettype  =  'cat' OR T3.pettype  =  'dog'"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What are the different models for the cards produced after 1980?",
+  "sql": "SELECT DISTINCT T1.model FROM MODEL_LIST AS T1 JOIN CAR_NAMES AS T2 ON T1.model  =  T2.model JOIN CARS_DATA AS T3 ON T2.MakeId  =  T3.id WHERE T3.year  >  1980;"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "Which distinctive models are produced by maker with the full name General Motors or weighing more than 3500?",
+  "sql": "SELECT DISTINCT T2.Model FROM CAR_NAMES AS T1 JOIN MODEL_LIST AS T2 ON T1.Model  =  T2.Model JOIN CAR_MAKERS AS T3 ON T2.Maker  =  T3.Id JOIN CARS_DATA AS T4 ON T1.MakeId  =  T4.Id WHERE T3.FullName  =  'General Motors' OR T4.weight  >  3500;"
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "List the first name of all the professionals along with the description of the treatment they have done.",
+  "sql": "SELECT DISTINCT T1.first_name ,  T3.treatment_type_description FROM professionals AS T1 JOIN Treatments AS T2 ON T1.professional_id  =  T2.professional_id JOIN Treatment_types AS T3 ON T2.treatment_type_code  =  T3.treatment_type_code"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "Which unique cities are in Asian countries where Chinese is the official language ?",
+  "sql": "select distinct t3.name from country as t1 join countrylanguage as t2 on t1.code  =  t2.countrycode join city as t3 on t1.code  =  t3.countrycode where t2.isofficial  =  't' and t2.language  =  'chinese' and t1.continent  =  \"asia\""
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "What are each professional's first name and description of the treatment they have performed?",
+  "sql": "SELECT DISTINCT T1.first_name ,  T3.treatment_type_description FROM professionals AS T1 JOIN Treatments AS T2 ON T1.professional_id  =  T2.professional_id JOIN Treatment_types AS T3 ON T2.treatment_type_code  =  T3.treatment_type_code"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What is the name of the different car makers who produced a car in 1970?",
+  "sql": "SELECT DISTINCT T1.Maker FROM CAR_MAKERS AS T1 JOIN MODEL_LIST AS T2 ON T1.Id  =  T2.Maker JOIN CAR_NAMES AS T3 ON T2.model  =  T3.model JOIN CARS_DATA AS T4 ON T3.MakeId  =  T4.id WHERE T4.year  =  '1970';"
+ },
+ {
+  "db": "data/spider/course_teach/course_teach.sqlite",
+  "question": "What are the names of the teachers and the courses they teach in ascending alphabetical order by the name of the teacher?",
+  "sql": "SELECT T3.Name ,  T2.Course FROM course_arrange AS T1 JOIN course AS T2 ON T1.Course_ID  =  T2.Course_ID JOIN teacher AS T3 ON T1.Teacher_ID  =  T3.Teacher_ID ORDER BY T3.Name"
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "What is the last name of the student who has a cat that is 3 years old?",
+  "sql": "SELECT T1.lname FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T3.petid  =  T2.petid WHERE T3.pet_age  =  3 AND T3.pettype  =  'cat'"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What are the different models created by either the car maker General Motors or weighed more than 3500?",
+  "sql": "SELECT DISTINCT T2.Model FROM CAR_NAMES AS T1 JOIN MODEL_LIST AS T2 ON T1.Model  =  T2.Model JOIN CAR_MAKERS AS T3 ON T2.Maker  =  T3.Id JOIN CARS_DATA AS T4 ON T1.MakeId  =  T4.Id WHERE T3.FullName  =  'General Motors' OR T4.weight  >  3500;"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "Which distinct car models are the produced after 1980?",
+  "sql": "SELECT DISTINCT T1.model FROM MODEL_LIST AS T1 JOIN CAR_NAMES AS T2 ON T1.model  =  T2.model JOIN CARS_DATA AS T3 ON T2.MakeId  =  T3.id WHERE T3.year  >  1980;"
+ },
+ {
+  "db": "data/spider/concert_singer/concert_singer.sqlite",
+  "question": "List all singer names in concerts in year 2014.",
+  "sql": "SELECT T2.name FROM singer_in_concert AS T1 JOIN singer AS T2 ON T1.singer_id  =  T2.singer_id JOIN concert AS T3 ON T1.concert_id  =  T3.concert_id WHERE T3.year  =  2014"
+ },
+ {
+  "db": "data/spider/network_1/network_1.sqlite",
+  "question": "Return the names of friends of the high school student Kyle.",
+  "sql": "SELECT T3.name FROM Friend AS T1 JOIN Highschooler AS T2 ON T1.student_id  =  T2.id JOIN Highschooler AS T3 ON T1.friend_id  =  T3.id WHERE T2.name  =  \"Kyle\""
+ },
+ {
+  "db": "data/spider/cre_Doc_Template_Mgt/cre_Doc_Template_Mgt.sqlite",
+  "question": "Return the different descriptions for templates that have been used in a document.",
+  "sql": "SELECT DISTINCT T1.template_type_description FROM Ref_template_types AS T1 JOIN Templates AS T2 ON T1.template_type_code  = T2.template_type_code JOIN Documents AS T3 ON T2.Template_ID  =  T3.template_ID"
+ },
+ {
+  "db": "data/spider/cre_Doc_Template_Mgt/cre_Doc_Template_Mgt.sqlite",
+  "question": "What are the distinct template type descriptions for the templates ever used by any document?",
+  "sql": "SELECT DISTINCT T1.template_type_description FROM Ref_template_types AS T1 JOIN Templates AS T2 ON T1.template_type_code  = T2.template_type_code JOIN Documents AS T3 ON T2.Template_ID  =  T3.template_ID"
+ },
+ {
+  "db": "data/spider/course_teach/course_teach.sqlite",
+  "question": "Show the name of the teacher for the math course.",
+  "sql": "SELECT T3.Name FROM course_arrange AS T1 JOIN course AS T2 ON T1.Course_ID  =  T2.Course_ID JOIN teacher AS T3 ON T1.Teacher_ID  =  T3.Teacher_ID WHERE T2.Course  =  \"Math\""
+ },
+ {
+  "db": "data/spider/concert_singer/concert_singer.sqlite",
+  "question": "What are the names of the singers who performed in a concert in 2014?",
+  "sql": "SELECT T2.name FROM singer_in_concert AS T1 JOIN singer AS T2 ON T1.singer_id  =  T2.singer_id JOIN concert AS T3 ON T1.concert_id  =  T3.concert_id WHERE T3.year  =  2014"
+ },
+ {
+  "db": "data/spider/course_teach/course_teach.sqlite",
+  "question": "What are the names of the people who teach math courses?",
+  "sql": "SELECT T3.Name FROM course_arrange AS T1 JOIN course AS T2 ON T1.Course_ID  =  T2.Course_ID JOIN teacher AS T3 ON T1.Teacher_ID  =  T3.Teacher_ID WHERE T2.Course  =  \"Math\""
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "Find the name of the makers that produced some cars in the year of 1970?",
+  "sql": "SELECT DISTINCT T1.Maker FROM CAR_MAKERS AS T1 JOIN MODEL_LIST AS T2 ON T1.Id  =  T2.Maker JOIN CAR_NAMES AS T3 ON T2.model  =  T3.model JOIN CARS_DATA AS T4 ON T3.MakeId  =  T4.id WHERE T4.year  =  '1970';"
+ },
+ {
+  "db": "data/spider/course_teach/course_teach.sqlite",
+  "question": "Show names of teachers and the courses they are arranged to teach.",
+  "sql": "SELECT T3.Name ,  T2.Course FROM course_arrange AS T1 JOIN course AS T2 ON T1.Course_ID  =  T2.Course_ID JOIN teacher AS T3 ON T1.Teacher_ID  =  T3.Teacher_ID"
+ },
+ {
+  "db": "data/spider/course_teach/course_teach.sqlite",
+  "question": "What is the name of each teacher and what course they teach?",
+  "sql": "SELECT T3.Name ,  T2.Course FROM course_arrange AS T1 JOIN course AS T2 ON T1.Course_ID  =  T2.Course_ID JOIN teacher AS T3 ON T1.Teacher_ID  =  T3.Teacher_ID"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What are the different models wthat are lighter than 3500 but were not built by the Ford Motor Company?",
+  "sql": "SELECT DISTINCT T1.model FROM MODEL_LIST AS T1 JOIN CAR_NAMES AS T2 ON T1.Model  =  T2.Model JOIN CARS_DATA AS T3 ON T2.MakeId  =  T3.Id JOIN CAR_MAKERS AS T4 ON T1.Maker  =  T4.Id WHERE T3.weight  <  3500 AND T4.FullName != 'Ford Motor Company';"
+ },
+ {
+  "db": "data/spider/network_1/network_1.sqlite",
+  "question": "Show the names of all of the high schooler Kyle's friends.",
+  "sql": "SELECT T3.name FROM Friend AS T1 JOIN Highschooler AS T2 ON T1.student_id  =  T2.id JOIN Highschooler AS T3 ON T1.friend_id  =  T3.id WHERE T2.name  =  \"Kyle\""
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "What are the first names of every student who has a cat or dog as a pet?",
+  "sql": "SELECT DISTINCT T1.Fname FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T3.petid  =  T2.petid WHERE T3.pettype  =  'cat' OR T3.pettype  =  'dog'"
+ },
+ {
+  "db": "data/spider/museum_visit/museum_visit.sqlite",
+  "question": "What are the id, name and membership level of visitors who have spent the largest amount of money in total in all museum tickets?",
+  "sql": "SELECT t2.visitor_id ,  t1.name ,  t1.Level_of_membership FROM visitor AS t1 JOIN visit AS t2 ON t1.id  =  t2.visitor_id GROUP BY t2.visitor_id ORDER BY sum(t2.Total_spent) DESC LIMIT 1"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What is the number of carsw ith over 6 cylinders?",
+  "sql": "SELECT COUNT(*) FROM CARS_DATA WHERE Cylinders  >  6;"
+ },
+ {
+  "db": "data/spider/poker_player/poker_player.sqlite",
+  "question": "Give average earnings of poker players who are taller than 200.",
+  "sql": "SELECT avg(T2.Earnings) FROM people AS T1 JOIN poker_player AS T2 ON T1.People_ID  =  T2.People_ID WHERE T1.Height  >  200"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "How many continents speak Chinese?",
+  "sql": "SELECT COUNT( DISTINCT Continent) FROM country AS T1 JOIN countrylanguage AS T2 ON T1.Code  =  T2.CountryCode WHERE T2.Language  =  \"Chinese\""
+ },
+ {
+  "db": "data/spider/flight_2/flight_2.sqlite",
+  "question": "How many flights depart from City Aberdeen?",
+  "sql": "SELECT count(*) FROM FLIGHTS AS T1 JOIN AIRPORTS AS T2 ON T1.SourceAirport  =  T2.AirportCode WHERE T2.City  =  \"Aberdeen\""
+ },
+ {
+  "db": "data/spider/employee_hire_evaluation/employee_hire_evaluation.sqlite",
+  "question": "Find the number of employees hired in each shop; show the shop name as well.",
+  "sql": "SELECT count(*) ,  t2.name FROM hiring AS t1 JOIN shop AS t2 ON t1.shop_id  =  t2.shop_id GROUP BY t2.name"
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "For students who have pets , how many pets does each student have ? list their ids instead of names .",
+  "sql": "select count(*) ,  t1.stuid from student as t1 join has_pet as t2 on t1.stuid  =  t2.stuid group by t1.stuid"
+ },
+ {
+  "db": "data/spider/cre_Doc_Template_Mgt/cre_Doc_Template_Mgt.sqlite",
+  "question": "What are the different template type codes, and how many templates correspond to each?",
+  "sql": "SELECT template_type_code ,  count(*) FROM Templates GROUP BY template_type_code"
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "What is the average age of all the dogs?",
+  "sql": "SELECT avg(age) FROM Dogs"
+ },
+ {
+  "db": "data/spider/cre_Doc_Template_Mgt/cre_Doc_Template_Mgt.sqlite",
+  "question": "Count the number of paragraphs.",
+  "sql": "SELECT count(*) FROM Paragraphs"
+ },
+ {
+  "db": "data/spider/cre_Doc_Template_Mgt/cre_Doc_Template_Mgt.sqlite",
+  "question": "Count the number of templates.",
+  "sql": "SELECT count(*) FROM Templates"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "Return the codes of countries for which Spanish is the predominantly spoken language.",
+  "sql": "SELECT CountryCode ,  max(Percentage) FROM countrylanguage WHERE LANGUAGE  =  \"Spanish\" GROUP BY CountryCode"
+ },
+ {
+  "db": "data/spider/cre_Doc_Template_Mgt/cre_Doc_Template_Mgt.sqlite",
+  "question": "Count the number of templates of the type CV.",
+  "sql": "SELECT count(*) FROM Templates WHERE template_type_code  =  \"CV\""
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "How many countries does each continent have? List the continent id, continent name and the number of countries.",
+  "sql": "SELECT T1.ContId ,  T1.Continent ,  count(*) FROM CONTINENTS AS T1 JOIN COUNTRIES AS T2 ON T1.ContId  =  T2.Continent GROUP BY T1.ContId;"
+ },
+ {
+  "db": "data/spider/poker_player/poker_player.sqlite",
+  "question": "What are different nationalities of people and the corresponding number of people from each nation?",
+  "sql": "SELECT Nationality ,  COUNT(*) FROM people GROUP BY Nationality"
+ },
+ {
+  "db": "data/spider/student_transcripts_tracking/student_transcripts_tracking.sqlite",
+  "question": "How many courses are there?",
+  "sql": "SELECT count(*) FROM Courses"
+ },
+ {
+  "db": "data/spider/cre_Doc_Template_Mgt/cre_Doc_Template_Mgt.sqlite",
+  "question": "Which template type code is used by most number of documents?",
+  "sql": "SELECT T1.template_type_code FROM Templates AS T1 JOIN Documents AS T2 ON T1.template_id  =  T2.template_id GROUP BY T1.template_type_code ORDER BY count(*) DESC LIMIT 1"
+ },
+ {
+  "db": "data/spider/network_1/network_1.sqlite",
+  "question": "Return the grade that has the greatest number of high schoolers.",
+  "sql": "SELECT grade FROM Highschooler GROUP BY grade ORDER BY count(*) DESC LIMIT 1"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What is the maximum accelerate for all the different cylinders?",
+  "sql": "SELECT max(Accelerate) ,  Cylinders FROM CARS_DATA GROUP BY Cylinders;"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What is the number of cars with more than 4 cylinders?",
+  "sql": "SELECT count(*) FROM CARS_DATA WHERE Cylinders  >  4;"
+ },
+ {
+  "db": "data/spider/student_transcripts_tracking/student_transcripts_tracking.sqlite",
+  "question": "How many transcripts are released?",
+  "sql": "SELECT count(*) FROM Transcripts"
+ },
+ {
+  "db": "data/spider/tvshow/tvshow.sqlite",
+  "question": "Which country has the most of TV Channels? List the country and number of TV Channels it has.",
+  "sql": "SELECT Country ,  count(*) FROM TV_Channel GROUP BY Country ORDER BY count(*) DESC LIMIT 1;"
+ },
+ {
+  "db": "data/spider/concert_singer/concert_singer.sqlite",
+  "question": "Show the stadium name and capacity with most number of concerts in year 2014 or after.",
+  "sql": "SELECT T2.name ,  T2.capacity FROM concert AS T1 JOIN stadium AS T2 ON T1.stadium_id  =  T2.stadium_id WHERE T1.year  >=  2014 GROUP BY T2.stadium_id ORDER BY count(*) DESC LIMIT 1"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "Which languages are spoken by only one country in republic governments?",
+  "sql": "SELECT T2.Language FROM country AS T1 JOIN countrylanguage AS T2 ON T1.Code  =  T2.CountryCode WHERE T1.GovernmentForm  =  \"Republic\" GROUP BY T2.Language HAVING COUNT(*)  =  1"
+ },
+ {
+  "db": "data/spider/concert_singer/concert_singer.sqlite",
+  "question": "What is the year that had the most concerts?",
+  "sql": "SELECT YEAR FROM concert GROUP BY YEAR ORDER BY count(*) DESC LIMIT 1"
+ },
+ {
+  "db": "data/spider/wta_1/wta_1.sqlite",
+  "question": "How many players are from each country?",
+  "sql": "SELECT count(*) ,  country_code FROM players GROUP BY country_code"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "How many models does each car maker produce? List maker full name, id and the number.",
+  "sql": "SELECT T1.FullName ,  T1.Id ,  count(*) FROM CAR_MAKERS AS T1 JOIN MODEL_LIST AS T2 ON T1.Id  =  T2.Maker GROUP BY T1.Id;"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "What is the language spoken by the largest percentage of people in each country?",
+  "sql": "SELECT LANGUAGE ,  CountryCode ,  max(Percentage) FROM countrylanguage GROUP BY CountryCode"
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What is the name of the country with the most car makers?",
+  "sql": "SELECT T2.CountryName FROM CAR_MAKERS AS T1 JOIN COUNTRIES AS T2 ON T1.Country  =  T2.CountryId GROUP BY T1.Country ORDER BY Count(*) DESC LIMIT 1;"
+ },
+ {
+  "db": "data/spider/wta_1/wta_1.sqlite",
+  "question": "Find the number of left handed winners who participated in the WTA Championships.",
+  "sql": "SELECT count(DISTINCT winner_name) FROM matches WHERE tourney_name  =  'WTA Championships' AND winner_hand  =  'L'"
+ }
+]

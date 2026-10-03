@@ -1,0 +1,16 @@
+[
+ {"db": "data/tpch.db", "question": "Show the name and account balance of every customer.", "sql": "SELECT c_name, c_acctbal FROM customer;"},
+ {"db": "data/tpch.db", "question": "List all part names and their retail prices.", "sql": "SELECT p_name, p_retailprice FROM part;"},
+ {"db": "data/tpch.db", "question": "Which orders have a total price above 300000?", "sql": "SELECT o_orderkey, o_totalprice FROM orders WHERE o_totalprice > 300000;"},
+ {"db": "data/tpch.db", "question": "List each nation with the name of its region.", "sql": "SELECT n.n_name, r.r_name FROM nation n JOIN region r ON n.n_regionkey = r.r_regionkey;"},
+ {"db": "data/tpch.db", "question": "Show each order's date together with the name of the customer who placed it.", "sql": "SELECT o.o_orderdate, c.c_name FROM orders o JOIN customer c ON o.o_custkey = c.c_custkey;"},
+ {"db": "data/tpch.db", "question": "Which suppliers are in Germany?", "sql": "SELECT s.s_name FROM supplier s JOIN nation n ON s.s_nationkey = n.n_nationkey WHERE n.n_name = 'GERMANY';"},
+ {"db": "data/tpch.db", "question": "List the names of suppliers with the parts they supply and the available quantity.", "sql": "SELECT s.s_name, p.p_name, ps.ps_availqty FROM supplier s JOIN partsupp ps ON s.s_suppkey = ps.ps_suppkey JOIN part p ON ps.ps_partkey = p.p_partkey;"},
+ {"db": "data/tpch.db", "question": "Which customers in Europe have placed orders?", "sql": "SELECT DISTINCT c.c_name FROM customer c JOIN nation n ON c.c_nationkey = n.n_nationkey JOIN region r ON n.n_regionkey = r.r_regionkey JOIN orders o ON o.o_custkey = c.c_custkey WHERE r.r_name = 'EUROPE';"},
+ {"db": "data/tpch.db", "question": "Show the ship date and order date of every line item that belongs to an urgent priority order.", "sql": "SELECT l.l_shipdate, o.o_orderdate FROM lineitem l JOIN orders o ON l.l_orderkey = o.o_orderkey JOIN customer c ON o.o_custkey = c.c_custkey WHERE o.o_orderpriority = '1-URGENT';"},
+ {"db": "data/tpch.db", "question": "What is the number of orders for each order status?", "sql": "SELECT o_orderstatus, COUNT(*) FROM orders GROUP BY o_orderstatus;"},
+ {"db": "data/tpch.db", "question": "What is the total extended price of line items by ship mode?", "sql": "SELECT l_shipmode, SUM(l_extendedprice) FROM lineitem GROUP BY l_shipmode;"},
+ {"db": "data/tpch.db", "question": "How many customers are there in each market segment?", "sql": "SELECT c_mktsegment, COUNT(*) FROM customer GROUP BY c_mktsegment;"},
+ {"db": "data/tpch.db", "question": "What is the average account balance of suppliers in each nation?", "sql": "SELECT n.n_name, AVG(s.s_acctbal) FROM supplier s JOIN nation n ON s.s_nationkey = n.n_nationkey GROUP BY n.n_name;"},
+ {"db": "data/tpch.db", "question": "What is the total order value for each customer nation?", "sql": "SELECT n.n_name, SUM(o.o_totalprice) FROM customer c JOIN orders o ON c.c_custkey = o.o_custkey JOIN nation n ON c.c_nationkey = n.n_nationkey GROUP BY n.n_name;"}
+]
