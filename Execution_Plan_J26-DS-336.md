@@ -22,6 +22,31 @@ Derived from the individual proposals' WBS/Gantt and the project scope. Months a
 3. Fine-tuned artefact format for winner **and runner-up** (adapter weights + config + versioned eval log) — Thathsarani ↔ Karunanayake.
 4. Shared fine-tuning configuration (rank, LR, epochs, seed, dataset split) — Wathsala ↔ Thathsarani, frozen before either runs the comparison.
 
+### Shared config (fill in; nothing below is decided yet)
+
+| Item | Decision | Owner | Status |
+|---|---|---|---|
+| Placeholder base model until Wathsala's checkpoints exist | **Recommended (Ekanayake): one ~1.5B-parameter instruct model for everyone**, same tokenizer family as the student; Phi-3 Mini (3.8B, in PR #1) kept only as an optional strong-model reference. Name/version: *TBD* | Wathsala picks (student size must match) | Pending group reply |
+| Why not Phi-3 Mini for all | Native baseline must equal the distilled student's size (≈0.5–1.5B); 3.8B is tight for LoRA/HydraLoRA/QAT at 8GB; weakens the small-model efficiency claim vs MATS | — | Rationale |
+| Checkpoint format | Proposed: Hugging Face folder (`config.json`, safetensors, tokenizer files); same tokenizer for distilled and native | Wathsala ↔ Thathsarani | Pending |
+| Training platform | Not recorded anywhere (local RTX 3070 Ti-class vs Kaggle T4/P100 ~16GB vs Colab T4 ~15GB). Each member records theirs | each member | Pending |
+| GPU memory cap | **8GB for every training/eval run**, even on larger cloud GPUs, so results are comparable; record actual GPU + peak VRAM beside each result | all | Proposed |
+| Exact model/version, seeds, LoRA rank/LR/epochs, data split | Freeze in this table before the first comparison run | Wathsala ↔ Thathsarani | Pending |
+
+Note: Agent 1's execution-accuracy numbers so far used phi3 (3.8B) via Ollama as a stand-in generator; they must be re-run on the agreed model (≈30 min per configuration).
+
+### Research protocol (all members) — how we get trustworthy results
+
+Ordered by value; items 1–3 first if time is short.
+
+1. **Fine-tune before comparing.** Off-the-shelf phi3 scores only ≈0.40 on our Chinook/Spider test; differences between LoRA vs HydraLoRA or QAT vs PTQ only show on a model already trained for SQL. First deliverable: standard LoRA baseline on Spider **train**.
+2. **Train with Agent 1's context format.** Pruning hurt phi3 partly because phi3 never saw pruned schemas in training. Fine-tune on pruned, multi-anchor context (same `ddl` format as inference) and test whether pruning then helps. Untested — the most promising idea for Agent 1. (Compare train-on-full-schema vs train-on-pruned, same model/seeds.)
+3. **Freeze one shared setup:** one base model, one config (rank, LR, epochs, seeds), one train/val/test split; keep `eval/*.json` and Spider dev out of every training set; log everything needed to reproduce.
+4. **Bigger test set + repeated runs.** n≈128 scored queries gives wide CIs (why several differences were not significant). Move headline results to the full Spider dev set (≈1,000 questions); run every fine-tune with **3 seeds**; keep paired comparisons (bootstrap CI, exact McNemar) and per-complexity-bucket reporting.
+5. **Report an upper bound.** For retrieval: feed the **gold** tables/columns and measure accuracy — shows the headroom left for better retrieval and makes a neutral result interpretable. Equivalent oracle/ceiling for each agent (e.g. unquantized model for Agent 4).
+6. **Report effect sizes, not just significance:** differences with 95% CIs, plus tokens, latency and VRAM beside accuracy. A well-measured neutral/negative result is a valid dissertation result.
+7. **Optional harder benchmark:** BIRD, to test multi-join weakness more convincingly than Spider, if time allows.
+
 ---
 
 ## 1. Agent 1 — J.K.B. Ekanayake: Retrieval & Column-Level Pruning
@@ -36,7 +61,9 @@ Status: **Phases 1–7 below are implemented** (see CLAUDE.md for results and co
 | 4 Interfaces | 3–4 | NL complexity classifier; JSON handoff contract (`Agent1`) | contract test passes | Done (format awaiting Agent 3 sign-off) |
 | 5 Execution metric | 4 | Execution accuracy with stand-in SLM; paired bootstrap + McNemar | result with CI reported | Done (phi3 stand-in; result: pruning −44 tokens, exec .40→.35, p=0.33) |
 | 6 Harness | 4–5 | FastAPI `/retrieve` + `/query`, logged handoffs, bounded retry | smoke test end to end | Done |
-| 7 Fix multi-join (next) | 5 | Try `labels=True` as default; widen context on retry; depth-2 only for predicted multi-join; maybe retrieved-table-count feature for the NL classifier | multi-join exec ≥ hybrid on Spider dev, or documented as limitation | Done: multi-anchor + shortest-path bridging fixes multi-join table recall (.75→.94); pruned config `multi_anchors=3, gate=False, min_cols=8` matches hybrid accuracy (.41) at fewer tokens than 3-anchor hybrid; no accuracy gain over hybrid with phi3 |
+| 7 Fix multi-join | 5 | Try `labels=True` as default; widen context on retry; depth-2 only for predicted multi-join; maybe retrieved-table-count feature for the NL classifier | multi-join exec ≥ hybrid on Spider dev, or documented as limitation | Done: multi-anchor + shortest-path bridging fixes multi-join table recall (.75→.94); pruned config `multi_anchors=3, gate=False, min_cols=8` matches hybrid accuracy (.41) at fewer tokens than 3-anchor hybrid; no accuracy gain over hybrid with phi3 |
+| 8a Strengthen evidence (can start now) | 5–6 | Oracle upper bound (gold tables/columns as context); extend evaluation to the full Spider dev set (≈1,000 questions); re-run on the agreed ~1.5B placeholder model instead of phi3 | headroom number + tighter CIs; results recorded in CLAUDE.md | To do (needs placeholder model decision) |
+| 8b Train-with-pruned-context | 6–7 | Coordinate with Thathsarani: fine-tune the same model on full vs pruned/multi-anchor context (3 seeds, shared config) and compare execution accuracy | answer to "does pruning help once the model is trained for it?" | Blocked on shared config + Agent 3 |
 | 8 Re-run with real model | 7 | Repeat Phase 5 with Agent 3's fine-tuned model (and quantized variant); final tables for the thesis | final per-bucket results, CIs | Blocked on Agent 3 |
 | 9 Integration & report | 9–12 | End-to-end feasibility on Chinook/Spider/TPC-H, latency check (<500 ms retrieval), write-up | feasibility demo + dissertation chapter | To do |
 
