@@ -1,5 +1,5 @@
-def clean_sql(genrated_text):
-    generated_text =  genrated_text.strip()
+def clean_sql(generated_text):
+    generated_text =  generated_text.strip()
 
     generated_text =generated_text.replace("```sql","")
     generated_text=generated_text.replace("```SQL","")
