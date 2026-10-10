@@ -131,7 +131,7 @@ def main():
         output_dir=str(ckpt_dir), per_device_train_batch_size=args.batch,
         per_device_eval_batch_size=args.batch, gradient_accumulation_steps=args.accum,
         num_train_epochs=args.epochs, max_steps=args.max_steps, learning_rate=args.lr,
-        lr_scheduler_type="cosine", warmup_ratio=0.03, fp16=True, logging_steps=20,
+        lr_scheduler_type="cosine", warmup_steps=20, fp16=True, logging_steps=20,
         save_steps=200, save_total_limit=2, seed=args.seed, report_to="none",
         remove_unused_columns=False,
     )
