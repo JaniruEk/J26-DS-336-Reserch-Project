@@ -1,0 +1,581 @@
+ID,DB_ID,Question,Difficulty,SQL_Type,Expected_SQL,Generated_SQL,SQL_Exact_Match,Execution_Correct,Expected_Execution_Success,Generated_Execution_Success,Execution_Error,Latency_Seconds,Peak_VRAM_MB,Precision
+001,concert_singer,How many singers do we have?,Medium,aggregation,SELECT count(*) FROM singer,SELECT COUNT(DISTINCT Singer_ID) AS NumberOfSingers FROM singer;,0,1,1,1,,3.0823,2447.18,int4
+002,concert_singer,What is the total number of singers?,Medium,aggregation,SELECT count(*) FROM singer,"SELECT COUNT(DISTINCT Singer_ID) AS Total_Singers
+
+FROM singer;",0,1,1,1,,3.0991,2447.64,int4
+003,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.",Medium,order_by,"SELECT name ,  country ,  age FROM singer ORDER BY age DESC","SELECT Name, Country, Age
+
+FROM singer
+
+ORDER BY Age DESC;",1,1,1,1,,2.7373,2453.8,int4
+004,concert_singer," What are the names, countries, and ages for every singer in descending order of age?",Medium,order_by,"SELECT name ,  country ,  age FROM singer ORDER BY age DESC","SELECT Name, Country, Age
+
+FROM singer
+
+ORDER BY Age DESC;",1,1,1,1,,2.8207,2453.38,int4
+005,concert_singer," What is the average, minimum, and maximum age of all singers from France?",Medium,aggregation,"SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'","SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age
+
+FROM singer
+
+WHERE Country = 'France';",0,1,1,1,,5.7271,2452.54,int4
+006,concert_singer,"What is the average, minimum, and maximum age for all French singers?",Medium,aggregation,"SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'","SELECT AVG(Is_male) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age
+
+FROM singer
+
+WHERE Country = 'France';",0,0,1,1,,5.6983,2451.7,int4
+007,concert_singer,Show the name and the release year of the song by the youngest singer.,Medium,order_by_limit,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1","SELECT Name, Song_release_year
+
+FROM singer
+
+ORDER BY Age ASC
+
+LIMIT 1;",0,0,1,1,,3.5444,2451.7,int4
+008,concert_singer,What are the names and release years for all the songs of the youngest singer?,Medium,order_by_limit,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1","SELECT Name, Song_release_year
+
+FROM singer
+
+WHERE Age = (SELECT MAX(Age) FROM singer);",0,0,1,1,,3.5409,2452.12,int4
+009,concert_singer,What are all distinct countries where singers above age 20 are from?,Medium,distinct_where,SELECT DISTINCT country FROM singer WHERE age  >  20,"SELECT DISTINCT singer.Country
+
+FROM singer
+
+WHERE singer.Age > 20;",0,1,1,1,,2.9898,2451.7,int4
+010,concert_singer,What are  the different countries with singers above age 20?,Medium,distinct_where,SELECT DISTINCT country FROM singer WHERE age  >  20,"SELECT DISTINCT singer.Country
+
+FROM singer
+
+WHERE singer.Age > 20;",0,1,1,1,,3.1546,2451.28,int4
+011,concert_singer,Show all countries and the number of singers in each country.,Medium,group_by,"SELECT country ,  count(*) FROM singer GROUP BY country","SELECT Country, COUNT(Singer_ID) AS NumberOfSingers
+
+FROM singer
+
+GROUP BY Country;",0,1,1,1,,3.7285,2450.44,int4
+012,concert_singer,How many singers are from each country?,Medium,group_by,"SELECT country ,  count(*) FROM singer GROUP BY country","SELECT Country, COUNT(DISTINCT Singer_ID) AS NumberOfSingers
+
+FROM singer
+
+GROUP BY Country;",0,1,1,1,,4.0008,2447.64,int4
+013,concert_singer,List all song names by singers above the average age.,Hard,subquery,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),"SELECT Name, Song_Name
+
+FROM singer
+
+WHERE Age > (SELECT AVG(Age) FROM singer);",0,0,1,1,,3.3347,2448.99,int4
+014,concert_singer,What are all the song names by singers who are older than average?,Hard,subquery,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),"SELECT s.Name, s.Song_Name
+
+FROM singer s
+
+JOIN (
+
+  SELECT AVG(Age) AS AverageAge
+
+  FROM singer
+
+) AS avg_age
+
+ON s.Age > avg_age.AverageAge
+
+WHERE s.Is_male = 1;",0,0,1,1,,8.3382,2451.28,int4
+015,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,Easy,between,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000","SELECT Location, Name FROM stadium WHERE Capacity BETWEANT 5000 AND 10000;",0,0,1,0,"near ""BETWEANT"": syntax error",4.094,2455.49,int4
+016,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,Easy,between,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000","SELECT Location, Name
+
+FROM stadium
+
+WHERE Capacity BETWEANT 5000 AND 10000;",0,0,1,0,"near ""BETWEANT"": syntax error",4.3351,2455.91,int4
+017,concert_singer, What is the maximum capacity and the average of all stadiums ?,Medium,aggregation,"SELECT MAX(capacity), AVG(capacity) FROM stadium","SELECT MAX(Capacity) AS Maximum_Capacity, AVG(Capacity) AS Average_Capacity
+
+FROM stadium;",0,1,1,1,,4.1989,2450.86,int4
+018,concert_singer,What is the average and maximum capacities for all stadiums ?,Medium,aggregation,"select avg(capacity) ,  max(capacity) from stadium","SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity
+
+FROM stadium;",0,1,1,1,,4.1497,2450.44,int4
+019,concert_singer,What is the name and capacity for the stadium with highest average attendance,Medium,order_by_limit,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1","SELECT Name, Capacity
+
+FROM stadium
+
+ORDER BY Average DESC
+
+LIMIT 1;",1,1,1,1,,3.3916,2451.28,int4
+020,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,Medium,order_by_limit,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1","SELECT Name, Capacity
+
+FROM stadium
+
+ORDER BY Average DESC
+
+LIMIT 1;",1,1,1,1,,3.3763,2452.12,int4
+021,concert_singer,Show the names of all singers who are older than 30.,Easy,where,SELECT name FROM singer WHERE age > 30,SELECT Name FROM singer WHERE Age > 30;,1,1,1,1,,2.0808,2451.28,int4
+022,concert_singer,List the names of all singers from the United States.,Easy,where,SELECT name FROM singer WHERE country = 'United States',SELECT Name FROM singer WHERE Country = 'United States';,1,1,1,1,,2.1723,2448.99,int4
+023,concert_singer,Show all concert names held in the year 2014.,Easy,where,SELECT concert_Name FROM concert WHERE Year = 2014,"SELECT concert.concert_Name
+
+FROM concert
+
+WHERE Year = 2014;",0,1,1,1,,3.2646,2450.86,int4
+024,concert_singer,How many concerts are recorded in the database?,Easy,aggregation,SELECT COUNT(*) FROM concert,"SELECT COUNT(DISTINCT concert_ID) AS NumberOfConcerts
+
+FROM concert;",0,1,1,1,,2.8703,2448.09,int4
+025,concert_singer,What is the average capacity of all stadiums?,Easy,aggregation,SELECT AVG(capacity) FROM stadium,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1,1,1,,2.5816,2448.09,int4
+026,concert_singer,What is the name of the stadium with the largest capacity?,Easy,order_by_limit,SELECT name FROM stadium ORDER BY capacity DESC LIMIT 1,SELECT Name FROM stadium ORDER BY Capacity DESC LIMIT 1;,1,1,1,1,,2.5598,2450.44,int4
+027,concert_singer,What is the name of the youngest singer?,Easy,order_by_limit,SELECT name FROM singer ORDER BY age ASC LIMIT 1,SELECT Name FROM singer ORDER BY Age ASC LIMIT 1;,1,1,1,1,,2.1622,2448.09,int4
+028,concert_singer,How many concerts occurred in 2014 or 2015?,Medium,where_or,SELECT COUNT(*) FROM concert WHERE Year = 2014 OR Year = 2015,"SELECT COUNT(DISTINCT concert_ID) AS NumberOfConcerts
+
+FROM concert
+
+WHERE Year IN (2014, 2015);",0,1,1,1,,4.612,2452.54,int4
+029,concert_singer,Show each concert year and the number of concerts held in that year.,Medium,group_by,"SELECT Year, COUNT(*) FROM concert GROUP BY Year","SELECT Year, COUNT(concert_ID) AS NumberOfConcerts
+
+FROM concert
+
+GROUP BY Year;",0,1,1,1,,3.6973,2451.28,int4
+030,concert_singer,Show each country and the average age of singers from that country.,Medium,group_by,"SELECT country, AVG(age) FROM singer GROUP BY country","SELECT Country, AVG(Age) as Average_Age
+
+FROM singer
+
+GROUP BY Country;",0,1,1,1,,3.3478,2450.86,int4
+031,concert_singer,Show countries that have more than one singer.,Medium,having,SELECT country FROM singer GROUP BY country HAVING COUNT(*) > 1,"SELECT singer.Country
+
+FROM singer
+
+GROUP BY singer.Country
+
+HAVING COUNT(singer.Singer_ID) > 1;",0,1,1,1,,4.2483,2447.64,int4
+032,concert_singer,Show the name of each concert and the name of the stadium where it was held.,Medium,join,"SELECT concert.concert_Name, stadium.name FROM concert JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID","SELECT concert.concert_Name, stadium.Name
+
+FROM concert
+
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID;",1,1,1,1,,5.0435,2452.54,int4
+033,concert_singer,Show each stadium name and the number of concerts held in that stadium.,Medium,join_group_by,"SELECT stadium.name, COUNT(*) FROM concert JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID GROUP BY stadium.Stadium_ID","SELECT s.Name, COUNT(c.concert_ID) AS NumberOfConcerts
+
+FROM stadium s
+
+JOIN concert c ON s.Stadium_ID = c.Stadium_ID
+
+GROUP BY s.Name;",0,0,1,1,,6.4971,2452.12,int4
+034,concert_singer,Show the names of singers and the concert IDs they participated in.,Medium,join,"SELECT singer.name, singer_in_concert.concert_ID FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID","SELECT singer.Name, concert.concert_ID
+
+FROM singer
+
+JOIN singer_in_concert ON singer.Singer_ID = singer_inatra_concert.Singer_ID
+
+JOIN concert ON concert.concert_ID = singer_in_concert.concert_ID;",0,0,1,0,no such column: singer_inatra_concert.Singer_ID,9.0469,2450.86,int4
+035,concert_singer,Show the names of singers and the names of concerts they performed in.,Medium,join,"SELECT singer.name, concert.concert_Name FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID","SELECT singer.Name, concert.concert_Name
+
+FROM singer
+
+JOIN singer_in_concert ON singer.Singer_ID = singer_in_.Singer_ID
+
+JOIN concert ON concert.concert_ID = singer_in_.concert_ID;",0,0,1,0,no such column: singer_in_.Singer_ID,7.5292,2451.7,int4
+036,concert_singer,Show each concert name and the number of singers who participated in it.,Medium,join_group_by,"SELECT concert.concert_Name, COUNT(*) FROM singer_in_concert JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID GROUP BY concert.concert_ID","SELECT concert.concert_Name, COUNT(singer_in_concert.Singer_ID) AS NumberOfSingers
+
+FROM concert
+
+JOIN singer_inatraction ON concert.concert_ID = singer_in_concert.concert_ID
+
+GROUP BY concert.concert_Name;",0,0,1,0,no such table: singer_inatraction,8.0667,2451.28,int4
+037,concert_singer,Show each singer name and the number of concerts they participated in.,Medium,join_group_by,"SELECT singer.name, COUNT(*) FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID GROUP BY singer.Singer_ID","SELECT s.Name, COUNT(ci.concert_ID) AS NumberOfConcerts
+
+FROM singer AS s
+
+JOIN singer_in_concert AS ci ON s.Singer_ID = ci.Singer_ID
+
+GROUP BY s.Singer_ID;",0,1,1,1,,7.2811,2450.86,int4
+038,concert_singer,Show the names of concerts held in stadiums with capacity greater than 5000.,Medium,join_where,SELECT concert.concert_Name FROM concert JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID WHERE stadium.capacity > 5000,"SELECT concert.concert_Name
+
+FROM concert
+
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+
+WHERE stadium.Capacity > 5000;",1,1,1,1,,6.1376,2453.38,int4
+039,concert_singer,Show the names of singers who participated in concerts held in 2014.,Medium,join_where,SELECT DISTINCT singer.name FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID WHERE concert.Year = 2014,"SELECT DISTINCT singer.Name
+
+FROM singer
+
+JOIN singer_in_concert ON singer.Singer_ID = singer_in_.Singer_ID
+
+JOIN concert ON concert.concert_ID = singer_in_.concert_ID
+
+WHERE concert.Year = 2014;",0,0,1,0,no such column: singer_in_.Singer_ID,7.9069,2452.96,int4
+040,concert_singer,Show the names of stadiums that have hosted at least one concert.,Medium,subquery,SELECT name FROM stadium WHERE Stadium_ID IN (SELECT Stadium_ID FROM concert),"SELECT DISTINCT Name
+
+FROM stadium
+
+WHERE Stadium_ID IN (SELECT Stadium_ID
+
+                      FROM concert
+
+                      WHERE Stadium_ID IS NOT NULL);",0,1,1,1,,5.3859,2450.86,int4
+041,concert_singer,Show the names of stadiums that have not hosted any concerts.,Hard,subquery,SELECT name FROM stadium WHERE Stadium_ID NOT IN (SELECT Stadium_ID FROM concert),SELECT Name FROM stadium WHERE Stadium_ID NOT IN (SELECT Stadium_ID FROM concert);,1,1,1,1,,2.9525,2450.86,int4
+042,concert_singer,Show the names of singers whose age is greater than the average singer age.,Hard,subquery,SELECT name FROM singer WHERE age > (SELECT AVG(age) FROM singer),"SELECT Name
+
+FROM singer
+
+WHERE Age > (SELECT AVG(Age) FROM singer);",1,1,1,1,,3.0454,2451.7,int4
+043,concert_singer,Show the name of the stadium with capacity greater than the average stadium capacity.,Hard,subquery,SELECT name FROM stadium WHERE capacity > (SELECT AVG(capacity) FROM stadium),SELECT Name FROM stadium WHERE Capacity > (SELECT AVG(Capacity) FROM stadium);,1,1,1,1,,3.1196,2452.12,int4
+044,concert_singer,Show the names of concerts that have more than one singer.,Hard,join_having,SELECT concert.concert_Name FROM concert JOIN singer_in_concert ON concert.concert_ID = singer_in_concert.concert_ID GROUP BY concert.concert_ID HAVING COUNT(*) > 1,"SELECT concert.concert_Name
+
+FROM concert
+
+JOIN singer_in_concert ON concert.concert_ID = singer_in_.concert_ID
+
+GROUP BY concert.concert_Name
+
+HAVING COUNT(singer_in_.Singer_ID) > 1;",0,0,1,0,no such column: singer_in_.Singer_ID,7.7282,2450.44,int4
+045,concert_singer,Show the concert name with the highest number of participating singers.,Hard,join_order_by_limit,SELECT concert.concert_Name FROM concert JOIN singer_in_concert ON concert.concert_ID = singer_in_concert.concert_ID GROUP BY concert.concert_ID ORDER BY COUNT(*) DESC LIMIT 1,"SELECT concert.concert_Name
+
+FROM concert
+
+JOIN singer_in_concert ON concert.concert_ID = singer_inatra_concert.concert_ID
+
+GROUP BY concert.concert_Name
+
+ORDER BY COUNT(singer_in_concert.Singer_ID) DESC
+
+LIMIT 1;",0,0,1,0,no such column: singer_inatra_concert.concert_ID,8.8887,2450.86,int4
+046,concert_singer,Show the stadium name that has hosted the greatest number of concerts.,Hard,join_order_by_limit,SELECT stadium.name FROM stadium JOIN concert ON stadium.Stadium_ID = concert.Stadium_ID GROUP BY stadium.Stadium_ID ORDER BY COUNT(*) DESC LIMIT 1,"SELECT s.Name
+
+FROM stadium s
+
+JOIN concert c ON s.Stadium_ID = c.Stadium_ID
+
+GROUP BY s.Name
+
+ORDER BY COUNT(c.concert_ID) DESC
+
+LIMIT 1;",0,1,1,1,,7.1049,2451.28,int4
+047,concert_singer,"Show the singer name, concert name, and stadium name for every singer concert participation.",Hard,multi_join,"SELECT singer.name, concert.concert_Name, stadium.name FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID","SELECT s.Name AS Singer_Name, c.concert_Name, a.Name AS Stadium_Name
+
+FROM singer_in_concert AS sic
+
+JOIN singer AS s ON sic.Singer_ID = s.Singer_ID
+
+JOIN concert AS c ON sic.concert_ID = c.concert_ID
+
+JOIN stadium AS a ON c.Stadium_ID = a.Stadium_ID;",0,1,1,1,,11.4914,2452.54,int4
+048,concert_singer,Show the names of singers who performed in concerts held at stadiums with capacity greater than 5000.,Hard,multi_join_where,SELECT DISTINCT singer.name FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID WHERE stadium.capacity > 5000,"SELECT DISTINCT s.Name
+
+FROM singer s
+
+JOIN singer_in_concert sic ON s.Singer_ID = sic.Singer_ID
+
+JOIN concert c ON c.concert_ID = sic.concert_ID
+
+JOIN stadium st ON st.Stadium_ID = c.Stadium_ID
+
+WHERE st.Capacity > 5000;",0,1,1,1,,10.3018,2455.49,int4
+049,concert_singer,Show each stadium name and the number of singers who have performed there.,Hard,multi_join_group_by,"SELECT stadium.name, COUNT(DISTINCT singer_in_concert.Singer_ID) FROM stadium JOIN concert ON stadium.Stadium_ID = concert.Stadium_ID JOIN singer_in_concert ON concert.concert_ID = singer_in_concert.concert_ID GROUP BY stadium.Stadium_ID","SELECT s.Name, COUNT(si.Singer_ID) AS NumberOfSingers
+
+FROM stadium AS s
+
+JOIN concert AS c ON s.Stadium_ID = c.Stadium_ID
+
+JOIN singer_in_concert AS si ON c.concert_ID = si.concert_ID
+
+GROUP BY s.Name;",0,0,1,1,,9.9849,2451.7,int4
+050,concert_singer,Show the stadium names where more than one singer has performed.,Hard,multi_join_having,SELECT stadium.name FROM stadium JOIN concert ON stadium.Stadium_ID = concert.Stadium_ID JOIN singer_in_concert ON concert.concert_ID = singer_in_concert.concert_ID GROUP BY stadium.Stadium_ID HAVING COUNT(DISTINCT singer_in_concert.Singer_ID) > 1,"SELECT s.Name
+
+FROM singer_in_concert sc
+
+JOIN singer s ON sc.Singer_ID = s.Singer_ID
+
+JOIN concert c ON sc.concert_ID = c.concert_ID
+
+JOIN stadium st ON c.Stadium_ID = st.Stadium_ID
+
+GROUP BY st.Name
+
+HAVING COUNT(DISTINCT s.Singer_ID) > 1;",0,0,1,1,,11.9119,2450.44,int4
+051,concert_singer,Show the names of all male singers.,Easy,where,SELECT name FROM singer WHERE Is_male = 1,SELECT Name FROM singer WHERE Is_male = 1;,1,1,1,1,,2.2156,2447.64,int4
+052,concert_singer,Show the names of all female singers.,Easy,where,SELECT name FROM singer WHERE Is_male = 0,SELECT Name FROM singer WHERE Is_male = 0;,1,1,1,1,,2.1137,2447.64,int4
+053,concert_singer,List the names and ages of singers who are younger than 30.,Easy,where,"SELECT name, age FROM singer WHERE age < 30","SELECT Name, Age
+
+FROM singer
+
+WHERE Age < 30;",1,1,1,1,,2.6861,2451.7,int4
+054,concert_singer,Show the names of male singers who are older than 25.,Easy,where_and,SELECT name FROM singer WHERE Is_male = 1 AND age > 25,SELECT Name FROM singer WHERE Is_male = 1 AND Age > 25;,1,1,1,1,,2.9925,2451.28,int4
+055,concert_singer,Show all distinct singer countries.,Easy,distinct,SELECT DISTINCT country FROM singer,SELECT DISTINCT Country FROM singer;,1,1,1,1,,1.795,2446.28,int4
+056,concert_singer,List all singer names and ages from youngest to oldest.,Easy,order_by,"SELECT name, age FROM singer ORDER BY age ASC","SELECT Name, Age
+
+FROM singer
+
+ORDER BY Age ASC;",1,1,1,1,,2.2495,2448.99,int4
+057,concert_singer,List all stadium names and capacities from largest capacity to smallest.,Easy,order_by,"SELECT name, capacity FROM stadium ORDER BY capacity DESC","SELECT Name, Capacity FROM stadium ORDER BY Capacity DESC;",1,1,1,1,,2.3582,2450.86,int4
+058,concert_singer,What is the minimum capacity among all stadiums?,Easy,aggregation,SELECT MIN(capacity) FROM stadium,SELECT MIN(Capacity) AS Minimum_Capacity FROM stadium;,0,1,1,1,,2.5873,2448.09,int4
+059,concert_singer,What is the oldest age among all singers?,Easy,aggregation,SELECT MAX(age) FROM singer,SELECT MAX(Age) AS Oldest_Age FROM singer;,0,1,1,1,,2.2404,2448.09,int4
+060,concert_singer,What is the youngest age among all singers?,Easy,aggregation,SELECT MIN(age) FROM singer,SELECT MIN(Age) AS Youngest_Age FROM singer;,0,1,1,1,,2.2972,2448.54,int4
+061,concert_singer,Show the number of male and female singers.,Medium,group_by,"SELECT Is_male, COUNT(*) FROM singer GROUP BY Is_male","SELECT 
+
+    (SELECT COUNT(*) FROM singer WHERE Is_male = 1) AS Male_Singers,
+
+    (SELECT COUNT(*) FROM singer WHERE Is_* = 0) AS Female_Singers;",0,0,1,0,"near ""="": syntax error",5.8022,2448.09,int4
+062,concert_singer,Show each singer country and the maximum singer age in that country.,Medium,group_by,"SELECT country, MAX(age) FROM singer GROUP BY country","SELECT Country, MAX(Age) AS Maximum_Age
+
+FROM singer
+
+GROUP BY Country;",0,1,1,1,,3.2667,2450.44,int4
+063,concert_singer,Show each singer country and the minimum singer age in that country.,Medium,group_by,"SELECT country, MIN(age) FROM singer GROUP BY country","SELECT Country, MIN(Age) AS Minimum_Age
+
+FROM singer
+
+GROUP BY Country;",0,1,1,1,,3.03,2450.44,int4
+064,concert_singer,Show countries where the average singer age is greater than 30.,Medium,having,SELECT country FROM singer GROUP BY country HAVING AVG(age) > 30,"SELECT DISTINCT singer.Country
+
+FROM singer
+
+JOIN singer_in_concert ON singer.Singer_ID = singer_inonie_concert.Singer_ID
+
+JOIN concert ON concert.concert_ID = singer_in_concert.concert_ID
+
+WHERE singer.Age > 30;",0,0,1,0,no such column: singer_inonie_concert.Singer_ID,8.3905,2450.86,int4
+065,concert_singer,Show years in which more than one concert was held.,Medium,having,SELECT Year FROM concert GROUP BY Year HAVING COUNT(*) > 1,"SELECT Year
+
+FROM concert
+
+GROUP BY Year
+
+HAVING COUNT(concert_ID) > 1;",0,1,1,1,,3.4745,2448.54,int4
+066,concert_singer,Show singer names and ages for singers between 20 and 40 years old.,Medium,where_between,"SELECT name, age FROM singer WHERE age BETWEEN 20 AND 40","SELECT Name, Age
+
+FROM singer
+
+WHERE Age BETWEANT 20 AND 40;",0,0,1,0,"near ""BETWEANT"": syntax error",3.5454,2452.96,int4
+067,concert_singer,Show concert names held between the years 2010 and 2015.,Medium,where_between,SELECT concert_Name FROM concert WHERE Year BETWEEN 2010 AND 2015,"SELECT concert.concert_Name
+
+FROM concert
+
+WHERE Year BETWEEN 2010 AND 2015;",0,1,1,1,,4.3726,2452.96,int4
+068,concert_singer,Show the name and age of the oldest singer.,Medium,order_by_limit,"SELECT name, age FROM singer ORDER BY age DESC LIMIT 1","SELECT Name, Age
+
+FROM singer
+
+ORDER BY Age DESC
+
+LIMIT 1;",1,1,1,1,,3.3843,2448.09,int4
+069,concert_singer,Show the name and capacity of the smallest stadium.,Medium,order_by_limit,"SELECT name, capacity FROM stadium ORDER BY capacity ASC LIMIT 1","SELECT Name, Capacity
+
+FROM stadium
+
+ORDER BY Capacity ASC
+
+LIMIT 1;",1,1,1,1,,3.7479,2448.54,int4
+070,concert_singer,Show each concert name together with its stadium location.,Medium,join,"SELECT concert.concert_Name, stadium.Location FROM concert JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID","SELECT concert.concert_Name, stadium.Location
+
+FROM concert
+
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID;",1,1,1,1,,4.9965,2448.54,int4
+071,concert_singer,Show each concert name together with the capacity of its stadium.,Medium,join,"SELECT concert.concert_Name, stadium.capacity FROM concert JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID","SELECT concert.concert_Name, stadium.Capacity
+
+FROM concert
+
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID;",1,1,1,1,,5.1243,2450.44,int4
+072,concert_singer,Show concert names held in stadiums with capacity less than 10000.,Medium,join_where,SELECT concert.concert_Name FROM concert JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID WHERE stadium.capacity < 10000,"SELECT concert.concert_Name
+
+FROM concert
+
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+
+WHERE stadium.Capacity < 10000;",1,1,1,1,,6.1809,2452.54,int4
+073,concert_singer,Show concert names held in stadiums with average attendance greater than 5000.,Medium,join_where,SELECT concert.concert_Name FROM concert JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID WHERE stadium.average > 5000,"SELECT concert.concert_Name
+
+FROM concert
+
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+
+WHERE stadium.Average > 5000;",1,1,1,1,,5.8939,2452.96,int4
+074,concert_singer,Show singer names who participated in concert number 1.,Medium,join_where,SELECT singer.name FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID WHERE singer_in_concert.concert_ID = 1,"SELECT singer.Name
+
+FROM singer
+
+JOIN singer_in_concert ON singer.Singer_ID = singer_inonie_concert.Singer_ID
+
+JOIN concert ON concert.concert_ID = singer_in_concert.concert_ID
+
+WHERE concert.concert_ID = 1;",0,0,1,0,no such column: singer_inonie_concert.Singer_ID,8.5944,2448.54,int4
+075,concert_singer,Show each singer country and the number of concert participations by singers from that country.,Medium,join_group_by,"SELECT singer.country, COUNT(*) FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID GROUP BY singer.country","SELECT singers.Country, COUNT(singer_in_concert.concert_ID) AS NumberOfConcerts
+
+FROM singer
+
+JOIN singer_in_concert ON singer.Singer_ID = singer_inonie_concert.Singer_ID
+
+GROUP BY singers.Country;",0,0,1,0,no such column: singers.Country,8.014,2452.54,int4
+076,concert_singer,Show each concert year and the number of singer participations in concerts during that year.,Medium,join_group_by,"SELECT concert.Year, COUNT(*) FROM concert JOIN singer_in_concert ON concert.concert_ID = singer_in_concert.concert_ID GROUP BY concert.Year","SELECT Year, COUNT(Singer_ID) AS NumberOfParticipations
+
+FROM concert
+
+JOIN singer_in_concert ON concert.concert_ID = singer_inatra_concert.concert_ID
+
+GROUP BY Year;",0,0,1,0,no such column: singer_inatra_concert.concert_ID,6.6436,2452.54,int4
+077,concert_singer,Show all distinct countries of singers who participated in at least one concert.,Medium,join_distinct,SELECT DISTINCT singer.country FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID,"SELECT DISTINCT singer.Country
+
+FROM singer
+
+JOIN singer_in_concert ON singer.Singer_ID = singer_inonie_concert.Singer_ID
+
+JOIN concert ON concert.concert_ID = singer_in_concert.concert_ID;",0,0,1,0,no such column: singer_inonie_concert.Singer_ID,7.2084,2451.28,int4
+078,concert_singer,Show singer names whose age is equal to the maximum singer age.,Medium,subquery,SELECT name FROM singer WHERE age = (SELECT MAX(age) FROM singer),"SELECT Name
+
+FROM singer
+
+WHERE Age = (SELECT MAX(Age) FROM singer);",1,1,1,1,,3.2985,2450.44,int4
+079,concert_singer,Show singer names whose age is equal to the minimum singer age.,Medium,subquery,SELECT name FROM singer WHERE age = (SELECT MIN(age) FROM singer),SELECT Name FROM singer WHERE Age = (SELECT MIN(Age) FROM singer);,1,1,1,1,,2.7446,2450.44,int4
+080,concert_singer,Show stadium names whose capacity is above the average stadium capacity.,Medium,subquery,SELECT name FROM stadium WHERE capacity > (SELECT AVG(capacity) FROM stadium),SELECT Name FROM stadium WHERE Capacity > (SELECT AVG(Capacity) FROM stadium);,1,1,1,1,,3.0804,2450.86,int4
+081,concert_singer,Show stadium names whose capacity is below the average stadium capacity.,Hard,subquery,SELECT name FROM stadium WHERE capacity < (SELECT AVG(capacity) FROM stadium),SELECT Name FROM stadium WHERE Capacity < (SELECT AVG(Capacity) FROM stadium);,1,1,1,1,,2.9549,2450.86,int4
+082,concert_singer,Show the names of singers who have participated in at least one concert.,Hard,in_subquery,SELECT name FROM singer WHERE Singer_ID IN (SELECT Singer_ID FROM singer_in_concert),"SELECT DISTINCT singer.Name
+
+FROM singer
+
+JOIN singer_in_concert ON singer.Singer_ID = singer_ineno_concert.Singer_ID;",0,0,1,0,no such column: singer_ineno_concert.Singer_ID,5.1367,2451.28,int4
+083,concert_singer,Show the names of singers who have never participated in a concert.,Hard,not_in_subquery,SELECT name FROM singer WHERE Singer_ID NOT IN (SELECT Singer_ID FROM singer_in_concert),SELECT Name FROM singer WHERE Singer_ID NOT IN (SELECT Singer_ID FROM singer_in_concert);,1,1,1,1,,3.2912,2450.86,int4
+084,concert_singer,Show singer names who participated in more than one concert.,Hard,join_having,SELECT singer.name FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID GROUP BY singer.Singer_ID HAVING COUNT(*) > 1,"SELECT s.Name
+
+FROM singer AS s
+
+JOIN singer_in_concert AS sic ON s.Singer_ID = sic.Singer_ID
+
+GROUP BY s.Singer_ID
+
+HAVING COUNT(sic.concert_ID) > 1;",0,1,1,1,,7.4626,2448.54,int4
+085,concert_singer,Show stadium names that hosted more than one concert.,Hard,join_having,SELECT stadium.name FROM stadium JOIN concert ON stadium.Stadium_ID = concert.Stadium_ID GROUP BY stadium.Stadium_ID HAVING COUNT(*) > 1,"SELECT s.Name
+
+FROM stadium s
+
+JOIN concert c ON s.Stadium_ID = c.Stadium_ID
+
+GROUP BY s.Name
+
+HAVING COUNT(c.concert_ID) > 1;",0,1,1,1,,6.6801,2448.54,int4
+086,concert_singer,"Show the singer name, concert name, and concert year for each singer participation.",Hard,multi_join,"SELECT singer.name, concert.concert_Name, concert.Year FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID","SELECT s.Name AS Singer_Name, c.concert_Name, c.Year AS Concert_Year
+
+FROM singer AS s
+
+JOIN singer_in_concert AS sic ON s.Singer_ID = sic.Singer_ID
+
+JOIN concert AS c ON sic.concert_ID = c.concert_ID;",0,1,1,1,,8.9652,2451.7,int4
+087,concert_singer,"Show singer names, concert names, and stadium locations for all concert participations.",Hard,multi_join,"SELECT singer.name, concert.concert_Name, stadium.Location FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID","SELECT s.Name AS Singer_Name, c.concert_Name, s.Location AS Stadium_Location
+
+FROM singer_in_concert AS sic
+
+JOIN singer AS s ON sic.Singer_ID = s.Singer_ID
+
+JOIN concert AS c ON sic.concert_ID = c.concert_ID
+
+JOIN stadium AS stad ON c.Stadium_ID = stad.Stadium_ID;",0,0,1,0,no such column: s.Location,11.0042,2452.12,int4
+088,concert_singer,Show singer names who participated in concerts held after 2013.,Hard,multi_join_where,SELECT DISTINCT singer.name FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID WHERE concert.Year > 2013,"SELECT DISTINCT s.Name
+
+FROM singer s
+
+JOIN singer_in_concert sic ON s.Singer_ID = sic.Singer_ID
+
+JOIN concert c ON c.concert_ID = sic.concert_ID
+
+WHERE c.Year > 2013;",0,1,1,1,,7.6685,2451.7,int4
+089,concert_singer,Show singer names who performed in stadiums with capacity between 5000 and 10000.,Hard,multi_join_where,SELECT DISTINCT singer.name FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID WHERE stadium.capacity BETWEEN 5000 AND 10000,"SELECT s.Name
+
+FROM singer s
+
+JOIN singer_in_concert sic ON s.Singer_ID = sic.Singer_ID
+
+JOIN concert c ON sic.concert_ID = c.concert_ID
+
+JOIN stadium st ON c.Stadium_ID = st.Stadium_ID
+
+WHERE st.Capacity BETWEEN 5000 AND 10000;",0,1,1,1,,11.2332,2455.07,int4
+090,concert_singer,Show concert names in which singers older than 30 participated.,Hard,multi_join_where,SELECT DISTINCT concert.concert_Name FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID WHERE singer.age > 30,"SELECT concert.concert_Name
+
+FROM concert
+
+JOIN singer_in_concert ON concert.concert_ID = singer_inatra_concert.concert_ID
+
+JOIN singer ON singer_in_concert.Singer_ID = singer.Singer_ID
+
+WHERE singer.Age > 30;",0,0,1,0,no such column: singer_inatra_concert.concert_ID,8.1485,2450.86,int4
+091,concert_singer,Show each stadium name and the total number of singer concert participations at that stadium.,Hard,multi_join_group_by,"SELECT stadium.name, COUNT(*) FROM stadium JOIN concert ON stadium.Stadium_ID = concert.Stadium_ID JOIN singer_in_concert ON concert.concert_ID = singer_in_concert.concert_ID GROUP BY stadium.Stadium_ID","SELECT s.Name, COUNT(ci.concert_ID) AS Total_Participations
+
+FROM stadium AS s
+
+JOIN concert AS c ON s.Stadium_ID = c.Stadium_ID
+
+JOIN singer_in_concert AS ci ON c.concert_ID = ci.concert_ID
+
+GROUP BY s.Name;",0,0,1,1,,8.9115,2452.96,int4
+092,concert_singer,Show each concert year and the number of distinct singers who participated in concerts that year.,Hard,multi_join_group_by,"SELECT concert.Year, COUNT(DISTINCT singer_in_concert.Singer_ID) FROM concert JOIN singer_in_concert ON concert.concert_ID = singer_in_concert.concert_ID GROUP BY concert.Year","SELECT Year, COUNT(DISTINCT Singer_ID) AS NumberOfSingers
+
+FROM concert
+
+JOIN singer_in_concert ON concert.concert_ID = singer_inonie_concert.concert_ID
+
+GROUP BY Year;",0,0,1,0,no such column: singer_inonie_concert.concert_ID,6.7603,2452.96,int4
+093,concert_singer,Show each stadium and the number of distinct concerts held there.,Hard,multi_join_group_by,"SELECT stadium.name, COUNT(DISTINCT concert.concert_ID) FROM stadium JOIN concert ON stadium.Stadium_ID = concert.Stadium_ID GROUP BY stadium.Stadium_ID","SELECT s.Name, COUNT(DISTINCT c.concert_ID) AS NumberOfConcerts
+
+FROM stadium s
+
+JOIN concert c ON s.Stadium_ID = c.Stadium_ID
+
+GROUP BY s.Stadium_ID;",0,1,1,1,,7.3691,2450.86,int4
+094,concert_singer,Show the singer who participated in the greatest number of concerts.,Hard,join_order_by_limit,SELECT singer.name FROM singer JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID GROUP BY singer.Singer_ID ORDER BY COUNT(*) DESC LIMIT 1,"SELECT Singer_ID, COUNT(concert_ID) AS NumberOfConcerts
+
+FROM singer_in_concert
+
+GROUP BY Singer_ID
+
+ORDER BY NumberOfConcerts DESC
+
+LIMIT 1;",0,0,1,1,,6.0763,2450.44,int4
+095,concert_singer,Show the concert year with the largest number of concerts.,Hard,join_order_by_limit,SELECT Year FROM concert GROUP BY Year ORDER BY COUNT(*) DESC LIMIT 1,"SELECT Year, COUNT(concert_ID) AS NumberOfConcerts
+
+FROM concert
+
+GROUP BY Year
+
+ORDER BY NumberOfConcerts DESC
+
+LIMIT 1;",0,0,1,1,,5.1208,2448.99,int4
+096,concert_singer,Show the stadium with the highest average attendance among stadiums that hosted concerts.,Hard,join_order_by_limit,SELECT DISTINCT stadium.name FROM stadium JOIN concert ON stadium.Stadium_ID = concert.Stadium_ID ORDER BY stadium.average DESC LIMIT 1,"SELECT Stadium.Name, Stadium.Average
+
+FROM stadium
+
+JOIN concert ON stadium.Stadium_ID = concert.Stadium_ID
+
+GROUP BY stadium.Stadium_ID
+
+ORDER BY Stadium.Average DESC
+
+LIMIT 1;",0,0,1,1,,7.0139,2452.54,int4
+097,concert_singer,Show concert names held in the stadium with the largest capacity.,Hard,subquery_join,SELECT concert_Name FROM concert WHERE Stadium_ID = (SELECT Stadium_ID FROM stadium ORDER BY capacity DESC LIMIT 1),"SELECT concert.concert_Name
+
+FROM concert
+
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+
+WHERE stadium.Capacity = (SELECT MAX(Capacity) FROM stadium);",0,1,1,1,,6.4342,2450.44,int4
+098,concert_singer,Show concert names held in the stadium with the smallest capacity.,Hard,subquery_join,SELECT concert_Name FROM concert WHERE Stadium_ID = (SELECT Stadium_ID FROM stadium ORDER BY capacity ASC LIMIT 1),"SELECT concert.concert_Name
+
+FROM concert
+
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+
+WHERE stadium.Capacity = (SELECT MIN(Capacity) FROM stadium);",0,1,1,1,,6.7191,2450.44,int4
+099,concert_singer,Show stadium names where singers from more than one distinct country have performed.,Hard,multi_join_having,SELECT stadium.name FROM stadium JOIN concert ON stadium.Stadium_ID = concert.Stadium_ID JOIN singer_in_concert ON concert.concert_ID = singer_in_concert.concert_ID JOIN singer ON singer_in_concert.Singer_ID = singer.Singer_ID GROUP BY stadium.Stadium_ID HAVING COUNT(DISTINCT singer.country) > 1,"SELECT s.Name
+
+FROM singer s
+
+JOIN singer_in_concert sci ON s.Singer_ID = sci.Singer_ID
+
+JOIN concert c ON sci.concert_ID = c.concert_ID
+
+JOIN stadium st ON c.Stadium_ID = st.Stadium_ID
+
+GROUP BY st.Name
+
+HAVING COUNT(DISTINCT s.Country) > 1;",0,0,1,1,,10.9366,2451.7,int4
+100,concert_singer,Show the stadium name that has had the greatest number of distinct singers perform there.,Hard,multi_join_order_by_limit,SELECT stadium.name FROM stadium JOIN concert ON stadium.Stadium_ID = concert.Stadium_ID JOIN singer_in_concert ON concert.concert_ID = singer_in_concert.concert_ID GROUP BY stadium.Stadium_ID ORDER BY COUNT(DISTINCT singer_in_concert.Singer_ID) DESC LIMIT 1,"SELECT s.Name
+
+FROM singer_in_concert sc
+
+JOIN singer s ON sc.Singer_ID = s.Singer_ID
+
+JOIN concert c ON sc.concert_ID = c.concert_ID
+
+JOIN stadium st ON c.Stadium_ID = st.Stadium_ID
+
+GROUP BY st.Name
+
+ORDER BY COUNT(DISTINCT sc.Singer_ID) DESC
+
+LIMIT 1;",0,0,1,1,,11.5743,2452.54,int4
