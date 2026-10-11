@@ -1,3 +1,12 @@
 .venv/
 __pycache__/
 *.pyc
+.env
+
+# Spider dataset
+data/spider_data/
+
+# Day 5 generated results
+results/day5/baseline_predictions.json
+results/day5/execution_feedback.csv
+results/day5/execution_feedback.json
