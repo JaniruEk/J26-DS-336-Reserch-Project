@@ -1,0 +1,9 @@
+{
+    "correct": 83,
+    "result_mismatch_unclassified": 6,
+    "wrong_aggregation": 1,
+    "wrong_join": 3,
+    "wrong_column": 3,
+    "wrong_group_by": 1,
+    "syntax_error": 3
+}
