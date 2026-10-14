@@ -46,6 +46,14 @@ def normalise(sql):
     return re.sub(r"\s*([(),=<>!])\s*", r"\1", s)
 
 
+def clean_sql(text):
+    """Strip markdown code fences (```sql ... ```) and anything after the first ';'. Applied to every model alike."""
+    m = re.search(r"```(?:sql)?\s*(.*?)(?:```|$)", text, re.S | re.I)
+    if m:
+        text = m.group(1)
+    return text.split(";")[0].strip()
+
+
 def wilson(k, n, z=1.96):
     """95% Wilson confidence interval for a proportion."""
     if n == 0:
@@ -167,11 +175,12 @@ def cmd_score(a):
     data = json.loads(Path(a.predictions).read_text(encoding="utf-8"))
     rows = []
     for p in data["predictions"]:
+        pred = clean_sql(p["pred"])
         try:
-            ex = exec_match(p["db"], p["pred"], p["sql"])
+            ex = exec_match(p["db"], pred, p["sql"])
         except Exception:
             ex = None  # gold query itself could not be run: not scorable
-        rows.append({**p, "exact": normalise(p["pred"]) == normalise(p["sql"]), "exec": ex})
+        rows.append({**p, "pred_clean": pred, "exact": normalise(pred) == normalise(p["sql"]), "exec": ex})
 
     print("meta:", json.dumps(data["meta"]))
     for name in DATASETS:
@@ -181,7 +190,7 @@ def cmd_score(a):
     pooled = [r for r in rows if r["dataset"] in POOLED]
     if pooled:
         summarise(pooled, f"pooled {' + '.join(POOLED)} (n={len(pooled)})", BUCKETS)
-    empty = sum(1 for r in rows if not r["pred"].strip())
+    empty = sum(1 for r in rows if not r["pred_clean"].strip())
     print(f"\nempty predictions: {empty} (includes {data['meta'].get('n_prompt_too_long', 0)} prompts that were too long)")
 
     out = Path(a.out) if a.out else Path(a.predictions).with_name(Path(a.predictions).stem + "_scored.json")

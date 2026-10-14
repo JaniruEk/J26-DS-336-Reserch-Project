@@ -14,47 +14,63 @@ How to read this file: every entry says what was done, what was found, and what 
 |---|---|
 | Environment setup | Done |
 | Phase 1: Dataset from Spider train | Done (v1, full-schema context) |
-| Phase 2: Standard LoRA baseline | **Training done (seed 42). Evaluation (exact match, execution accuracy) not yet written** |
-| Phase 3: HydraLoRA module | Not started |
+| Phase 2: Standard LoRA baseline | **Done for seed 42: trained and evaluated.** Tuning sweep and extra seeds still to do |
+| Phase 3: HydraLoRA module | Not started (next) |
 | Phase 4: Placeholder comparison | Not started |
 
-**Next step:** write the evaluation script (exact match + execution accuracy per complexity bucket on the shared eval pairs), then score the LoRA baseline.
+**Next step:** run paired tests (LoRA vs base) with the shared `stats.py`, then design and build the HydraLoRA module.
+
+---
+
+## Baseline result (LoRA, seed 42, full-schema context)
+
+Execution accuracy on the shared eval pairs, pooled Spider dev (120) + Chinook (14); 128 pairs scored. Values are accuracy with a 95% Wilson interval.
+
+| Bucket | LoRA (fine-tuned) | Base Qwen (no training) |
+|---|---|---|
+| simple | 0.74 [0.57-0.86] (23/31) | 0.55 [0.38-0.71] (17/31) |
+| single-join | 0.68 [0.50-0.81] (21/31) | 0.29 [0.16-0.47] (9/31) |
+| multi-join | **0.19 [0.09-0.35] (6/32)** | 0.25 [0.13-0.42] (8/32) |
+| aggregation | 0.59 [0.42-0.74] (20/34) | 0.56 [0.39-0.71] (19/34) |
+| **ALL** | **0.55 [0.46-0.63] (70/128)** | 0.41 [0.33-0.50] (53/128) |
+
+Normalised exact match (stricter than Spider's official metric), pooled: LoRA 0.34 overall (multi-join 0/33), base 0.19 (multi-join 0/33). TPC-H is schema-only (no rows), so only exact match exists: LoRA 2/14, base 3/14. Model outputs are cleaned the same way for both (code fences and text after the first `;` removed).
+
+Raw outputs: `agent3_finetune/results/` (`*_predictions.json`, `*_predictions_scored.json`, `lora_seed42_run_info.json`, `lora_seed42_trainer_state.json`).
 
 ---
 
 ## Work log
 
+### 2026-10-14 (reported): Scoring fix
+- The base model's first score (0.05) was wrong: its answers start with a markdown code fence. Added `clean_sql` to `evaluate.py` (strips fences and text after the first `;`), applied to both models in `score`; no re-generation needed.
+- Corrected base execution accuracy: 0.41 (53/128). LoRA unchanged: 0.55 (70/128).
+
+### 2026-10-14 (reported): Evaluation of the LoRA baseline and the untrained base model
+- Wrote `agent3_finetune/evaluate.py` with three steps: `prepare` (laptop), `generate` (Colab), `score` (laptop).
+- `prepare` builds the inputs from `eval/*.json` with the schema text in the same format as training.
+- `generate` uses greedy decoding, max 256 new tokens; 148 questions took about 3 min on the T4 with peak 3.67 GB.
+- `score` uses the shared `exec_match` and prints exact match and execution accuracy per bucket with Wilson 95% intervals; per-item results are saved for later paired tests.
+- Ran both the LoRA adapter and the base model on the same 148 questions.
+
 ### 2026-10-14 (reported): Full LoRA baseline run, seed 42
-- Trained standard LoRA on Qwen2.5-1.5B-Instruct (placeholder base) with the full-schema dataset.
-- 969 steps (5,162 examples / effective batch 16 = 323 steps per epoch, 3 epochs).
-- Validation loss 0.288 (524 validation examples). This is a sanity check only, not an accuracy result.
+- Standard LoRA on Qwen2.5-1.5B-Instruct (placeholder base), full-schema dataset.
+- 969 steps (5,162 examples, effective batch 16, 3 epochs). Validation loss 0.288.
 - Trainable parameters: 18,464,768 of 1,562,179,072 (1.18%).
-- Memory cap of 8 GB was enforced in code (a run over the cap would have crashed). The smoke test peaked at 5.31 GB.
-- The run was split across Colab sessions. The final `run_info.json` (peak 5.62 GB, 11 s) therefore describes only the last session (evaluation). The loss history is preserved in `checkpoint-969/trainer_state.json`.
-- Outputs are on Google Drive: `agent3/runs/lora_seed42/` (adapter, checkpoints, run_info.json).
+- The 8 GB memory cap is enforced in code; the smoke test peaked at 5.31 GB.
+- The run was split across Colab sessions, so the final `run_info.json` (peak 5.62 GB, 11 s) describes only the last session. The loss history is in `lora_seed42_trainer_state.json`.
+- Outputs on Google Drive: `agent3/runs/lora_seed42/`.
 
 ### 2026-10-08: Colab setup and smoke test
 - Kaggle phone verification failed (asked for identity verification), so Colab (free T4, 15 GB) is used.
 - Wrote `agent3_finetune/train_lora.py` (LoRA training, 8 GB cap, checkpoint saving and automatic resume).
-- Fixes needed on first runs:
-  - Removed Colab's old `torchao` (version conflict with the newer `peft`).
-  - `warmup_ratio` is no longer accepted by the newer `transformers`; replaced with `warmup_steps=20`.
-  - Batch 4 ran out of memory under the 8 GB cap (the large vocabulary makes the output layer big); switched to batch 2 with gradient accumulation 8 (effective batch still 16).
+- Fixes needed on first runs: removed Colab's old `torchao`; replaced `warmup_ratio` with `warmup_steps=20` (newer `transformers`); batch 4 ran out of memory at the 8 GB cap, so batch 2 with accumulation 8 (effective batch still 16).
 - Smoke test (50 steps, 300 examples): worked, peak 5.31 GB, about 6 s per step.
 
 ### 2026-10-06: Setup and Phase 1 dataset
-- Cloned the team repo and created branch `thathsarani-lora-baseline`.
-- Installed Python 3.11.9 (3.14 is too new for the ML libraries) and a `venv`; repo tests: 11 passed, 4 skipped.
+- Cloned the team repo, created branch `thathsarani-lora-baseline`, installed Python 3.11.9 and a `venv`; repo tests: 11 passed, 4 skipped.
 - Added `venv/` to `.gitignore` after GitHub Desktop showed 11,608 changed files.
-- Wrote `agent3_finetune/build_dataset.py` (run with `python -m agent3_finetune.build_dataset`).
-
-**What the dataset builder does:** reads Spider train, removes nested/compound queries, removes questions that appear in `eval/*.json` (leakage guard), labels each query with the shared `classify_sql`, attaches the database schema (CREATE TABLE text), and splits by database so validation uses unseen schemas.
-
-| Step | Count |
-|---|---|
-| Spider train examples | 7,000 |
-| After removing nested/compound | 5,981 |
-| After removing eval questions | 5,980 |
+- Wrote `agent3_finetune/build_dataset.py`: reads Spider train, removes nested/compound queries and questions that appear in `eval/*.json`, labels with `classify_sql`, attaches the schema text, splits by database.
 
 | Bucket | Train | Val |
 |---|---|---|
@@ -64,25 +80,19 @@ How to read this file: every entry says what was done, what was found, and what 
 | aggregation | 2,661 | 250 |
 | **Total** | **5,456** | **524** |
 
-140 databases in total, 14 held out for validation (seed 42).
+7,000 Spider train examples, 5,981 after removing nested/compound, 5,980 after removing eval questions; 140 databases, 14 held out for validation (seed 42).
 
 ---
 
 ## Findings
 
-1. **Multi-join is the thin bucket.** 375 training and 21 validation examples. Conclusions will come from the shared eval pairs with paired statistics, not from this validation split.
-2. **Aggregation dominates** (about 49% of training examples).
-3. **Long schemas cause drops.** With the full schema in the prompt, 669 of 5,831 training rows (11.5%) exceeded 1,024 tokens and were dropped:
-
-   | Bucket | Dropped | Share |
-   |---|---|---|
-   | simple | 141 | 8.6% |
-   | single-join | 107 | 13.8% |
-   | multi-join | 96 (48 unique, counted twice by over-sampling) | 12.8% |
-   | aggregation | 325 | 12.2% |
-
-   The model therefore never saw the largest databases (a limitation to state). Agent 1's pruned schema is much shorter, which is an extra reason to test pruned context in Phase 8b.
-4. **Validation loss alone proves nothing.** Accuracy needs the evaluation script.
+1. **LoRA helps overall, mostly on simple and single-join queries.** Execution accuracy 0.55 [0.46-0.63] vs 0.41 [0.33-0.50] for the untrained base. Single-join improves most (0.29 to 0.68). The team's earlier phi3 stand-in (about 0.40, CLAUDE.md) is about the same as untrained Qwen-1.5B, so base Qwen is the right reference. A paired test is still needed before claiming significance.
+2. **Plain LoRA did not improve multi-join or aggregation.** Multi-join 6/32 (LoRA) vs 8/32 (base); aggregation 0.59 vs 0.56. These are the buckets HydraLoRA targets, so this motivates the comparison. Caution: multi-join also had the least training data (375 examples, about 13% dropped as too long), so data scarcity is a rival explanation to 'one adapter cannot specialise'.
+3. **Intervals are wide.** About 30 questions per bucket means one answer moves a score by about 3 points. Differences between LoRA and HydraLoRA will only be detectable if large, or with a bigger evaluation set and 3 seeds.
+4. **Exact match is a poor headline metric here.** It is far below execution accuracy (0.34 vs 0.55), and multi-join exact match is 0/33 even though 6 multi-join queries execute correctly: our simple text match penalises aliases, quoting, column order and similar harmless differences. Report execution accuracy as the main metric and call exact match "normalised exact match".
+5. **Resolved: the first base-model score (0.05) was a formatting artefact.** The untrained model wraps SQL in code fences. `score` now strips fences and text after the first `;` for every model; the corrected base score is 0.41.
+6. **Long schemas cause drops in training.** With the full schema, 669 of 5,831 training rows (11.5%) exceeded 1,024 tokens and were dropped (simple 141 = 8.6%, single-join 107 = 13.8%, multi-join 96 = 12.8% (48 unique), aggregation 325 = 12.2%). The model never saw the largest databases. Agent 1's pruned schema is shorter, which is a reason to test pruned context in Phase 8b. None of the 148 evaluation prompts exceeded the 2,048-token limit.
+7. **Multi-join and aggregation are the data-thin buckets** for training (375 multi-join training examples), the main data risk for HydraLoRA's multi-join head.
 
 ---
 
@@ -91,46 +101,53 @@ How to read this file: every entry says what was done, what was found, and what 
 | Date | Decision | Alternatives not (yet) tested | Status |
 |---|---|---|---|
 | 10-06 | Split by database, not by row | Random row split | Final: tests unseen schemas |
-| 10-06 | Reuse `classify_sql` for labels | Own labelling | Final: keeps results comparable across agents |
+| 10-06 | Reuse `classify_sql` for labels | Own labelling | Final: comparable across agents |
 | 10-06 | Remove questions that appear in `eval/*.json` | none | Final |
 | 10-06 | Python 3.11.9 | 3.14 | Final: 3.14 unsupported by the ML libraries |
-| 10-08 | Colab T4 instead of Kaggle | Kaggle (verification failed), local GPU (none) | Final; GPU is recorded beside each result |
-| 10-08 | Placeholder base: Qwen2.5-1.5B-Instruct | Other 0.5B-1.5B models | **My suggestion; Wathsala's final model overrides it** (plan re-runs on her bases) |
+| 10-08 | Colab T4 instead of Kaggle | Kaggle (verification failed), local GPU (none) | Final; GPU recorded beside each result |
+| 10-08 | Placeholder base: Qwen2.5-1.5B-Instruct | Other 0.5B-1.5B models | **My suggestion; Wathsala's final model overrides it** |
 | 10-08 | LoRA rank 16, alpha 32, LR 2e-4, 3 epochs, seed 42 | Rank 8/32, other LRs | **Untuned defaults. A small sweep is needed before claiming a fair baseline** |
-| 10-08 | Batch 2 x accumulation 8 (effective 16) | Batch 4 (ran out of memory at the 8 GB cap) | Final |
+| 10-08 | Batch 2 x accumulation 8 (effective 16) | Batch 4 (out of memory at the 8 GB cap) | Final |
 | 10-08 | Max length 1024 tokens (longer examples dropped) | Larger limit, or pruned schema | Revisit with Agent 1 pruned context |
 | 10-08 | Multi-join over-sampled x2 | x1 or other factors | Untested design choice |
-| 10-08 | Plain-text prompt template (`### Schema / ### Question / ### SQL`) | Chat template | Must stay identical for LoRA and HydraLoRA |
-| 10-08 | Own training loop (Transformers + PEFT) | TRL SFTTrainer | Engineering choice |
+| 10-08 | Plain-text prompt template | Chat template | Must stay identical for LoRA and HydraLoRA |
+| 10-14 | Headline metric: execution accuracy (shared `exec_match`); exact match is a secondary, normalised string match | Spider's official exact-set-match | Final for now |
+| 10-14 | Greedy decoding, max 256 new tokens, evaluation with full schema | Sampling, pruned context | Pruned context comes later |
+| 10-14 | Clean model output the same way for all models before scoring (strip code fences, cut at first `;`) | Chat template or few-shot prompt for the base model | Best effort: explanation text without a `;` would still fail |
 
-**Needed for a fair final comparison (from the Execution Plan's research protocol):** tune the LoRA baseline with the same budget as HydraLoRA; add a parameter-matched LoRA control; run 3 seeds; report execution accuracy as well as exact match, per bucket with paired statistics.
+**Needed for a fair final comparison (Execution Plan research protocol):** tune the LoRA baseline with the same budget as HydraLoRA; add a parameter-matched LoRA control; run 3 seeds; use a larger evaluation set (full Spider dev) so the multi-join and aggregation buckets have enough questions; paired statistics per bucket.
+
+**HydraLoRA design notes (to decide):** train with routing from the gold complexity label; at inference compare routing with the live NL classifier (`classify_query`, Spider dev accuracy only 0.57) against oracle routing from the gold label, to separate router errors from architecture effects.
 
 ---
 
 ## Open items
 
-- [ ] Write the evaluation script (exact match + execution accuracy by bucket; use `exec_match` and `stats.py`).
-- [ ] Score the LoRA baseline on `eval/spider_pairs.json`, Chinook and TPC-H.
-- [ ] Small rank / learning-rate sweep on one seed, then freeze the config.
-- [ ] Build the HydraLoRA module (shared A, one B head per bucket, hard-coded routing) and test on a tiny subset first.
+- [ ] Paired tests (bootstrap CI, exact McNemar) of LoRA vs base per bucket, using the shared `stats.py` on the `_scored.json` files.
+- [ ] Commit the result files in `agent3_finetune/results/`.
+- [ ] Build the HydraLoRA module (shared A, one B head per bucket, hard-coded routing); unit-test head routing and report the parameter count on a tiny subset first.
+- [ ] Small rank / learning-rate sweep on one seed, then freeze the config for both architectures.
 - [ ] Parameter-matched LoRA control.
-- [ ] Re-train on Agent 1's pruned `ddl` and compare to this full-schema control (Ekanayake's Phase 8b).
-- [ ] Over-sample or generate extra multi-join examples; consider raising the length limit.
-- [ ] Confirm base model and shared config with Wathsala; confirm the handoff format with Ekanayake (messages not yet sent or answered).
-- [ ] Commit small result files (`run_info.json`, `trainer_state.json`) under `agent3_finetune/results/`.
+- [ ] Build a larger evaluation set from the full Spider dev set (more multi-join and aggregation questions).
+- [ ] 3 seeds for the final runs, with paired bootstrap / McNemar per bucket (`stats.py`).
+- [ ] Re-train on Agent 1's pruned `ddl` and compare with this full-schema control (Ekanayake's Phase 8b).
+- [ ] Over-sample or generate extra multi-join training examples; consider raising the length limit.
+- [ ] Confirm base model and shared config with Wathsala; confirm the handoff format with Ekanayake.
 
 ---
 
 ## Where things live
 
 - **Code:** this repo (branch `thathsarani-lora-baseline`), edited in VS Code, pushed with GitHub Desktop.
-- **Training data (not in Git):** Google Drive `agent3/train.jsonl`, `agent3/val.jsonl`.
-- **Run outputs (not in Git):** Google Drive `agent3/runs/<run name>/` (adapter, checkpoints, run_info.json).
-- **Colab routine each session:** mount Drive, clone/pull the branch, install `peft accelerate`, remove `torchao`, then train.
+- **Training data (not in Git):** Google Drive `agent3/train.jsonl`, `agent3/val.jsonl`; evaluation inputs `agent3/eval_inputs.json`.
+- **Run outputs (not in Git):** Google Drive `agent3/runs/<run name>/` (adapter, checkpoints, predictions).
+- **Small result files (in Git):** `agent3_finetune/results/`.
+- **Colab routine each session:** mount Drive, clone/pull the branch, install `peft accelerate`, remove `torchao`, then train or evaluate.
+- **Evaluation routine:** `prepare` on the laptop, upload `eval_inputs.json` to Drive, `generate` in Colab, download `predictions.json` into `results/`, `score` on the laptop.
 
 ## Environment notes
 
-- Laptop: Intel Iris Xe (no NVIDIA GPU), 16 GB RAM, Windows. Training runs on Colab.
+- Laptop: Intel Iris Xe (no NVIDIA GPU), 16 GB RAM, Windows. Training and generation run on Colab.
 - Python 3.11.9 with a `venv` locally. The project folder is inside OneDrive; pause syncing if the laptop slows down.
 - Run scripts as modules from the project root, for example `python -m scripts.get_spider`.
 
@@ -138,4 +155,4 @@ How to read this file: every entry says what was done, what was found, and what 
 
 ## AI use disclosure (for Appendix 3)
 
-Claude (Anthropic) was used as a tutor and coding assistant for environment setup, Git workflow guidance, and drafting `build_dataset.py` and `train_lora.py`. The code was run and the outputs above were produced and checked by the author.
+Claude (Anthropic) was used as a tutor and coding assistant for environment setup, Git workflow guidance, and drafting `build_dataset.py`, `train_lora.py` and `evaluate.py`, and for help interpreting results. The code was run and the outputs above were produced and checked by the author.
