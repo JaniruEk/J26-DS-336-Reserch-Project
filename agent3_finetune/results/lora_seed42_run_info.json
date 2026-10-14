@@ -1,0 +1,25 @@
+{
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "gpu": "Tesla T4",
+  "seed": 42,
+  "rank": 16,
+  "alpha": 32,
+  "epochs": 3,
+  "lr": 0.0002,
+  "max_len": 1024,
+  "multijoin_repeat": 2,
+  "train_examples": 5162,
+  "val_examples": 524,
+  "dropped_train": {
+    "aggregation": 325,
+    "simple": 141,
+    "single-join": 107,
+    "multi-join": 96
+  },
+  "dropped_val": {},
+  "trainable_params": 18464768,
+  "total_params": 1562179072,
+  "peak_vram_gb": 5.62,
+  "train_seconds_this_session": 11,
+  "val_loss": 0.2882211208343506
+}
