@@ -18,7 +18,7 @@ How to read this file: every entry says what was done, what was found, and what 
 | Phase 3: HydraLoRA module | Not started (next) |
 | Phase 4: Placeholder comparison | Not started |
 
-**Next step:** run paired tests (LoRA vs base) with the shared `stats.py`, then design and build the HydraLoRA module.
+Next step: design and build the HydraLoRA module (shared A, one B head per bucket, hard-coded routing), then compare it with LoRA using compare.py.
 
 ---
 
@@ -41,6 +41,10 @@ Raw outputs: `agent3_finetune/results/` (`*_predictions.json`, `*_predictions_sc
 ---
 
 ## Work log
+
+### 2026-10-14 (reported): Paired comparison LoRA vs base
+- Wrote `agent3_finetune/compare.py` (paired differences with bootstrap CI and exact McNemar per bucket, using the shared `agent1_retrieval/stats.py`).
+- Result saved in `agent3_finetune/results/compare_lora_vs_base.txt`: LoRA is better overall (+0.13, p = 0.012), clearly on single-join (+0.39, p = 0.002), with no detectable difference on multi-join or aggregation (see Findings 1, 2 and 8).
 
 ### 2026-10-14 (reported): Scoring fix
 - The base model's first score (0.05) was wrong: its answers start with a markdown code fence. Added `clean_sql` to `evaluate.py` (strips fences and text after the first `;`), applied to both models in `score`; no re-generation needed.
@@ -86,13 +90,14 @@ Raw outputs: `agent3_finetune/results/` (`*_predictions.json`, `*_predictions_sc
 
 ## Findings
 
-1. **LoRA helps overall, mostly on simple and single-join queries.** Execution accuracy 0.55 [0.46-0.63] vs 0.41 [0.33-0.50] for the untrained base. Single-join improves most (0.29 to 0.68). The team's earlier phi3 stand-in (about 0.40, CLAUDE.md) is about the same as untrained Qwen-1.5B, so base Qwen is the right reference. A paired test is still needed before claiming significance.
-2. **Plain LoRA did not improve multi-join or aggregation.** Multi-join 6/32 (LoRA) vs 8/32 (base); aggregation 0.59 vs 0.56. These are the buckets HydraLoRA targets, so this motivates the comparison. Caution: multi-join also had the least training data (375 examples, about 13% dropped as too long), so data scarcity is a rival explanation to 'one adapter cannot specialise'.
+1. **LoRA helps overall, mostly on single-join (paired test, one seed).** Execution accuracy 0.55 [0.46-0.63] vs 0.41 [0.33-0.50] for the untrained base: paired difference +0.13 [+0.05, +0.23], 29 questions only LoRA got right vs 12 only the base, exact McNemar p = 0.012. Single-join: 0.29 to 0.68, +0.39 [+0.19, +0.58], 13 vs 1, p = 0.002 (survives a Bonferroni correction over 5 buckets, threshold 0.01). Simple: +0.19 [0.00, +0.39], p = 0.109 (suggestive only). The earlier phi3 stand-in (about 0.40, CLAUDE.md) is about the same as untrained Qwen-1.5B.
+2. **No detectable LoRA improvement on multi-join or aggregation.** Multi-join 0.25 to 0.19 (-0.06 [-0.25, +0.09], 3 vs 5, p = 0.73); aggregation 0.56 to 0.59 (+0.03 [-0.15, +0.21], 5 vs 4, p = 1.0). 'No detectable difference' is not 'no effect': with about 32 questions per bucket, moderate effects cannot be excluded. These are the buckets HydraLoRA targets, so this motivates the comparison. Rival explanation: multi-join also had the least training data (375 examples, about 13% dropped as too long).
 3. **Intervals are wide.** About 30 questions per bucket means one answer moves a score by about 3 points. Differences between LoRA and HydraLoRA will only be detectable if large, or with a bigger evaluation set and 3 seeds.
 4. **Exact match is a poor headline metric here.** It is far below execution accuracy (0.34 vs 0.55), and multi-join exact match is 0/33 even though 6 multi-join queries execute correctly: our simple text match penalises aliases, quoting, column order and similar harmless differences. Report execution accuracy as the main metric and call exact match "normalised exact match".
 5. **Resolved: the first base-model score (0.05) was a formatting artefact.** The untrained model wraps SQL in code fences. `score` now strips fences and text after the first `;` for every model; the corrected base score is 0.41.
 6. **Long schemas cause drops in training.** With the full schema, 669 of 5,831 training rows (11.5%) exceeded 1,024 tokens and were dropped (simple 141 = 8.6%, single-join 107 = 13.8%, multi-join 96 = 12.8% (48 unique), aggregation 325 = 12.2%). The model never saw the largest databases. Agent 1's pruned schema is shorter, which is a reason to test pruned context in Phase 8b. None of the 148 evaluation prompts exceeded the 2,048-token limit.
 7. **Multi-join and aggregation are the data-thin buckets** for training (375 multi-join training examples), the main data risk for HydraLoRA's multi-join head.
+8. **Low statistical power for per-bucket claims.** With about 32 questions per bucket, a LoRA vs HydraLoRA difference becomes significant only if it is large (roughly 20-25 points with almost no losses in the other direction, e.g. 9 wins vs 1 loss). A larger evaluation set (full Spider dev) and 3 seeds are needed before the final comparison. Exact match is unusable for multi-join (0/33 for both models, so no discordant pairs).
 
 ---
 
@@ -123,7 +128,7 @@ Raw outputs: `agent3_finetune/results/` (`*_predictions.json`, `*_predictions_sc
 
 ## Open items
 
-- [ ] Paired tests (bootstrap CI, exact McNemar) of LoRA vs base per bucket, using the shared `stats.py` on the `_scored.json` files.
+- [x] Paired tests (bootstrap CI, exact McNemar) of LoRA vs base: done with `compare.py` (uses the shared `stats.py`); report in `results/compare_lora_vs_base.txt`.
 - [ ] Commit the result files in `agent3_finetune/results/`.
 - [ ] Build the HydraLoRA module (shared A, one B head per bucket, hard-coded routing); unit-test head routing and report the parameter count on a tiny subset first.
 - [ ] Small rank / learning-rate sweep on one seed, then freeze the config for both architectures.
@@ -143,7 +148,7 @@ Raw outputs: `agent3_finetune/results/` (`*_predictions.json`, `*_predictions_sc
 - **Run outputs (not in Git):** Google Drive `agent3/runs/<run name>/` (adapter, checkpoints, predictions).
 - **Small result files (in Git):** `agent3_finetune/results/`.
 - **Colab routine each session:** mount Drive, clone/pull the branch, install `peft accelerate`, remove `torchao`, then train or evaluate.
-- **Evaluation routine:** `prepare` on the laptop, upload `eval_inputs.json` to Drive, `generate` in Colab, download `predictions.json` into `results/`, `score` on the laptop.
+- **Evaluation routine:** `prepare` on the laptop, upload `eval_inputs.json` to Drive, `generate` in Colab, download `predictions.json` into `results/`, `score` on the laptop. Compare two runs with `python -m agent3_finetune.compare --a <A>_scored.json --b <B>_scored.json`.
 
 ## Environment notes
 
