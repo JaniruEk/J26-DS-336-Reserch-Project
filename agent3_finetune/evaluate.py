@@ -67,7 +67,13 @@ def wilson(k, n, z=1.96):
 
 # ---------------------------------------------------------------- step 1: prepare (laptop)
 def cmd_prepare(a):
-    from agent1_retrieval.complexity import classify_sql
+    from agent1_retrieval.complexity import classify_query, classify_sql
+
+    def live_label(question):  # Agent 1's live classifier (what HydraLoRA would see in deployment)
+        try:
+            return classify_query(question)
+        except Exception:
+            return None
 
     items, cache = [], {}
     for name in DATASETS:
@@ -77,7 +83,8 @@ def cmd_prepare(a):
             if not Path(p["db"]).exists():
                 continue
             items.append({"dataset": name, "db": p["db"], "question": p["question"], "sql": p["sql"],
-                          "complexity": classify_sql(p["sql"]), "ddl": read_ddl(p["db"], cache)})
+                          "complexity": classify_sql(p["sql"]), "nl_complexity": live_label(p["question"]),
+                          "ddl": read_ddl(p["db"], cache)})
             kept += 1
         note = "" if kept == len(pairs) else "   <-- database file missing, run its scripts/ downloader first"
         print(f"{name}: {kept}/{len(pairs)} pairs{note}")
@@ -112,10 +119,18 @@ def cmd_generate(a):
     if tok.pad_token_id is None:
         tok.pad_token = tok.eos_token
     model = AutoModelForCausalLM.from_pretrained(a.model, torch_dtype=torch.float16).to(device)
-    if a.adapter:
+    router, n_heads = None, 0
+    if a.adapter and (Path(a.adapter) / "adapters.pt").exists():  # made by agent3_finetune.train (LoRA or HydraLoRA)
+        from agent3_finetune import hydra
+        am = json.loads((Path(a.adapter) / "adapter_meta.json").read_text(encoding="utf-8"))
+        router, n_heads = hydra.Router(), am["n_heads"]
+        hydra.add_adapters(model, router, am["rank"], am["alpha"], n_heads, 0.0, tuple(am["targets"]))
+        hydra.load_adapters(model, a.adapter)
+    elif a.adapter:  # adapter from the first, PEFT-based LoRA run
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, a.adapter)
     model.eval()
+    label_key = "complexity" if a.routing == "oracle" else "nl_complexity"  # which label picks the head
 
     prompts = [PROMPT.format(ddl=i["ddl"], question=i["question"]) for i in items]
     lens = [len(tok(p, add_special_tokens=False)["input_ids"]) for p in prompts]
@@ -127,6 +142,8 @@ def cmd_generate(a):
     for s in range(0, len(todo), a.batch):
         ids = todo[s:s + a.batch]
         enc = tok([prompts[i] for i in ids], return_tensors="pt", padding=True, add_special_tokens=False).to(device)
+        if router is not None:
+            router.set(torch.tensor([hydra.head_index(items[i].get(label_key)) for i in ids], device=device))
         with torch.no_grad():
             out = model.generate(**enc, max_new_tokens=a.max_new_tokens, do_sample=False,
                                  pad_token_id=tok.pad_token_id)
@@ -139,6 +156,8 @@ def cmd_generate(a):
             "max_new_tokens": a.max_new_tokens, "max_prompt_tokens": a.max_prompt_tokens,
             "n_items": len(items), "n_prompt_too_long": sum(1 for i in range(len(items)) if lens[i] > a.max_prompt_tokens),
             "peak_vram_gb": round(torch.cuda.max_memory_allocated() / 1024 ** 3, 2) if device == "cuda" else None,
+            "n_heads": n_heads or None, "routing": a.routing if n_heads > 1 else None,
+            "router_fallbacks": sum(1 for it in items if it.get(label_key) not in hydra.HEADS) if n_heads > 1 else None,
             "generate_seconds": round(time.time() - t0)}
     rows = [{**{k: v for k, v in it.items() if k != "ddl"}, "pred": preds[i], "prompt_tokens": lens[i]}
             for i, it in enumerate(items)]
@@ -190,6 +209,10 @@ def cmd_score(a):
     pooled = [r for r in rows if r["dataset"] in POOLED]
     if pooled:
         summarise(pooled, f"pooled {' + '.join(POOLED)} (n={len(pooled)})", BUCKETS)
+    pairs = [(r["complexity"], r["nl_complexity"]) for r in rows if r.get("nl_complexity")]
+    if pairs:
+        agree = sum(g == n for g, n in pairs)
+        print(f"\nlive classifier agrees with the true label on {agree}/{len(pairs)} questions ({agree / len(pairs):.2f})")
     empty = sum(1 for r in rows if not r["pred_clean"].strip())
     print(f"\nempty predictions: {empty} (includes {data['meta'].get('n_prompt_too_long', 0)} prompts that were too long)")
 
@@ -212,6 +235,8 @@ def main():
     g.add_argument("--out", required=True)
     g.add_argument("--model", default="Qwen/Qwen2.5-1.5B-Instruct")
     g.add_argument("--adapter", default="", help="path to the LoRA adapter folder; empty = base model only")
+    g.add_argument("--routing", choices=["oracle", "nl"], default="oracle",
+                   help="HydraLoRA only: head chosen from the true label (oracle) or from Agent 1's live classifier (nl)")
     g.add_argument("--batch", type=int, default=4)
     g.add_argument("--max_new_tokens", type=int, default=256)
     g.add_argument("--max_prompt_tokens", type=int, default=2048)
