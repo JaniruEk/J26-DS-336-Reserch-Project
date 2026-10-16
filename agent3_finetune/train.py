@@ -100,6 +100,9 @@ def lr_factor(step, warmup, total):
 
 def main():
     args = parse_args()
+    for f in (args.train, args.val):
+        if not Path(f).exists():  # check first, so a missing Drive mount cannot leave stray folders behind
+            raise SystemExit(f"Data file not found: {f}\nIs Google Drive mounted? Run drive.mount('/content/drive') first.")
     cfg = load_config(args)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
