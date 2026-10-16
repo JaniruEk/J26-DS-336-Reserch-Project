@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retrieval Explorer</title>
+<style>
+  :root { --fg:#111; --muted:#666; --line:#ccc; --bg:#fff; --kept:#e8f5e9; --cut:#fdecea; --warn:#fff4e5; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#eee; --muted:#999; --line:#444; --bg:#161616; --kept:#1d3320; --cut:#3a1c1a; --warn:#3a2e14; } }
+  body { font: 15px/1.45 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 1000px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; } .muted { color: var(--muted); }
+  form { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+  input[type=text] { flex: 1 1 320px; padding: 8px; font: inherit; }
+  select, button { padding: 8px 12px; font: inherit; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; }
+  th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  h2 { font-size: 16px; margin: 20px 0 4px; }
+  .k { background: var(--kept); } .c { background: var(--cut); text-decoration: line-through; }
+  .chip { display: inline-block; padding: 1px 6px; margin: 2px; border-radius: 4px; font-family: ui-monospace, monospace; font-size: 13px; }
+  .box { padding: 10px; border: 1px solid var(--line); background: var(--warn); }
+  pre { white-space: pre-wrap; border: 1px solid var(--line); padding: 8px; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Agent 1 — Retrieval Explorer</h1>
+<div class="muted">Runs Agent 1 on its own: anchor selection → FK traversal → column pruning, across all four modes. No other agent is called.</div>
+
+<form id="f">
+  <input type="text" id="q" placeholder="Ask a question, e.g. which customers spent the most?" autofocus>
+  <select id="db"></select>
+  <button>Retrieve</button>
+</form>
+<div id="out"></div>
+
+<script>
+const MODES = ["semantic", "structural", "hybrid", "hybrid_pruned"];
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+fetch("dbs").then(r => r.json()).then(ds => $("#db").innerHTML = ds.map(d => `<option>${esc(d)}</option>`).join(""));
+
+async function retrieve(mode) {
+  const r = await fetch("retrieve", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({query: $("#q").value, db: $("#db").value, mode})});
+  const body = await r.json();
+  if (!r.ok) throw new Error(Array.isArray(body.detail) ? body.detail.map(d => d.msg).join("; ") : body.detail);
+  return body;
+}
+
+$("#f").onsubmit = async e => {
+  e.preventDefault();
+  $("#out").innerHTML = '<p class="muted">Running…</p>';
+  let res;
+  res = {};  // sequential, so each mode's ms is measured without the others competing for the CPU
+  try { for (const m of MODES) res[m] = await retrieve(m); }
+  catch (err) { $("#out").innerHTML = `<div class="box">Rejected: ${esc(err.message)}</div>`; return; }
+
+  const p = res.hybrid_pruned, h = res.hybrid;
+  let html = p.matched ? "" :
+    `<div class="box">Low confidence: no word in the question matches any table or column in this database. ` +
+    `The full pipeline declines this question instead of guessing.</div>`;
+
+  html += `<h2>Mode comparison</h2><table><tr><th>Mode</th><th>Tokens</th><th>ms</th><th>Tables</th></tr>` +
+    MODES.map(m => `<tr><td>${m}</td><td>${res[m].tokens}</td><td>${res[m].latency_ms}</td><td>${esc(Object.keys(res[m].tables).join(", ") || "—")}</td></tr>`).join("") +
+    `</table>`;
+  if (h.tokens) html += `<div>Pruning saves <b>${h.tokens - p.tokens}</b> tokens vs hybrid (${Math.round(100 * (h.tokens - p.tokens) / h.tokens)}%).</div>`;
+
+  html += `<h2>Sub-agent outputs (hybrid_pruned)</h2><table>
+    <tr><th>Complexity label</th><td>${esc(p.complexity)}</td></tr>
+    <tr><th>1. Anchor selection</th><td>${esc(p.anchor ?? "none")}</td></tr>
+    <tr><th>2. FK traversal</th><td>${esc(Object.keys(p.tables).join(" → ") || "—")}</td></tr>
+    <tr><th>3. Column pruning</th><td>` +
+    Object.entries(h.tables).map(([t, cols]) => `<div><b>${esc(t)}</b>: ` +
+      cols.map(c => `<span class="chip ${(p.tables[t] || []).includes(c) ? "k" : "c"}">${esc(c)}</span>`).join("") + `</div>`).join("") +
+    `<div class="muted">green = kept, struck = removed</div></td></tr></table>`;
+
+  html += `<h2>Handoff to Agent 3 (pruned DDL)</h2><pre>${esc(p.ddl || "(empty)")}</pre>`;
+  $("#out").innerHTML = html;
+};
+</script>
+</body>
+</html>

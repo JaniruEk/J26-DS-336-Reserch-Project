@@ -99,8 +99,8 @@ def test_nl_classifier_and_handoff_contract(tiny_db):
     from agent1_retrieval import BUCKETS, Agent1, classify_query
     assert classify_query("How many customers are there in each market segment?") == "aggregation"
     out = Agent1(tiny_db, mode="structural").run("what is the total of each invoice")
-    assert set(out) == {"query", "complexity", "mode", "anchor", "tables", "ddl", "tokens", "latency_ms"}
-    assert out["complexity"] in BUCKETS and out["anchor"] == "invoice"
+    assert set(out) == {"query", "complexity", "mode", "anchor", "matched", "tables", "ddl", "tokens", "latency_ms"}
+    assert out["complexity"] in BUCKETS and out["anchor"] == "invoice" and out["matched"]
     assert _json.loads(_json.dumps(out)) == out  # contract must survive JSON transport
 
 

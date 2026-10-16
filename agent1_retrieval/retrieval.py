@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from .complexity import classify_query
-from .pruning import keep_columns, lemma, query_terms, split_ident
+from .pruning import is_relevant, keep_columns, lemma, query_terms, split_ident
 from .schema import adjacency, reflect, render
 
 MODES = ("semantic", "structural", "hybrid", "hybrid_pruned")
@@ -80,6 +80,12 @@ class Retriever:
                     + sum(lemma(w) in qlem for c, _, _ in t.columns for w in split_ident(c)))
         best = max(self.tables.values(), key=score, default=None)
         return best.name if best and score(best) > 0 else None
+
+    def matched(self, query):
+        """Confidence gate: does any question word match any table or column name (lemma, else similarity)?
+        False for gibberish / off-topic questions, which the semantic anchor would otherwise map to its nearest table anyway."""
+        terms = query_terms(query)
+        return any(is_relevant(n, terms, self.threshold) for t in self.tables.values() for n in [t.name] + [c for c, _, _ in t.columns])
 
     # --- sub-agent 2: FK traversal ---
     def _traverse(self, anchor, depth=None):

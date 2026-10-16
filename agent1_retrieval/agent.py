@@ -14,6 +14,7 @@ class Agent1:
             "complexity": classify_query(query),  # simple | single-join | multi-join | aggregation -> Agent 3 head routing
             "mode": c.mode,
             "anchor": c.anchor,  # table the retrieval started from (None = nothing matched; ddl is then empty)
+            "matched": self.retriever.matched(query),  # False = no question word matches the schema -> pipeline should decline
             "tables": c.columns,  # table -> kept column names
             "ddl": c.text,  # pruned schema, ready to paste into the SLM prompt
             "tokens": c.tokens,

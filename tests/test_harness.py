@@ -56,3 +56,69 @@ def test_retrieve_endpoint_and_input_validation(db, tmp_path):
 
 def test_run_sql_is_read_only(db):
     assert run_sql(db, "DELETE FROM invoice")[0] is False
+
+
+def test_empty_or_too_long_question_rejected_before_any_agent(db, tmp_path):
+    c, log = client(db, tmp_path, None)
+    for q in ["", "   ", "x" * 501]:
+        assert c.post("/query", json={"query": q}).status_code == 422
+    assert not log.exists()  # nothing reached Agent 1
+
+
+def test_off_topic_question_declined_without_generation(db, tmp_path):
+    called = []
+    c, _ = client(db, tmp_path, lambda *a, **k: called.append(1))
+    for q in ["asdkjh qwelkj zzxv", "best pizza recipe"]:
+        r = c.post("/query", json={"query": q, "mode": "structural"}).json()
+        assert not r["ok"] and r["attempts"] == 0 and not r["context"]["matched"] and "couldn't match" in r["error"]
+    assert not called
+
+
+def test_explorer_page_and_db_list(db, tmp_path):
+    c, _ = client(db, tmp_path, None)
+    assert "Retrieval Explorer" in c.get("/").text
+    assert c.get("/dbs").json() == ["t"]
+
+
+def test_query_returns_per_attempt_trace_with_timings(db, tmp_path):
+    c, _ = client(db, tmp_path, lambda q, ddl, hint=None: "SELECT total FROM invoice" if hint else "SELECT nope FROM invoice")
+    r = c.post("/query", json={"query": "what is the total of each invoice", "mode": "structural"}).json()
+    assert [s["ok"] for s in r["steps"]] == [False, True] and "no such column" in r["steps"][0]["error"]
+    assert r["steps"][1]["hint"] and r["steps"][1]["rows"] == 1 and r["columns"] == ["total"] and r["total_ms"] >= 0
+
+
+def test_generator_down_gives_503_not_500(db, tmp_path):
+    def down(*a, **k):
+        raise ConnectionRefusedError("refused")
+    c, _ = client(db, tmp_path, down)
+    r = c.post("/query", json={"query": "total of each invoice", "mode": "structural"})
+    assert r.status_code == 503 and "Ollama" in r.json()["detail"]
+
+
+def test_chat_page_and_health(db, tmp_path):
+    c, _ = client(db, tmp_path, None)
+    assert "Local SQL Assistant" in c.get("/chat").text
+    h = c.get("/health").json()
+    assert h["dbs"] == ["t"] and h["schema_only"] == []
+
+
+def test_runaway_query_is_aborted(db):
+    ok, err = run_sql(db, "WITH RECURSIVE r(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM r) SELECT count(*) FROM r", timeout=0.2)
+    assert not ok and "interrupt" in err
+
+
+def test_sql_guard_blocks_non_select_and_multiple_statements(db):
+    from harness.app import BLOCKED
+    for sql in ["DELETE FROM invoice", "BEGIN TRANSACTION", "DROP TABLE invoice", ""]:
+        ok, err = run_sql(db, sql)
+        assert not ok and err.startswith(BLOCKED), sql
+    assert not run_sql(db, "SELECT 1; DELETE FROM invoice")[0]  # one statement only
+    assert not run_sql(db, "WITH x AS (SELECT 1) DELETE FROM invoice")[0]  # passes the keyword guard, read-only connection stops it
+    assert run_sql(db, "SELECT total FROM invoice") == (True, [(9.5,)])
+
+
+def test_blocked_request_is_refused_not_retried(db, tmp_path):
+    calls = []
+    c, _ = client(db, tmp_path, lambda q, ddl, hint=None: calls.append(hint) or ("DELETE FROM invoice" if not calls[1:] else "BEGIN TRANSACTION"))
+    r = c.post("/query", json={"query": "delete every invoice total", "mode": "structural"}).json()
+    assert not r["ok"] and r["attempts"] == 1 and "Blocked" in r["error"] and len(calls) == 1
