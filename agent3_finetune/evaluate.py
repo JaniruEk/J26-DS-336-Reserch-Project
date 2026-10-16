@@ -43,7 +43,7 @@ def read_ddl(db, cache):
 def normalise(sql):
     s = sql.strip().rstrip(";").lower().replace('"', "'")
     s = re.sub(r"\s+", " ", s)
-    return re.sub(r"\s*([(),=<>!])\s*", r"\1", s)
+    return re.sub(r"\s*([(),=<>!])\s*", r"\1", s).strip()
 
 
 def clean_sql(text):
