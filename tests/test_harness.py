@@ -122,3 +122,19 @@ def test_blocked_request_is_refused_not_retried(db, tmp_path):
     c, _ = client(db, tmp_path, lambda q, ddl, hint=None: calls.append(hint) or ("DELETE FROM invoice" if not calls[1:] else "BEGIN TRANSACTION"))
     r = c.post("/query", json={"query": "delete every invoice total", "mode": "structural"}).json()
     assert not r["ok"] and r["attempts"] == 1 and "Blocked" in r["error"] and len(calls) == 1
+
+
+def test_wrong_inputs_are_rejected_cleanly(db, tmp_path):
+    c, _ = client(db, tmp_path, lambda q, ddl, hint=None: "SELECT 1")
+    assert c.post("/retrieve", json={"query": "   ", "db": "t"}).status_code == 422
+    assert c.post("/retrieve", json={"query": "x" * 501, "db": "t"}).status_code == 422
+    assert c.post("/retrieve", json={"db": "t"}).status_code == 422
+    assert c.post("/retrieve", json={"query": "invoices", "db": "../../etc/passwd"}).status_code == 404
+    assert c.post("/retrieve", json={"query": "invoices", "db": "t", "mode": "magic"}).status_code == 422
+    r = c.post("/query", json={"query": "asdkjh qwelkj zzzz", "db": "t"}).json()
+    assert r["ok"] is False and r["attempts"] == 0  # gibberish is declined before any model call
+
+
+def test_multiple_statements_are_an_error_not_a_crash(db):
+    ok, err = run_sql(db, "SELECT 1; SELECT 2")
+    assert not ok and err
