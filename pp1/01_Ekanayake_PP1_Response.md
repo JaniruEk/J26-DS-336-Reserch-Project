@@ -72,7 +72,20 @@ What changed:
 - **Explanations.** Every column now carries the reason it was kept or pruned, shown in the explorer and in the handoff `trace`.
 - **Speed.** Retrieval is about 3× faster with identical results, because the question embedding no longer pads to 256 tokens. Mean is now about 80–120 ms against the 500 ms target.
 
-**Still to run on your machine:** execution accuracy for the new configuration (`python -m agent1_retrieval.evaluate --pairs eval/chinook_pairs.json eval/spider_pairs.json --recommended --exec phi3`). Until then, do not claim an accuracy gain.
+**Execution accuracy, recommended configuration [MEASURED]** (phi3 standing in for Agent 3; Chinook + Spider, n = 134, 128 scored; run 18 Oct 2026; raw output in `data/exec_phi3_recommended.log`):
+
+| Mode | Tokens | Column recall | Exec accuracy |
+|---|---|---|---|
+| semantic | 58 | .61 | .34 |
+| structural | 59 | .59 | .34 |
+| hybrid (same 3 anchors) | 171 | .98 | .41 |
+| **hybrid_pruned** | **145** | **.98** | **.43** |
+
+Paired, pruned vs hybrid: tokens **−27 [−34, −20]** (−16%), column recall −.00 [−.01, .00], execution +.02 (only-pruned 4, only-hybrid 2, McNemar exact p = 0.69, **not significant**). By bucket, pruned vs hybrid: simple .35 vs .39, single-join .42 vs .39, multi-join .38 vs .38, aggregation .56 vs .50.
+
+**Reading:** with the recommended settings, pruning no longer costs recall or accuracy. It gives a 16% smaller prompt at the same accuracy. It does not yet show an accuracy *gain*, which needs Agent 3's fine-tuned model and a larger sample (about 600 paired items to detect 5 points).
+
+**Side finding:** on *simple* questions, the narrow single-table modes score .68–.71 against .35–.39 for the wide hybrid context. Extra tables distract phi3 on easy questions, which supports complexity-adaptive context width (narrow for simple, wide for joins) as the next experiment.
 
 ## 5. Measured results [MEASURED]
 
@@ -116,7 +129,7 @@ Per database (from Phase 3), hybrid → pruned: Chinook 251→168 tokens, column
 >
 > My two key functions are schema reflection with the foreign-key graph, and column-level pruning. It runs standalone, as you'll see.
 >
-> I tested 148 questions across Chinook, TPC-H and twenty Spider databases. Pruning cut the prompt by about a third, 149 to 100 tokens, and raised column precision from 0.26 to 0.44. It does cost some recall, 0.92 to 0.83. With my tuned setting, execution accuracy matched the unpruned baseline using 17% fewer tokens. So the honest result so far is: smaller prompts, same accuracy. I'll re-test with Agent 3's fine-tuned model. Median retrieval time is 278 milliseconds, within our 500 millisecond target for all but one of 148 questions.
+> I tested on Chinook, TPC-H and twenty Spider databases that I never tuned on. On Spider, column recall rose from 0.89 to 0.98. Against the same retrieval without pruning, the prompt is 16% smaller, recall is unchanged, and SQL accuracy with a stand-in model was 0.43 against 0.41. That difference is not statistically significant, so the honest result is: smaller prompts, same accuracy. I'll re-test with Agent 3's fine-tuned model. Retrieval takes about 120 milliseconds, well within our 500 millisecond target.
 >
 > My output goes to Agent 3, which writes the SQL. Thank you.
 

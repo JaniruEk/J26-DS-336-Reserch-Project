@@ -25,15 +25,22 @@ Paired, pruned minus hybrid with the same anchors (95% bootstrap CI): Spider tok
 
 The question embedding used to pad every text to 256 tokens. It now runs unpadded, and the vectors are identical (maximum difference 0.0). Embedding time per question fell from 82 ms to 5.5 ms. A full 148-question evaluation now takes 21 s instead of 2 min. Warm hybrid_pruned latency is about 80–120 ms mean against the 500 ms target. Tests cover a warm-latency check on Chinook and synthetic schemas of 20 and 60 tables.
 
-## Not measured here
+## Execution accuracy (run 18 Oct 2026)
 
-Execution accuracy needs Ollama (phi3), which this environment can't reach. Run it on your machine:
+`python -m agent1_retrieval.evaluate --pairs eval/chinook_pairs.json eval/spider_pairs.json --recommended --exec phi3` (raw output: `data/exec_phi3_recommended.log`).
 
-```
-python -m agent1_retrieval.evaluate --pairs eval/chinook_pairs.json eval/spider_pairs.json --recommended --exec phi3
-```
+| Mode | Tokens | Column recall | Exec accuracy |
+|---|---|---|---|
+| semantic | 58 | .61 | .34 |
+| structural | 59 | .59 | .34 |
+| hybrid (same 3 anchors) | 171 | .98 | .41 |
+| **hybrid_pruned** | **145** | **.98** | **.43** |
 
-Until that run exists, describe the accuracy effect as unknown. Phase 7 showed that pruning only breaks even when column recall is about .96 or higher, and the recommended configuration reaches .98 on Spider.
+Paired, pruned vs hybrid: tokens **−27 [−34, −20]** (−16%), column recall −.00 [−.01, .00], execution +.02 (only-pruned 4, only-hybrid 2, McNemar exact p = 0.69, **not significant**). By bucket, pruned vs hybrid: simple .35 vs .39, single-join .42 vs .39, multi-join .38 vs .38, aggregation .56 vs .50.
+
+**Reading:** with the recommended settings, pruning no longer costs recall or accuracy. It gives a 16% smaller prompt at the same accuracy. It does not yet show an accuracy *gain*, which needs Agent 3's fine-tuned model and a larger sample (about 600 paired items to detect 5 points).
+
+**Side finding:** on *simple* questions, the narrow single-table modes score .68–.71 against .35–.39 for the wide hybrid context. Extra tables distract phi3 on easy questions, which supports complexity-adaptive context width (narrow for simple, wide for joins) as the next experiment.
 
 ## Caveats
 
