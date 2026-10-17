@@ -38,3 +38,24 @@ def load_quantized_model(precision='int8'):
     print(f"{precision} model loaded successfully")
 
     return model,tokenizer
+
+
+def load_fp16_model():
+    print("Loading Original FP16 model ......")
+
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_ID,
+        dtype=torch.float16,
+        device_map={"":"cpu"}
+    )
+
+    tokenizer =AutoTokenizer.from_pretrained(MODEL_ID)
+
+    model.eval()
+
+    print("FP16 model loaded successfully")
+
+    return model,tokenizer
+
+
+
