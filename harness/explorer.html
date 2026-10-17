@@ -68,11 +68,12 @@ $("#f").onsubmit = async e => {
   html += `<h2>Sub-agent outputs (hybrid_pruned)</h2><table>
     <tr><th>Complexity label</th><td>${esc(p.complexity)}</td></tr>
     <tr><th>1. Anchor selection</th><td>${esc(p.anchor ?? "none")}</td></tr>
-    <tr><th>2. FK traversal</th><td>${esc(Object.keys(p.tables).join(" → ") || "—")}</td></tr>
+    <tr><th>2. FK traversal</th><td>${Object.keys(p.tables).map(t => `${esc(t)} <span class="muted">(${esc((p.trace?.roles || {})[t] || "")})</span>`).join(", ") || "—"}</td></tr>
     <tr><th>3. Column pruning</th><td>` +
     Object.entries(h.tables).map(([t, cols]) => `<div><b>${esc(t)}</b>: ` +
-      cols.map(c => `<span class="chip ${(p.tables[t] || []).includes(c) ? "k" : "c"}">${esc(c)}</span>`).join("") + `</div>`).join("") +
-    `<div class="muted">green = kept, struck = removed</div></td></tr></table>`;
+      cols.map(c => { const why = ((p.trace?.reasons || {})[t] || {})[c] || "";
+        return `<span class="chip ${(p.tables[t] || []).includes(c) ? "k" : "c"}" title="${esc(why)}">${esc(c)}${why && why !== "pruned" ? ` <small class="muted">${esc(why.replace("_", " "))}</small>` : ""}</span>`; }).join("") + `</div>`).join("") +
+    `<div class="muted">green = kept (with the reason), struck = removed. Hover a column for its reason.</div></td></tr></table>`;
 
   html += `<h2>Handoff to Agent 3 (pruned DDL)</h2><pre>${esc(p.ddl || "(empty)")}</pre>`;
   $("#out").innerHTML = html;

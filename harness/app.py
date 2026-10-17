@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, StringConstraints
 
-from agent1_retrieval import MODES, Agent1
+from agent1_retrieval import MODES, RECOMMENDED, Agent1
 from agent1_retrieval.execution import ollama_generate
 
 MAX_ATTEMPTS = 3
@@ -36,7 +36,7 @@ def run_sql(db, sql, timeout=10):
     con.set_progress_handler(lambda: time.time() > deadline, 10000)
     try:
         return True, con.execute(sql).fetchall()
-    except sqlite3.Error as e:
+    except (sqlite3.Error, sqlite3.Warning) as e:  # Python < 3.11 raises Warning for multiple statements
         return False, str(e)
     finally:
         con.close()
@@ -72,7 +72,9 @@ class Query(BaseModel):
     mode: str = "hybrid_pruned"
 
 
-def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute=run_sql, log_path="data/handoff.log.jsonl"):
+def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute=run_sql, log_path="data/handoff.log.jsonl",
+               agent1_config=RECOMMENDED):
+    """agent1_config: Retriever options for the live Agent 1 (pass {} for the original Phase 1-7 settings)."""
     dbs = dbs or DEFAULT_DBS
     app, agents = FastAPI(title="J26-DS-336 harness"), {}
     Path(log_path).parent.mkdir(parents=True, exist_ok=True)
@@ -88,7 +90,7 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
         if req.mode not in MODES:
             raise HTTPException(422, f"mode must be one of {MODES}")
         if (name, req.mode) not in agents:
-            agents[name, req.mode] = Agent1(dbs[name], req.mode)
+            agents[name, req.mode] = Agent1(dbs[name], req.mode, **agent1_config)
         return dbs[name], agents[name, req.mode]
 
     @app.get("/", include_in_schema=False)

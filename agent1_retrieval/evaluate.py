@@ -110,8 +110,13 @@ if __name__ == "__main__":
     ap.add_argument("--anchors", type=int, default=0, help="multi_anchors k")
     ap.add_argument("--min-cols", type=int, default=0, help="leave tables with <= N columns unpruned")
     ap.add_argument("--ungated", action="store_true", help="apply multi-anchor to every question, not only predicted multi-join")
+    ap.add_argument("--rich", action="store_true", help="extra linking signals in pruning (linking.py)")
+    ap.add_argument("--infer-fks", action="store_true", help="infer FKs from column names")
+    ap.add_argument("--recommended", action="store_true", help="= --anchors 3 --ungated --min-cols 8 --rich (the PP1 config, RECOMMENDED)")
     ap.add_argument("--exec", metavar="MODEL", help="execution accuracy with this Ollama model (e.g. phi3)")
     a = ap.parse_args()
+    if a.recommended:
+        a.anchors, a.ungated, a.min_cols, a.rich = 3, True, 8, True
     run(a.db, [p for f in a.pairs for p in json.load(open(f, encoding="utf-8"))], generate=(lambda q, ddl: ollama_generate(q, ddl, a.exec)) if a.exec else None,
         modes=tuple(a.modes), depth=a.depth, threshold=a.threshold, labels=a.labels, adaptive=a.adaptive,
-        multi_anchors=a.anchors, gate=not a.ungated, min_cols=a.min_cols)
+        multi_anchors=a.anchors, gate=not a.ungated, min_cols=a.min_cols, rich=a.rich, infer_missing_fks=a.infer_fks)

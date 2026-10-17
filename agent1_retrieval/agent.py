@@ -19,4 +19,6 @@ class Agent1:
             "ddl": c.text,  # pruned schema, ready to paste into the SLM prompt
             "tokens": c.tokens,
             "latency_ms": round(c.ms, 1),
+            # explanation for the explorer / logs: why each table is there, why each column was kept or pruned
+            "trace": {"roles": c.roles or {}, "reasons": c.reasons or {}},
         }
