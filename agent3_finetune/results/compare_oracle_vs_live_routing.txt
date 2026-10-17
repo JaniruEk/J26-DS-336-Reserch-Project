@@ -1,0 +1,20 @@
+A = oracle   B = live_classifier   datasets: spider, chinook   paired questions: 134
+
+=== exec (execution accuracy) ===
+bucket          n          oracle live_classifie   diff A-B [95% CI]       only A / only B  McNemar p
+simple         31            0.71           0.55   +0.16 [+0.00, +0.32]   6 / 1            0.125
+single-join    31            0.65           0.35   +0.29 [+0.10, +0.48]   10 / 1           0.012
+multi-join     32            0.16           0.12   +0.03 [+0.00, +0.09]   1 / 0            1.000
+aggregation    34            0.56           0.53   +0.03 [+0.00, +0.09]   1 / 0            1.000
+ALL           128            0.52           0.39   +0.12 [+0.06, +0.20]   18 / 2           0.000
+
+=== exact (normalised exact match) ===
+bucket          n          oracle live_classifie   diff A-B [95% CI]       only A / only B  McNemar p
+simple         33            0.67           0.48   +0.18 [+0.03, +0.33]   7 / 1            0.070
+single-join    34            0.41           0.21   +0.21 [+0.09, +0.35]   7 / 0            0.016
+multi-join     33            0.03           0.03   +0.00 [+0.00, +0.00]   0 / 0            1.000
+aggregation    34            0.47           0.44   +0.03 [+0.00, +0.09]   1 / 0            1.000
+ALL           134            0.40           0.29   +0.10 [+0.06, +0.16]   15 / 1           0.001
+
+Note: 5 buckets are tested per metric, so a single p just under 0.05 is weak evidence;
+state effect sizes with their CIs rather than relying on p-values alone.
