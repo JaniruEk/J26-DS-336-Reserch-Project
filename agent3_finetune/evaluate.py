@@ -130,7 +130,12 @@ def cmd_generate(a):
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, a.adapter)
     model.eval()
-    label_key = "complexity" if a.routing == "oracle" else "nl_complexity"  # which label picks the head
+    def head_label(item):  # which label picks the head: true label, live classifier, or one fixed head for everything
+        if a.routing == "oracle":
+            return item.get("complexity")
+        if a.routing == "nl":
+            return item.get("nl_complexity")
+        return a.routing  # fixed head, e.g. --routing multi-join
 
     prompts = [PROMPT.format(ddl=i["ddl"], question=i["question"]) for i in items]
     lens = [len(tok(p, add_special_tokens=False)["input_ids"]) for p in prompts]
@@ -143,7 +148,7 @@ def cmd_generate(a):
         ids = todo[s:s + a.batch]
         enc = tok([prompts[i] for i in ids], return_tensors="pt", padding=True, add_special_tokens=False).to(device)
         if router is not None:
-            router.set(torch.tensor([hydra.head_index(items[i].get(label_key)) for i in ids], device=device))
+            router.set(torch.tensor([hydra.head_index(head_label(items[i])) for i in ids], device=device))
         with torch.no_grad():
             out = model.generate(**enc, max_new_tokens=a.max_new_tokens, do_sample=False,
                                  pad_token_id=tok.pad_token_id)
@@ -157,7 +162,7 @@ def cmd_generate(a):
             "n_items": len(items), "n_prompt_too_long": sum(1 for i in range(len(items)) if lens[i] > a.max_prompt_tokens),
             "peak_vram_gb": round(torch.cuda.max_memory_allocated() / 1024 ** 3, 2) if device == "cuda" else None,
             "n_heads": n_heads or None, "routing": a.routing if n_heads > 1 else None,
-            "router_fallbacks": sum(1 for it in items if it.get(label_key) not in hydra.HEADS) if n_heads > 1 else None,
+            "router_fallbacks": sum(1 for it in items if head_label(it) not in hydra.HEADS) if n_heads > 1 else None,
             "generate_seconds": round(time.time() - t0)}
     rows = [{**{k: v for k, v in it.items() if k != "ddl"}, "pred": preds[i], "prompt_tokens": lens[i]}
             for i, it in enumerate(items)]
@@ -235,8 +240,10 @@ def main():
     g.add_argument("--out", required=True)
     g.add_argument("--model", default="Qwen/Qwen2.5-1.5B-Instruct")
     g.add_argument("--adapter", default="", help="path to the LoRA adapter folder; empty = base model only")
-    g.add_argument("--routing", choices=["oracle", "nl"], default="oracle",
-                   help="HydraLoRA only: head chosen from the true label (oracle) or from Agent 1's live classifier (nl)")
+    g.add_argument("--routing", choices=["oracle", "nl", "simple", "single-join", "multi-join", "aggregation"],
+                   default="oracle",
+                   help="HydraLoRA only: head chosen from the true label (oracle), from Agent 1's live classifier (nl), "
+                        "or one fixed head for every question (a bucket name; the names must match hydra.HEADS)")
     g.add_argument("--batch", type=int, default=4)
     g.add_argument("--max_new_tokens", type=int, default=256)
     g.add_argument("--max_prompt_tokens", type=int, default=2048)
