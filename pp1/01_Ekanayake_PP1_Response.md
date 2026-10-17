@@ -49,10 +49,30 @@ Read this with the team document (00). Figures marked **[MEASURED]** come from t
 | Invalid mode | 422 with valid modes | **Done** |
 | Empty / whitespace / >500-char question | 422 before any agent runs | **Done** (tested) |
 | Gibberish / unrelated question | `matched: false`; `/query` declines without calling the model; explorer shows a warning | **Done** (tested: "best pizza recipe", "asdkjh qwelkj", "weather in Paris") |
-| Missing FKs | Retrieval continues with declared FKs | Check with a test DB before claiming |
+| Missing FKs | Retrieval continues with declared FKs; `--infer-fks` adds FKs implied by column names | **Done** (tested: `tests/test_pp1_fixes.py`) |
 | Runaway traversal | Bounded by `depth` (default 1) | **Done** (config) |
+| Multiple SQL statements from the model | Returned as an error, not a crash | **Done** (fixed a Python 3.10 crash; tested) |
 
 ---
+
+## 5a. PP1 fixes (Phase 8) [MEASURED, 17 Oct 2026]
+
+Full detail and raw outputs: `reports/agent1_phase8/README.md`. Live config: `RECOMMENDED` in `agent1_retrieval/retrieval.py`; the harness and CLI now use it.
+
+| hybrid_pruned | Before (Phase 1–7 default) | After (PP1 recommended) | hybrid, same anchors |
+|---|---|---|---|
+| Chinook: column recall @ tokens | .73 @ 168 | **.95 @ 200** | .95 @ 262 |
+| TPC-H | .46 @ 137 | **.97 @ 241** | .97 @ 322 |
+| Spider (never tuned) | .89 @ 87 | **.98 @ 138** | .99 @ 161 |
+
+What changed:
+- **TPC-H limitation fixed.** Run-together and abbreviated names (`c_acctbal`, `o_totalprice`) are now split and expanded.
+- **New signals.** A small business-synonym list, plus value linking: "Canada" is found in `Customer.Country` by a read-only lookup, and only column names leave the lookup.
+- **Display columns.** These are kept for tables the question names.
+- **Explanations.** Every column now carries the reason it was kept or pruned, shown in the explorer and in the handoff `trace`.
+- **Speed.** Retrieval is about 3× faster with identical results, because the question embedding no longer pads to 256 tokens. Mean is now about 80–120 ms against the 500 ms target.
+
+**Still to run on your machine:** execution accuracy for the new configuration (`python -m agent1_retrieval.evaluate --pairs eval/chinook_pairs.json eval/spider_pairs.json --recommended --exec phi3`). Until then, do not claim an accuracy gain.
 
 ## 5. Measured results [MEASURED]
 

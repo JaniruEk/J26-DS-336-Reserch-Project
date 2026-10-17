@@ -1,0 +1,26 @@
+mode          bucket         n  tokens      ms  tblP  tblR  colP  colR  exec
+semantic      simple         3      88       9  0.67  0.67  0.14  0.67     -
+structural    simple         3      82       6  1.00  1.00  0.31  1.00     -
+hybrid        simple         3     281       9  0.31  1.00  0.07  1.00     -
+hybrid_pruned simple         3     158     108  0.31  1.00  0.17  1.00     -
+semantic      single-join    4      82       9  1.00  0.50  0.32  0.45     -
+structural    single-join    4      82       6  1.00  0.50  0.32  0.45     -
+hybrid        single-join    4     252       9  0.58  1.00  0.19  1.00     -
+hybrid_pruned single-join    4     193     154  0.58  1.00  0.28  1.00     -
+semantic      multi-join     3      81       9  1.00  0.29  0.48  0.27     -
+structural    multi-join     3      61       6  1.00  0.29  0.74  0.31     -
+hybrid        multi-join     3     244       9  0.61  0.76  0.31  0.75     -
+hybrid_pruned multi-join     3     221      54  0.61  0.76  0.41  0.75     -
+semantic      aggregation    4      92     278  1.00  0.75  0.17  0.72     -
+structural    aggregation    4      84     272  0.75  0.50  0.17  0.78     -
+hybrid        aggregation    4     270       9  0.38  1.00  0.11  1.00     -
+hybrid_pruned aggregation    4     222     146  0.38  1.00  0.17  1.00     -
+semantic      ALL           14      86      86  0.93  0.56  0.27  0.54     -
+structural    ALL           14      78      82  0.93  0.56  0.36  0.63     -
+hybrid        ALL           14     262       9  0.47  0.95  0.17  0.95     -
+hybrid_pruned ALL           14     200     121  0.47  0.95  0.25  0.95     -
+
+paired hybrid_pruned - hybrid (n=14, mean [95% bootstrap CI])
+  dtokens   -61.86 [-91.00, -34.64]
+  dcolP       0.08 [0.05, 0.11]
+  dcolR       0.00 [0.00, 0.00]
