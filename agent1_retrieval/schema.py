@@ -1,4 +1,5 @@
 """Schema reflection: tables, columns and FK graph read live from the DB catalog (no hardcoded schema)."""
+import re
 import sqlite3
 from dataclasses import dataclass
 
@@ -25,6 +26,45 @@ def reflect(db_path):
         }
     finally:
         con.close()
+
+
+def infer_fks(tables):
+    """Add FKs implied by naming when a column is not declared as one (opt-in; returns what was added).
+    Rules: (1) same name as another table's single-column PK (CustomerId); (2) <table>_id / <table>Id;
+    (3) TPC-H style prefixes, l_orderkey -> o_orderkey. A column that is its table's only PK is never an FK."""
+    def norm(s):
+        return re.sub(r"[^a-z0-9]", "", s.lower())
+
+    def strip(s):
+        m = re.match(r"^[A-Za-z]{1,3}_(.+)$", s)
+        return (m.group(1) if m else s).lower()
+
+    pk = {n: [c for c, _, p in t.columns if p] for n, t in tables.items()}
+    single = {n: cs[0] for n, cs in pk.items() if len(cs) == 1}
+    by_pk, by_stripped = {}, {}
+    for n, c in single.items():
+        by_pk.setdefault(c.lower(), []).append(n)
+        if strip(c) != c.lower():
+            by_stripped.setdefault(strip(c), []).append(n)
+    by_name = {norm(n): n for n in tables}
+    by_name.update({norm(n)[:-1]: n for n in tables if norm(n).endswith("s")})
+    added = []
+    for n, t in tables.items():
+        declared = {c for c, _, _ in t.fks}
+        for c, _, is_pk in t.columns:
+            if c in declared or (is_pk and len(pk[n]) == 1):
+                continue
+            owners = [o for o in by_pk.get(c.lower(), []) if o != n]
+            if len(owners) != 1:
+                m = re.match(r"^(.+?)_?(id|key)$", c, re.I)
+                o = by_name.get(norm(m.group(1))) if m else None
+                owners = [o] if o and o != n and o in single else []
+            if not owners and strip(c) != c.lower():
+                owners = [o for o in by_stripped.get(strip(c), []) if o != n]
+            if len(owners) == 1:
+                t.fks.append((c, owners[0], single[owners[0]]))
+                added.append((n, c, owners[0]))
+    return added
 
 
 def adjacency(tables):

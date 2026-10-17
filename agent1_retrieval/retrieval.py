@@ -7,10 +7,15 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from .complexity import classify_query
-from .pruning import keep_columns, lemma, query_terms, split_ident
-from .schema import adjacency, reflect, render
+from .pruning import explain_columns, is_relevant, lemma, query_terms, split_ident
+from .schema import adjacency, infer_fks, reflect, render
 
 MODES = ("semantic", "structural", "hybrid", "hybrid_pruned")
+# PP1 configuration (Phase 8) = Phase 7's best execution config (3 anchors joined by FK paths on every question,
+# tables with <= 8 columns left whole) + the rich linking signals. Column recall, hybrid_pruned: Chinook .95,
+# TPC-H .97, Spider .98 (Spider never used for tuning). Execution accuracy for this exact config still has to be
+# re-run with Ollama (`evaluate --recommended --exec phi3`). Constructor defaults stay as before so Phase 1-7 reproduce.
+RECOMMENDED = {"multi_anchors": 3, "gate": False, "min_cols": 8, "rich": True}
 
 
 @dataclass
@@ -21,6 +26,22 @@ class Context:
     text: str
     tokens: int
     ms: float
+    reasons: dict = None  # table -> {column: why it was kept, or 'pruned'} (hybrid_pruned only)
+    roles: dict = None  # table -> 'anchor' | 'fk_neighbour' | 'bridge'
+
+
+@lru_cache(maxsize=1)
+def _embedder():
+    """Chroma's default MiniLM, minus padding every text to 256 tokens: same vectors (checked: max diff 0.0),
+    ~15x faster per question (82 ms -> 5.5 ms on a 2-core VM). This is what keeps retrieval under the 500 ms NFR."""
+    from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+
+    class _UnpaddedMiniLM(ONNXMiniLM_L6_V2):
+        def __call__(self, input):
+            self.tokenizer.no_padding()
+            return [super(_UnpaddedMiniLM, self).__call__([d])[0] for d in input]
+
+    return _UnpaddedMiniLM()
 
 
 @lru_cache(maxsize=1)
@@ -30,14 +51,20 @@ def _enc():
 
 
 class Retriever:
-    def __init__(self, db_path, depth=1, threshold=0.6, labels=False, adaptive=False, multi_anchors=0, gate=True, min_cols=0, chroma_path=None):
+    def __init__(self, db_path, depth=1, threshold=0.6, labels=False, adaptive=False, multi_anchors=0, gate=True, min_cols=0, chroma_path=None,
+                 rich=False, infer_missing_fks=False):
         # adaptive: +1 FK hop for questions predicted multi-join. multi_anchors=k: for those questions also take the top-k
         # semantic tables and connect them to the main anchor along shortest FK paths (bridge tables included).
         self.db_path, self.depth, self.threshold, self.labels, self.adaptive = db_path, depth, threshold, labels, adaptive
         self.multi_anchors, self.gate, self.min_cols, self.chroma_path = multi_anchors, gate, min_cols, chroma_path
+        # rich: extra linking signals in pruning (linking.py). infer_missing_fks: add FKs implied by column names
+        # when the schema declares none (both opt-in, so the Phase 1-7 numbers reproduce with the defaults).
+        self.rich = rich
         self.tables = reflect(db_path)
+        self.inferred = infer_fks(self.tables) if infer_missing_fks else []
         self.adj = adjacency(self.tables)
-        self._col = None  # vector index is built lazily so structural mode needs no embeddings
+        self._col = None
+        self._values = None  # vector index is built lazily so structural mode needs no embeddings
 
     # --- sub-agent 1: anchor selection ---
     def _index(self):
@@ -45,7 +72,8 @@ class Retriever:
             import chromadb
             # own on-disk client per Retriever: the shared in-process EphemeralClient intermittently returned no results across many collections
             client = chromadb.PersistentClient(self.chroma_path or tempfile.mkdtemp())
-            self._col = client.get_or_create_collection("schema_" + hashlib.md5(self.db_path.encode()).hexdigest()[:12])
+            self._col = client.get_or_create_collection("schema_" + hashlib.md5(self.db_path.encode()).hexdigest()[:12],
+                                                        embedding_function=_embedder())
             if self._col.count() != len(self.tables):
                 self._col.upsert(ids=list(self.tables), documents=[render(t) for t in self.tables.values()])
         return self._col
@@ -81,6 +109,12 @@ class Retriever:
         best = max(self.tables.values(), key=score, default=None)
         return best.name if best and score(best) > 0 else None
 
+    def matched(self, query):
+        """Confidence gate: does any question word match any table or column name (lemma, else similarity)?
+        False for gibberish / off-topic questions, which the semantic anchor would otherwise map to its nearest table anyway."""
+        terms = query_terms(query)
+        return any(is_relevant(n, terms, self.threshold) for t in self.tables.values() for n in [t.name] + [c for c, _, _ in t.columns])
+
     # --- sub-agent 2: FK traversal ---
     def _traverse(self, anchor, depth=None):
         seen, frontier = [anchor], [anchor]
@@ -96,17 +130,37 @@ class Retriever:
         anchors = ([self._structural_anchor(query)] if mode == "structural"
                    else self._semantic_anchors(query, self.multi_anchors if multi and self.multi_anchors else 1))
         anchor = anchors[0] if anchors and anchors[0] else None
+        bridge = set()
+        anchors = [a for a in anchors if a] if anchor else []
         if anchor is None:
             names = []
         elif mode.startswith("hybrid"):
             names = self._traverse(anchor, self.depth + (1 if multi and self.adaptive else 0))
-            names = list(dict.fromkeys(names + [t for o in anchors[1:] for t in self._path(anchor, o)]))
+            paths = [t for o in anchors[1:] for t in self._path(anchor, o)]
+            bridge = {t for t in paths if t not in names and t not in anchors}
+            names = list(dict.fromkeys(names + paths))
         else:
             names = [anchor]
+        roles = {n: "anchor" if n in anchors else "bridge" if n in bridge else "fk_neighbour" for n in names}
         # --- sub-agent 3: pruning (hybrid_pruned only) ---
         terms = query_terms(query) if mode == "hybrid_pruned" else None
-        cols = {n: keep_columns(self.tables[n], terms, self.threshold, self.labels)
-                if terms is not None and len(self.tables[n].columns) > self.min_cols  # min_cols: leave narrow tables whole
-                else [c for c, _, _ in self.tables[n].columns] for n in names}
+        reasons = None
+        if terms is not None:
+            values = self._value_links(query, names) if self.rich else {}
+            qlem = {t.lemma_.lower() for t in terms}
+            reasons = {n: explain_columns(self.tables[n], terms, self.threshold, self.labels, rich=self.rich,
+                                          values=values.get(n, ()),
+                                          named=self.rich and any(lemma(w) in qlem for w in split_ident(n)))
+                       if len(self.tables[n].columns) > self.min_cols  # min_cols: leave narrow tables whole
+                       else {c: "narrow_table" for c, _, _ in self.tables[n].columns} for n in names}
+            cols = {n: [c for c, why in reasons[n].items() if why != "pruned"] for n in names}
+        else:
+            cols = {n: [c for c, _, _ in self.tables[n].columns] for n in names}
         text = "\n\n".join(render(self.tables[n], cols[n]) for n in names)
-        return Context(mode, anchor, cols, text, len(_enc().encode(text)), (time.perf_counter() - t0) * 1000)
+        return Context(mode, anchor, cols, text, len(_enc().encode(text)), (time.perf_counter() - t0) * 1000, reasons, roles)
+
+    def _value_links(self, query, names):
+        if self._values is None:
+            from .linking import ValueLinker
+            self._values = ValueLinker(self.db_path, self.tables)
+        return self._values.link(query, names)

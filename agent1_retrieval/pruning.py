@@ -32,15 +32,20 @@ def table_prefix(table):
     return firsts.pop() if len(firsts) == 1 and all("_" in c for c, _, _ in table.columns) and len(next(iter(firsts))) <= 3 else None
 
 
-def is_relevant(col_name, terms, threshold, prefix=None):
+def relevance(col_name, terms, threshold, prefix=None):
+    """Why a column matches the question: 'lemma_match', 'similarity', or None."""
     words = [w for w in split_ident(col_name) if w != prefix] or split_ident(col_name)
     qlemmas = {t.lemma_.lower() for t in terms}
     if any(lemma(w) in qlemmas for w in words):
-        return True
+        return "lemma_match"
     phrase = nlp()(" ".join(words))
     if not phrase.has_vector:
-        return False
-    return any(t.has_vector and not t.is_stop and phrase.similarity(t) >= threshold for t in terms)
+        return None
+    return "similarity" if any(t.has_vector and not t.is_stop and phrase.similarity(t) >= threshold for t in terms) else None
+
+
+def is_relevant(col_name, terms, threshold, prefix=None):
+    return relevance(col_name, terms, threshold, prefix) is not None
 
 
 LABEL_WORDS = {"name", "title", "first", "last"}
@@ -48,7 +53,42 @@ LABEL_WORDS = {"name", "title", "first", "last"}
 
 def keep_columns(table, terms, threshold=0.6, labels=False):
     """labels=True also keeps display columns (Name/Title/FirstName/LastName) - ablation, since questions rarely name them."""
-    keys = {c for c, _, pk in table.columns if pk} | {c for c, _, _ in table.fks}
+    return [c for c, why in explain_columns(table, terms, threshold, labels).items() if why != "pruned"]
+
+
+def explain_columns(table, terms, threshold=0.6, labels=False, rich=False, values=(), named=False):
+    """Column -> reason it was kept ('primary_key', 'join_key', 'value_match', 'lemma_match', 'synonym_match',
+    'similarity', 'label_column') or 'pruned'. First rule that applies wins.
+    rich=False is the original rule set (keys, optional labels, lemma, similarity); rich=True adds the
+    linking.py signals - value matches, split/abbreviated names, synonyms - and keeps the display columns of a
+    table the question names (or of a table where nothing else matched)."""
+    pks = {c for c, _, pk in table.columns if pk}
+    fks = {c for c, _, _ in table.fks}
     prefix = table_prefix(table)
-    return [c for c, _, _ in table.columns
-            if c in keys or (labels and set(split_ident(c)) <= LABEL_WORDS) or is_relevant(c, terms, threshold, prefix)]
+    out = {}
+    if rich:
+        from .linking import identifier_words, question_lemmas, synonyms_of
+        qlem = question_lemmas(terms)
+        syn = synonyms_of(qlem)
+        own = identifier_words(table.name)
+    for c, _, _ in table.columns:
+        if c in pks:
+            out[c] = "primary_key"
+        elif c in fks:
+            out[c] = "join_key"
+        elif not rich:
+            out[c] = ("label_column" if labels and set(split_ident(c)) <= LABEL_WORDS
+                      else relevance(c, terms, threshold, prefix) or "pruned")
+        elif c in values:
+            out[c] = "value_match"
+        else:
+            words = identifier_words(c, prefix) - own or identifier_words(c, prefix)
+            out[c] = ("lemma_match" if words & qlem else "synonym_match" if words & syn
+                      else relevance(c, terms, threshold, prefix) or "pruned")
+    if rich:
+        evidence = any(r in ("lemma_match", "synonym_match") and c not in values for c, r in out.items())
+        if named or labels or not evidence:
+            for c in out:
+                if out[c] == "pruned" and set(split_ident(c)) & {"name", "title"}:
+                    out[c] = "label_column"
+    return out
