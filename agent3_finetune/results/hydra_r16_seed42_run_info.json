@@ -1,0 +1,34 @@
+{
+  "method": "hydra",
+  "n_heads": 4,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "gpu": "Tesla T4",
+  "seed": 42,
+  "rank": 16,
+  "alpha": 32.0,
+  "lr": 0.0002,
+  "epochs": 3,
+  "max_len": 1024,
+  "multijoin_repeat": 2,
+  "steps": 969,
+  "train_examples": 5162,
+  "val_examples": 524,
+  "train_examples_per_head": {
+    "aggregation": 2336,
+    "simple": 1503,
+    "multi-join": 654,
+    "single-join": 669
+  },
+  "dropped_train": {
+    "aggregation": 325,
+    "simple": 141,
+    "single-join": 107,
+    "multi-join": 96
+  },
+  "dropped_val": {},
+  "trainable_params": 49430528,
+  "total_params": 1593144832,
+  "val_loss": 0.253,
+  "train_seconds_total": 7109,
+  "peak_vram_gb": 7.28
+}
