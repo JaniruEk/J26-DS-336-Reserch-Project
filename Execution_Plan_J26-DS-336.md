@@ -66,6 +66,8 @@ Status: **Phases 1–7 below are implemented** (see CLAUDE.md for results and co
 | 8b Train-with-pruned-context | 6–7 | Coordinate with Thathsarani: fine-tune the same model on full vs pruned/multi-anchor context (3 seeds, shared config) and compare execution accuracy | answer to "does pruning help once the model is trained for it?" | Blocked on shared config + Agent 3 |
 | 8 Re-run with real model | 7 | Repeat Phase 5 with Agent 3's fine-tuned model (and quantized variant); final tables for the thesis | final per-bucket results, CIs | Blocked on Agent 3 |
 | 9 Integration & report | 9–12 | End-to-end feasibility on Chinook/Spider/TPC-H, latency check (<500 ms retrieval), write-up | feasibility demo + dissertation chapter | To do |
+| 10 Unseen-database test | 6 | Northwind (13 tables, ~625k rows) as SQLite and PostgreSQL; 20 gold pairs (`eval/northwind_pairs.json`) | retrieval and execution measured on a database Agent 1 was never tuned on | Done (colR .99, pruning −24–28% tokens, exec parity; 3 bugs fixed) |
+| 11 Value-coded data | 6 | Sample values of code columns in the schema (`value_hints`), per-database glossary (`glossary`, `J26_GLOSSARIES`), value-coded test set (`eval/value_coded_pairs.json`, 16 pairs, 9 DBs). See section 6 | measured with vs without on value-coded + ordinary sets | Done (value-coded exec .31→.69 phi3, .12→.56 Qwen-Coder, p=.016) |
 
 Risks: pruning hurts multi-join and abbreviated schemas (TPC-H); result with phi3 is neutral — claim measurement rigor, not guaranteed gains (see `Market_Research_Comparable_Systems.md`: GRASP/RASL are stronger on retrieval technique; read before finalising methodology).
 
@@ -85,6 +87,7 @@ Why first: Agent 3 cannot do its real comparison until the two base models exist
 | 6 Hand-off | 3–4 | Deliver **both** base checkpoints (distilled, native) + shared fine-tuning config agreed with Agent 3 | Agent 3 can load both, same tokenizer | → Thathsarani |
 | 7 Post-FT support | 6–7 | After Agent 3 fine-tunes both identically: exact-match + execution accuracy by bucket (`execution.py`, `classify_sql`) | per-bucket distilled-vs-native table | Final finding |
 | 8 Report/integration | 9–12 | Write-up; support end-to-end tests | chapter + feasibility support | — |
+| 9 Value-coded data (new, see section 6) | 2–3 | Include prompts where the schema carries value comments (`Sex VARCHAR(1) /* values: 'F', 'M' */`) in the SQL-adjacent part of the distillation pool, so the student learns to read them | some teacher prompts use Agent 1's value-hinted schema format | — |
 
 Risks: scope creep of the distillation set (keep proof-of-concept scale); unfair comparison if the native model differs in anything but construction method (tokenizer, size, steps) — enforce identical post-distillation fine-tuning; compute overruns delay everyone, so Phase 3 gets the contingency budget. Possible negative result (no advantage) is reportable.
 
@@ -104,6 +107,7 @@ Parallel-work fix: run the full comparison immediately on an off-the-shelf place
 | 6 Hand-off packaging | 7–8 | Package **winner and runner-up** as versioned artefacts (weights, config, eval log) | Agent 4 can load both | → Karunanayake |
 | 7 Live sub-agents | 8–9 | Head-Selection (uses `complexity` from Agent 1 payload) + Generation sub-agent (consumes `ddl`, honours retry `hint`); expose as `generate(question, ddl, hint=None) -> sql` to drop into `harness.create_app` | harness `/query` works with the real generator | → harness |
 | 8 Report/integration | 8–12 | Analysis, thesis chapter, end-to-end tests | — | — |
+| 9 Value-coded data (new, see section 6) | next training run | Build training prompts with the SAME schema format used live: Agent 1's `ddl` with value comments (`Agent1(db, **agent1_retrieval.LIVE).run(q)["ddl"]`, the live config). Train-test mismatch otherwise: a model never trained on `/* values: ... */` may ignore it. Evaluate on `eval/value_coded_pairs.json` as well as the shared sets | value-coded exec reported for LoRA and HydraLoRA | — |
 
 Risks: HydraLoRA custom implementation bugs; thin multi-join data; a reviewer asking why routing isn't learned (answer ready). Novelty is the strongest of the four, but HydraLoRA itself is not new — cite arXiv 2404.19245 and frame the contribution as complexity routing for SQL.
 
@@ -123,6 +127,7 @@ Parallel-work fix: build tooling now, run an early QAT-vs-PTQ pass on a self-fin
 | 6 Live sub-agents | 8–9 | Execution sub-agent (read-only SQL run; `harness.run_sql` is the stand-in); Error-Diagnosis sub-agent: classify error (no such column/table, ambiguous, syntax) → hint back to Agent 3's generator within the bounded retry. *Starting point:* the reference prototype's "smart hint" categories | harness retry fixes cases the raw-error hint cannot | → harness |
 | 7 Deployment model | 8–9 | Final deployment-ready quantized model, fits mid-range hardware, latency reported | end-to-end run on target hardware | — |
 | 8 Report/integration | 9–12 | Analysis, thesis chapter, feasibility testing | — | — |
+| 9 Empty-result check (new, see section 6) | with phase 6 | In the Error-Diagnosis sub-agent: when a query with a `WHERE`/`HAVING` filter returns **0 rows**, look up the filtered column's actual values (read-only, `agent1_retrieval.linking.code_values` or one bounded `SELECT DISTINCT ... LIMIT 7`) and retry once with a hint, e.g. "no rows matched 'yes'; Discontinued contains '0', '1'". Treat it as a soft failure: at most one retry, then return the empty result. Measure on `eval/value_coded_pairs.json` | retry recovers value mistakes that hints missed | → harness |
 
 Risks: depends on Agent 3's artefacts (mitigated by placeholder pass); equal-budget fairness between QAT and PTQ; need to distinguish this from arXiv 2607.25583 ("How Small Can You Go?") in the literature review.
 
@@ -135,7 +140,34 @@ Risks: depends on Agent 3's artefacts (mitigated by placeholder pass); equal-bud
 3. Feasibility demonstration only — the four independent studies carry the novelty claims, not the assembled system.
 4. Dissertation write-up, paper, final presentation.
 
-## 6. Cross-member dependency summary
+## 6. Value-coded data: a shared issue, one job per member (added 19 Oct 2026)
+
+**The problem (found live on Northwind).** "Which products are discontinued?" produced `WHERE Discontinued = 'yes'` and returned 0 rows, because the column stores `'1'`/`'0'`. The model sees column names and types, not what the values look like or mean. Bank data is full of such codes (`acct_status = 'C'`, `kyc_flag = 'Y'`, `txn_type = 'WDL'`). The query does not fail, so nothing retries: the user just gets an empty or wrong answer.
+
+**The rule for every fix: it must work on any connected database.** Everything goes through the read-only door `agent1_retrieval/db.py` (SQLite and PostgreSQL, the dialects whose read-only mode is enforced), uses portable SQL, stays cheap on very large tables, and never copies personal data into a prompt.
+
+| Layer | Owner | What | Status |
+|---|---|---|---|
+| Show the codes | Ekanayake (Agent 1) | `value_hints`: columns with ≤ 6 short values that repeat across rows are shown as `Sex VARCHAR(1) /* values: 'F', 'M' */` and are kept through pruning. Judged on a 1,000-row sample, then one bounded `DISTINCT` (whole Northwind, 625k rows: 19 ms SQLite, 242 ms PostgreSQL). Columns whose values are all different (names, emails, account numbers) are never shown; off for databases in `J26_NO_VALUE_LINKING`. On in the live app (`LIVE` config) | **Done** |
+| Explain the codes | Ekanayake (Agent 1) | Per-database glossary `{"Table.Column": "C = closed, A = active"}`, from the institution's data dictionary: `J26_GLOSSARIES='{"bank": "bank_glossary.json"}'` or `Retriever(glossary=...)` / `evaluate --glossary`. Configuration, not data, so it applies even where value reading is off | **Done** |
+| Measure it | Ekanayake (Agent 1) | `eval/value_coded_pairs.json`: 16 questions on 9 databases whose wording never contains the stored code | **Done** |
+| Train on it | Thathsarani (Agent 3) | Training prompts must use the same schema format as live, value comments included (section 3, phase 9) | To do |
+| Teach it | Wathsala (Agent 2) | Some SQL-adjacent distillation prompts use the value-commented schema (section 2, phase 9) | To do |
+| Catch what slips through | Karunanayake (Agent 4) | Empty-result check in error diagnosis: 0 rows after a filter → look up the column's real values → one retry with a hint (section 4, phase 9) | To do |
+| Show the user | Shared (chat page) | The SQL is already shown; add a note on empty answers ("no matching rows; check the filter") | To do |
+
+**Measured effect of value hints (Agent 1, hybrid_pruned, recommended config, 19 Oct 2026):**
+
+| Test set | Model | Without hints | With hints | Paired test |
+|---|---|---|---|---|
+| Value-coded, 16 questions | phi3 | 0.31 | **0.69** | 8 vs 2 discordant, McNemar p = 0.11 |
+| Value-coded, 16 questions | Qwen2.5-Coder-1.5B | 0.12 | **0.56** | 7 vs 0, **p = 0.016** |
+| Chinook + Spider + Northwind, 148 questions | phi3 | 0.432 | 0.446 | 4 vs 2, p = 0.69 (no harm) |
+| Chinook + Spider + Northwind, 148 questions | Qwen2.5-Coder-1.5B | 0.446 | 0.466 | 5 vs 2, p = 0.45 (no harm) |
+
+Cost: about +17 tokens per question on the ordinary sets (+29 on value-coded). Models are untrained stand-ins; re-measure with Agent 3's fine-tuned model.
+
+## 7. Cross-member dependency summary
 
 ```
 Agent 1 (Months 1–5, done) ──┐

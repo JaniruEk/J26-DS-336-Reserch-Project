@@ -16,7 +16,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel, StringConstraints
 
-from agent1_retrieval import MODES, RECOMMENDED, Agent1
+from agent1_retrieval import LIVE, MODES, Agent1
 from agent1_retrieval.db import DBError, dialect, query, tables_with_rows
 from agent1_retrieval.execution import ollama_generate
 from agent1_retrieval.schema import reflect
@@ -91,7 +91,7 @@ class Query(BaseModel):
 
 
 def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute=run_sql, log_path="data/handoff.log.jsonl",
-               agent1_config=RECOMMENDED, answers_path="data/answers.db", superset=superset_config, no_value_linking=None,
+               agent1_config=LIVE, answers_path="data/answers.db", superset=superset_config, no_value_linking=None,
                glossaries=None):
     """agent1_config: Retriever options for the live Agent 1 (pass {} for the original Phase 1-7 settings).
     superset: callable returning the Superset config or None (BI push disabled).

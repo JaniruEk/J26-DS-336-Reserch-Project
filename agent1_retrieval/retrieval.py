@@ -18,6 +18,9 @@ MODES = ("semantic", "structural", "hybrid", "hybrid_pruned")
 # TPC-H .97, Spider .98 (Spider never used for tuning). Execution accuracy for this exact config still has to be
 # re-run with Ollama (`evaluate --recommended --exec phi3`). Constructor defaults stay as before so Phase 1-7 reproduce.
 RECOMMENDED = {"multi_anchors": 3, "gate": False, "min_cols": 8, "rich": True}
+# Live app default = RECOMMENDED + code values in the schema (measured 19 Oct 2026: value-coded exec .31->.69 phi3,
+# .12->.56 Qwen-Coder-1.5B; ordinary questions unharmed). RECOMMENDED itself stays fixed so earlier results reproduce.
+LIVE = {**RECOMMENDED, "value_hints": True}
 
 
 @dataclass
