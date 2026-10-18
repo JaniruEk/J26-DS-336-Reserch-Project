@@ -7,3 +7,5 @@ joblib
 fastapi
 uvicorn
 httpx
+sqlalchemy
+psycopg[binary]

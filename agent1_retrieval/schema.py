@@ -12,6 +12,10 @@ class Table:
 
 
 def reflect(db_path):
+    """db_path: SQLite file, or a SQLAlchemy URL for a server database (see db.py)."""
+    from .db import is_url, reflect_url
+    if is_url(db_path):
+        return reflect_url(db_path, Table)
     con = sqlite3.connect(db_path)
     try:
         names = [r[0] for r in con.execute(
