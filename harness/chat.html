@@ -42,8 +42,30 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ROW_LIMIT = 50;
 
-fetch("health").then(r => r.json()).then(h => $("#db").innerHTML = h.dbs.map(d =>
-  `<option value="${esc(d)}">${esc(d)}${h.schema_only.includes(d) ? " (schema only, no rows)" : ""}</option>`).join(""));
+let SUPERSET = false;
+fetch("health").then(r => r.json()).then(h => (SUPERSET = h.superset, $("#db").innerHTML = h.dbs.map(d =>
+  `<option value="${esc(d)}">${esc(d)}${h.schema_only.includes(d) ? " (schema only, no rows)" : ""}</option>`).join("")));
+
+// "Explore, then promote": freeze a trusted answer's SQL so dashboards replay it without the model.
+async function save(btn, question, sql, db) {
+  btn.disabled = true;
+  const box = btn.parentElement;
+  try {
+    const res = await fetch("answers", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({question, sql, db})});
+    const a = await res.json();
+    if (!res.ok) { box.innerHTML = `<div class="err">${esc(a.detail)}</div>`; return; }
+    let html = `Saved as answer #${a.id} (${esc(a.chart)} chart). Dashboard data URL: <a href="${esc(a.csv)}" target="_blank">${esc(a.csv)}</a>`;
+    if (SUPERSET) {
+      const s = await fetch(`answers/${a.id}/superset`, {method: "POST"});
+      const j = await s.json();
+      html += s.ok ? ` · <a href="${esc(j.url)}" target="_blank">Open chart in Superset</a>` : `<div class="err">${esc(j.detail)}</div>`;
+    }
+    box.innerHTML = html;
+  } catch (err) {
+    box.innerHTML = `<div class="err">Could not save: ${esc(err.message)}</div>`;
+  }
+}
 
 function add(cls, html) {
   const d = document.createElement("div");
@@ -88,7 +110,9 @@ $("#f").onsubmit = async e => {
       const msg = Array.isArray(r.detail) ? "Please type a question (1–500 characters)." : r.detail;
       wait.innerHTML = `<div class="err">${esc(msg)}</div>`;
     } else if (r.ok) {
-      wait.innerHTML = rowsTable(r.rows, r.columns) + `<details open><summary>SQL</summary><pre>${esc(r.sql)}</pre></details>` + trace(r);
+      wait.innerHTML = rowsTable(r.rows, r.columns) + `<details open><summary>SQL</summary><pre>${esc(r.sql)}</pre></details>` +
+        `<div class="muted"><button class="save">Save as chart</button> suggested chart: ${esc(r.chart)} · check the SQL before saving</div>` + trace(r);
+      wait.querySelector(".save").onclick = e => save(e.target, q, r.sql, $("#db").value);
     } else {
       const msg = String(r.error).startsWith("Blocked") ? "Refused: this assistant is read-only and only answers questions; it never changes the data."
         : r.attempts ? `I couldn't produce a working query after ${r.attempts} attempt(s). Last error: ${r.error}` : r.error;
