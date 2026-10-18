@@ -75,6 +75,13 @@ Reference prototype: github.com/JaniruEk/enterprise-slm-framework (`pillar1_rag/
 - Not built yet: re-run with Agent 3's fine-tuned model; agree handoff format with Thathsarani.
 - Note: proposal's dataset sample labels `SELECT COUNT(*) FROM Track` "Simple" and a 1-join query "Multi-join"; `classify_sql` follows the structural rule (aggregate→aggregation, 1 JOIN→single-join), so those labels differ.
 
+## Generalisation test: Northwind (unseen database, 19 Oct 2026)
+- Northwind SQLite (`data/northwind.db`, from github.com/jpwhite3/northwind-SQLite3; 13 tables, 13 FKs, ~625k rows incl. 609k `Order Details`) + a PostgreSQL copy (`scripts/load_postgres.py`, db `northwind` in the `j26-postgres` container). 20 gold pairs, 5 per bucket: `eval/northwind_pairs.json` (PG variant = same SQL with `"order details"`). Agent 1 was never tuned on it.
+- Retrieval (recommended config, hybrid_pruned): SQLite 227 tok, colR .99 (hybrid 299, .99) — pruning cut ~24% tokens with zero recall loss. PG after fixes: 209 tok, colR .99.
+- Execution (n=20, all differences n.s.): SQLite phi3 hybrid .45 / pruned .40, Qwen2.5-Coder-1.5B .55 / .50; PG phi3 .45 / .50, Qwen .45 / .40. Multi-join is the weak bucket for both models (Qwen 0/5).
+- Bugs found by this test and fixed: (1) `schema.render` printed `CREATE TABLE Order Details` unquoted -> model wrote `OrderDetails`/syntax errors; `schema.ident` now quotes only names that need it (earlier token counts unchanged). (2) PG lower-cased names (`firstname`, `productname`) were pruned: the label-column rule now uses `identifier_words`, and `linking.segment` splits a known word ending in a schema head word (`HEADS`: name, title, date, code, price...) — PG colR .83 -> .99; Chinook/TPC-H/Spider numbers re-checked identical. Known oddity: `mandate` -> man+date. (3) loader: self-referencing FK (Employees.ReportsTo) -> FKs now DEFERRABLE INITIALLY DEFERRED.
+- Live demo finding: "total freight cost per shipping company" on northwind_postgres -> phi3 joined orders.shipvia to suppliers (same `companyname` column) instead of shippers: a plausible-looking wrong answer. Agent 1 had shippers as anchor; the multi_anchors=3 setting also pulled suppliers in as a distractor. Supports showing the SQL to users and is a trade-off to report.
+
 ## Open TODOs
 - Paste remainder of combined proposal (Sections 4 onward) and save.
 - Redraw system diagrams by hand / diagramming tool (B&W, NOT AI-generated) per template.

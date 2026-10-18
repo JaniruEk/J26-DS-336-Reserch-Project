@@ -82,11 +82,19 @@ def adjacency(tables):
     return adj
 
 
-def render(table, keep=None):
-    """Render a table (optionally only `keep` columns) as DDL. One renderer for every mode keeps token counts comparable."""
+def ident(name):
+    """Quote a name only when it needs it ("Order Details"); plain names stay bare, so earlier token counts reproduce.
+    Unquoted, the model reads `Order Details` as two words and writes `OrderDetails` or a syntax error (Northwind)."""
+    return name if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) else '"' + name.replace('"', '""') + '"'
+
+
+def render(table, keep=None, notes=None):
+    """Render a table (optionally only `keep` columns) as DDL. One renderer for every mode keeps token counts comparable.
+    notes: column -> text shown as a /* comment */ after it (sample values, glossary meaning); None = original output."""
     keep = {c for c, _, _ in table.columns} if keep is None else set(keep)
-    lines = [f"{c} {typ}{' PRIMARY KEY' if pk else ''}".strip()
+    notes = notes or {}
+    lines = [f"{ident(c)} {typ}{' PRIMARY KEY' if pk else ''}".strip() + (f" /* {notes[c]} */" if c in notes else "")
              for c, typ, pk in table.columns if c in keep]
-    lines += [f"FOREIGN KEY ({c}) REFERENCES {p}({pc})" if pc else f"FOREIGN KEY ({c}) REFERENCES {p}"
+    lines += [f"FOREIGN KEY ({ident(c)}) REFERENCES {ident(p)}({ident(pc)})" if pc else f"FOREIGN KEY ({ident(c)}) REFERENCES {ident(p)}"
               for c, p, pc in table.fks if c in keep]
-    return f"CREATE TABLE {table.name} (\n  " + ",\n  ".join(lines) + "\n);"
+    return f"CREATE TABLE {ident(table.name)} (\n  " + ",\n  ".join(lines) + "\n);"

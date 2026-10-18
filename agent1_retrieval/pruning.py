@@ -89,6 +89,7 @@ def explain_columns(table, terms, threshold=0.6, labels=False, rich=False, value
         evidence = any(r in ("lemma_match", "synonym_match") and c not in values for c, r in out.items())
         if named or labels or not evidence:
             for c in out:
-                if out[c] == "pruned" and set(split_ident(c)) & {"name", "title"}:
+                # identifier_words also splits lower-case names (PostgreSQL's productname), not only ProductName
+                if out[c] == "pruned" and (set(split_ident(c)) | identifier_words(c, prefix)) & {"name", "title"}:
                     out[c] = "label_column"
     return out

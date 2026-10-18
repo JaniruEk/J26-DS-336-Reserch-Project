@@ -56,11 +56,19 @@ def _known(w):
     return w in ABBREV or nlp().vocab.has_vector(w)
 
 
+HEADS = ("name", "title", "date", "code", "number", "price", "amount", "type", "status", "count", "total")
+
+
 @lru_cache(maxsize=None)
 def segment(word):
-    """'totalprice' -> ['total', 'price']; 'acctbal' -> ['acct', 'bal']; known words are left alone."""
-    if len(word) < 6 or not word.isalpha() or _known(word):
+    """'totalprice' -> ['total', 'price']; 'acctbal' -> ['acct', 'bal']; known words are left alone, except a known
+    word ending in a common schema word ('firstname' is in the vocabulary, but means first + name)."""
+    if len(word) < 6 or not word.isalpha():
         return [word]
+    if _known(word):
+        # ponytail: fixed list of schema head words; spaCy's vocabulary holds junk halves ('cate'+'gory'), so a free split breaks real words
+        head = next((h for h in HEADS if word.endswith(h) and len(word) - len(h) >= 3 and _known(word[:-len(h)])), None)
+        return [word[:-len(head)], head] if head else [word]
     for i in range(3, len(word) - 2):
         if _known(word[:i]) and _known(word[i:]):
             return [word[:i], word[i:]]
@@ -154,6 +162,43 @@ class ValueLinker:
                             except DBError:
                                 break
         return hits
+
+
+def _is_code(vals, max_len):
+    """Short text codes ('F', 'LGE', 'yes'), or flags (0/1 integers, true/false booleans)."""
+    return (all(isinstance(v, str) and 0 < len(v.strip()) <= max_len for v in vals)
+            or all(isinstance(v, (bool, int)) and v in (0, 1) for v in vals))
+
+
+def code_values(db, table, max_distinct=6, max_len=20, sample=1000):
+    """Columns of `table` that hold a short list of codes -> their values, e.g. {'Discontinued': ['0', '1']}.
+    A code column has few distinct short values that REPEAT across rows; a column where (almost) every row differs
+    (names, emails, account numbers) is never returned, so personal data is not copied into the prompt.
+    Works on any connected database (same read-only door, plain portable SQL) and stays cheap on very large tables:
+    a column is first judged on a sample of `sample` rows; only columns that look like codes get one bounded
+    DISTINCT for their full value list, so a rare code ('D' = dormant) missing from the sample is still shown."""
+    keys = {c for c, _, pk in table.columns if pk} | {c for c, _, _ in table.fks}
+    out = {}
+    with session(db) as run:
+        qt = quote(db, table.name)
+        for c, _, _ in table.columns:
+            if c in keys:
+                continue
+            qc = quote(db, c)
+            try:
+                seen = [v for (v,) in run(f"SELECT {qc} FROM {qt} WHERE {qc} IS NOT NULL LIMIT {sample}")[1]]
+            except DBError:
+                continue
+            distinct = set(seen)
+            if not (2 <= len(distinct) <= max_distinct and len(seen) >= 2 * len(distinct) and _is_code(distinct, max_len)):
+                continue
+            try:  # full list, bounded: more than max_distinct values -> not a code column after all
+                vals = [v for (v,) in run(f"SELECT DISTINCT {qc} FROM {qt} WHERE {qc} IS NOT NULL LIMIT {max_distinct + 1}")[1]]
+            except DBError:
+                continue
+            if len(vals) <= max_distinct and _is_code(vals, max_len):
+                out[c] = sorted(vals, key=str)
+    return out
 
 
 def _norm(s):
