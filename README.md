@@ -3,7 +3,7 @@
 SLIIT B.Sc. (Hons) IT (Data Science) final-year research project, 2026.
 Supervisors: Prof. Nathali Silva and Mr. Theshan Senanayake.
 
-Regulated enterprises want to ask questions of their databases in plain English, but internal AI-governance and vendor-risk policies keep that data away from cloud generative-AI vendors. This project builds a fully local pipeline of four agents around one small language model that fits in 8 GB of VRAM:
+Regulated enterprises want to ask questions of their databases in plain English, but internal AI-governance and vendor-risk policies keep that data away from cloud generative-AI vendors. This project builds a fully local pipeline of four agents around one small language model that runs on mid-range hardware:
 
 ```
 question ─► Agent 1 Retrieval ─► Agent 3 Generation ─► Agent 4 Execution ─► answer

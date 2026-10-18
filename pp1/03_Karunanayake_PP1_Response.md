@@ -80,7 +80,7 @@ Replace every bracket with a measured value before using it.
 | Question | Answer skeleton |
 |---|---|
 | What exactly did I build? | PTQ and QAT pipelines, the error-rate metric suite, the execution and error-diagnosis sub-agents, the cross-check harness. State what is working today. |
-| Which sub-problem does it address? | Fitting on 8 GB hardware without losing aggregation correctness; safe live execution. |
+| Which sub-problem does it address? | Fitting on mid-range hardware without losing aggregation correctness; safe live execution. |
 | How does it connect to the rest? | Receives SQL and artefacts from Agent 3; its hint goes back to Agent 3 through the orchestrator, which logs every retry. |
 | What testing supports it? | Results table, retry-loop tests, safety tests, user session. |
 | What proves I understand it? | Explain how PTQ differs from QAT, why syntax and logic are scored separately, and why the cross-check matters; show Git history. |

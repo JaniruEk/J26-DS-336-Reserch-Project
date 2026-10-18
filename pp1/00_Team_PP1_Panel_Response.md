@@ -45,7 +45,7 @@ The panel comments are the ones in the topic-assessment table (identical for all
 
 1. **Where the data may go.** Most regulated enterprises do not send live schema or customer data to a *generative-AI vendor*. That is mainly internal AI-governance and vendor-risk policy, reinforced by regulation such as GDPR and CCPA. It is not that all third-party sharing is banned; banks share data with approved vendors every day. A model that runs on the organisation's own hardware needs no vendor approval.
 2. **Cost and dependency.** A large model costs more per query as usage grows, and depends on one network-reachable cluster. A small quantized model runs close to the users.
-3. **Hardware.** Our target is mid-range hardware (8 GB VRAM), which rules out large models by definition.
+3. **Hardware.** Our target is mid-range hardware (a single mid-range GPU, no cluster), which rules out large models.
 
 The honest concession: an organisation that already runs large GPU clusters can self-host a large model. Our market is the much larger group that cannot.
 
@@ -219,7 +219,7 @@ Record each as a test case with input, expected result, actual result and pass/f
 | NFR | What to measure or demonstrate | Evidence |
 |---|---|---|
 | Performance | Agent 1 (warm, n=148): **median 278 ms**, p95 380, max 617; 1/148 over the 500 ms target. End-to-end latency (median and slowest over N runs) | Timing table |
-| Resource use | VRAM and memory per quantization configuration on the 8 GB target | `nvidia-smi` screenshot + table |
+| Resource use | VRAM and memory per quantization configuration on the mid-range target hardware | `nvidia-smi` screenshot + table |
 | Security: data stays local | Run a query with the network disabled, or show outbound-connection logs are empty | Screenshot/recording |
 | Security: safe execution | Read-only DB connection (done), SELECT-only validator, rejects multiple statements; destructive inputs refused | Test cases from Section 6 |
 | Security: input boundary | DB chosen by configured key, never a raw path (done) | Test case |

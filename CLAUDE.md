@@ -16,7 +16,7 @@ SLIIT B.Sc. (Hons) IT, Data Science, Y4S1 final-year research project (Sept 2026
 Regulated enterprises (regional banks, insurers, credit unions, FinTech) want NL→SQL over internal DBs. Cloud generative-AI vendors are blocked by **internal AI-governance / vendor-risk policy** (reinforced by GDPR/CCPA) — NOT a blanket legal ban on third-party sharing. Local SLMs hallucinate on multi-join/aggregation queries. Question: can a fully local SLM system be private *and* accurate?
 - **Wording rule:** never write "law prohibits sending data to third parties" / "cloud AI is illegal". Say generative-AI vendors are a newer, less-precedented category under AI-governance policy.
 - Delivery: licensed on-premise appliance, one instance in the org's own data center, accessed over private network.
-- Target customers lack large GPU infra / ML teams. Hardware budget everywhere: **8GB VRAM (RTX 3070 Ti class)**.
+- Target customers lack large GPU infra / ML teams. Hardware target: **mid-range hardware** (a single consumer/workstation-class GPU, no cluster). **Wording rule:** never state a specific VRAM figure (e.g. "8GB") or GPU model in project text; say "mid-range hardware". The project started as an edge-device idea; the scope is now mid-range on-premise hardware, not edge.
 
 ## Four agents (sequential pipeline, run fresh per query; no independent track)
 | Agent | Owner | Role |
@@ -41,7 +41,7 @@ Handoffs: A1→A3 pruned schema context + complexity label (live); A2→A3 two b
 - Parallel-work fix: Agent 3 runs LoRA-vs-Hydra on a placeholder base first, Agent 4 on a placeholder fine-tuned model; both re-run on real upstream artefacts.
 
 ## Novelty positioning (from market research — keep claims honest)
-- Closest competitor: **MATS** (arXiv 2512.18622; 5 SLM agents, 9B total, 24GB GPU, 87.1% Spider / 64.73% BIRD). Do NOT claim multi-agent SLM text-to-SQL as novel. Claim efficiency (one shared base + adapters + quantization on 8GB) and depth on fine-tuning/quantization.
+- Closest competitor: **MATS** (arXiv 2512.18622; 5 SLM agents, 9B total, 24GB GPU, 87.1% Spider / 64.73% BIRD). Do NOT claim multi-agent SLM text-to-SQL as novel. Claim efficiency (one shared base + adapters + quantization on mid-range hardware) and depth on fine-tuning/quantization.
 - Strongest claim: complexity-routed HydraLoRA for SQL (Thathsarani). Be ready to defend hard-coded vs learned router (auditable, avoids gating collapse).
 - Quantization: QAT vs PTQ + cross-check is a narrow but real gap; distinguish from arXiv 2607.25583 ("How Small Can You Go?", 60M model).
 - Schema retrieval is crowded (GRASP, RASL, RSL-SQL, SchemaGraphSQL) — Ekanayake's contribution is the four-mode ablation/measurement rigor, not a novel retrieval algorithm. Read GRASP and RASL.
