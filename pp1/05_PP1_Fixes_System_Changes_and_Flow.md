@@ -37,7 +37,7 @@ This document was drafted against an engineering plan whose paths do not exist i
 | ID | Brief description | Fix |
 |---|---|---|
 | P1 | "Don't have proper component breakdown". | Show the four-layer breakdown and the I/O of every component (Section 3 and the runtime diagram). Make the live UI show each agent's output in its own panel. |
-| P2 | "Not explained novelty properly (importance of SLM over LM)". | Three-reason answer (data may not go to a generative-AI vendor; recurring cost and dependency; 8 GB hardware) and one novelty line per component, backed by a measured accuracy, latency and VRAM table. |
+| P2 | "Not explained novelty properly (importance of SLM over LM)". | Three-reason answer (data may not go to a generative-AI vendor; recurring cost and dependency; mid-range hardware) and one novelty line per component, backed by a measured accuracy, latency and VRAM table. |
 | P3 | "Need to think about practical usage". | Named persona (analyst, DBA, compliance officer at a regional bank or insurer), a realistic demo scenario, a chatbot front end, and user sessions with real task feedback. |
 | P4 | Ekanayake only: "Implement standalone application". | `POST /retrieve` and the CLI already exist; add the explorer page (C6). It also plugs into the full chatbot. |
 | F1 | "Testing, feedbacks". | Test pyramid from unit to user level; at least two user sessions with observed tasks; feedback turned into Planner tasks (team doc, Section 5). |

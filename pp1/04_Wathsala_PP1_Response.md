@@ -13,7 +13,7 @@ Your component is built once, offline, and is not called per query. That makes i
 |---|---|---|---|
 | **Don't have proper component breakdown** | Agent 2 has four steps. A teacher model of about 7B parameters generates prompt-response pairs. A small student is trained on them. A native model of the same size is kept as the baseline. The two are compared, and the winner is published as a versioned artefact for Agent 3. It is built once, so it has no live sub-agents. | Draw the four steps with the artefact handoff arrow to Agent 3. | Component diagram; model card |
 | **Not explained novelty properly (SLM over LM)** | This is your strongest answer to the panel's question. A small model has limited capacity, and fine-tuning can't create reasoning ability that isn't there. Distillation transfers a larger model's behaviour into the small one. Existing studies compare distilled and native small models on general tasks, not under identical SQL fine-tuning. I isolate distillation as the single variable. | Run the comparison: a reasoning score before fine-tuning, then exact-match and JOIN/aggregation accuracy after identical fine-tuning of both models. Include a "same prompts, gold-SQL targets" control (C0), so a distillation gain can't simply be extra in-domain training (see `reports/Base model selection for local Text2SQL.md`). | Comparison table (**[EVIDENCE NEEDED]**) |
-| **Need to think about practical usage** | Customers cannot buy bigger hardware, so a stronger base model of the same size is the cheapest improvement available. If distillation wins, the distilled model becomes the default shipped with the product. | Be explicit that the teacher runs on rented compute because it exceeds 8 GB, and that the shipped model does not. | Budget line and compute log |
+| **Need to think about practical usage** | Customers cannot buy bigger hardware, so a stronger base model of the same size is the cheapest improvement available. If distillation wins, the distilled model becomes the default shipped with the product. | Be explicit that the teacher runs on rented compute because it is too large for mid-range hardware, and that the shipped model does not. | Budget line and compute log |
 
 ---
 
@@ -58,7 +58,7 @@ Replace every bracket with a measured value before using it.
 
 > Good [morning]. I'm W.A.T. Wathsala, and my component is Agent 2: a knowledge-distilled foundation model.
 >
-> The problem: models that fit on mid-range hardware are small and generic, and fine-tuning can't add reasoning ability that the base model doesn't already have. Our target is 8 GB of VRAM, so we cannot just use a bigger model.
+> The problem: models that fit on mid-range hardware are small and generic, and fine-tuning can't add reasoning ability that the base model doesn't already have. Our target is mid-range hardware, so we cannot just use a bigger model.
 >
 > My approach is knowledge distillation. A larger teacher model of about 7 billion parameters generates prompt-response pairs, and a small student model is trained on them. I compare that student against a native small model of the same size, and then both are fine-tuned identically, so distillation is the only difference.
 >

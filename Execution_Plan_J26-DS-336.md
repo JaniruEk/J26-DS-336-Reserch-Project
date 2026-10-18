@@ -14,7 +14,7 @@ Derived from the individual proposals' WBS/Gantt and the project scope. Months a
 | FastAPI harness with JSON-lines handoff log and bounded retry; Agents 3/4 pluggable via `create_app(generate=, execute=)` | `harness/app.py` | integration phase |
 | Generator stand-in: local phi3 via Ollama | `agent1_retrieval/execution.py` | placeholder until real models exist |
 
-**Rules for fair comparison (all members):** same evaluation pairs, same hardware budget (8GB VRAM), one variable changed at a time, report per complexity bucket and with paired statistics — not a single aggregate. A negative result is a valid result.
+**Rules for fair comparison (all members):** same evaluation pairs, same mid-range hardware budget, one variable changed at a time, report per complexity bucket and with paired statistics — not a single aggregate. A negative result is a valid result.
 
 **Open interface decisions to lock early (Month 1–2):**
 1. Agent 1 → Agent 3 payload format (JSON with DDL inside, as implemented) — Ekanayake ↔ Thathsarani.
@@ -27,10 +27,10 @@ Derived from the individual proposals' WBS/Gantt and the project scope. Months a
 | Item | Decision | Owner | Status |
 |---|---|---|---|
 | Placeholder base model until Wathsala's checkpoints exist | **Recommended (Ekanayake): one ~1.5B-parameter instruct model for everyone**, same tokenizer family as the student; Phi-3 Mini (3.8B, in PR #1) kept only as an optional strong-model reference. Name/version: *TBD* | Wathsala picks (student size must match) | Pending group reply |
-| Why not Phi-3 Mini for all | Native baseline must equal the distilled student's size (≈0.5–1.5B); 3.8B is tight for LoRA/HydraLoRA/QAT at 8GB; weakens the small-model efficiency claim vs MATS | — | Rationale |
+| Why not Phi-3 Mini for all | Native baseline must equal the distilled student's size (≈0.5–1.5B); 3.8B is tight for LoRA/HydraLoRA/QAT on mid-range hardware; weakens the small-model efficiency claim vs MATS | — | Rationale |
 | Checkpoint format | Proposed: Hugging Face folder (`config.json`, safetensors, tokenizer files); same tokenizer for distilled and native | Wathsala ↔ Thathsarani | Pending |
-| Training platform | Not recorded anywhere (local RTX 3070 Ti-class vs Kaggle T4/P100 ~16GB vs Colab T4 ~15GB). Each member records theirs | each member | Pending |
-| GPU memory cap | **8GB for every training/eval run**, even on larger cloud GPUs, so results are comparable; record actual GPU + peak VRAM beside each result | all | Proposed |
+| Training platform | Not recorded anywhere (local mid-range GPU vs Kaggle T4/P100 vs Colab T4). Each member records theirs | each member | Pending |
+| GPU memory cap | **the same mid-range memory cap for every training/eval run**, even on larger cloud GPUs, so results are comparable; record actual GPU + peak VRAM beside each result | all | Proposed |
 | Exact model/version, seeds, LoRA rank/LR/epochs, data split | Freeze in this table before the first comparison run | Wathsala ↔ Thathsarani | Pending |
 
 Note: Agent 1's execution-accuracy numbers so far used phi3 (3.8B) via Ollama as a stand-in generator; they must be re-run on the agreed model (≈30 min per configuration).
@@ -77,7 +77,7 @@ Why first: Agent 3 cannot do its real comparison until the two base models exist
 
 | Phase | Months | Build | Done when | Hands off |
 |---|---|---|---|---|
-| 1 Select & freeze | 1 | Pick teacher (~7B, strong at SQL/code) and student size (≈0.5B–1.5B) matched to the native baseline; confirm both fit 8GB VRAM for fine-tuning; pick the native baseline of identical parameter count and tokenizer family. *Proposed:* decide candidates by a 1-day smoke test (load, generate, fine-tune 50 steps) | model cards chosen, versions pinned, fit verified | Config to Thathsarani |
+| 1 Select & freeze | 1 | Pick teacher (~7B, strong at SQL/code) and student size (≈0.5B–1.5B) matched to the native baseline; confirm both fit mid-range hardware for fine-tuning; pick the native baseline of identical parameter count and tokenizer family. *Proposed:* decide candidates by a 1-day smoke test (load, generate, fine-tune 50 steps) | model cards chosen, versions pinned, fit verified | Config to Thathsarani |
 | 2 Prompt pool | 1 | Build ~1,500–3,000 prompts: general reasoning/instruction + SQL-adjacent schema comprehension. *Proposed:* seed SQL-adjacent prompts from Spider **train** schemas (not dev/eval pairs) to avoid leakage into evaluation | pool documented, no overlap with `eval/*.json` | — |
 | 3 Teacher generation | 1–2 | Run teacher (inference only) over the pool on rented GPU; log prompt, response, params; dedupe/filter obvious failures. Budget cap from proposal: LKR 35k compute + 10k contingency | dataset versioned (e.g. JSONL + hash) | — |
 | 4 Student training | 2–3 | Standard supervised fine-tuning of student on teacher responses; fixed seed, saved config | student checkpoint + training log | — |
@@ -97,7 +97,7 @@ Parallel-work fix: run the full comparison immediately on an off-the-shelf place
 | Phase | Months | Build | Done when | Hands off |
 |---|---|---|---|---|
 | 1 Dataset | 2–3 | Text-to-SQL training/eval data labelled by complexity. *Proposed:* start from Spider **train** (≈6k non-nested, labelled via `classify_sql`; bucket counts: simple 1,815 / single-join 858 / multi-join 396 / aggregation 2,912) and over-sample multi-join; use the shared schema context format from Agent 1 (`ddl` field, pruned) so training matches inference; keep `eval/*.json` held out | bucket sizes checked, splits fixed, no leakage | Shared with Agent 4 |
-| 2 Standard LoRA baseline | 3–4 | PEFT LoRA on a placeholder base (control condition); fixed seeds | trains within 8GB VRAM; exact-match + execution accuracy baseline | — |
+| 2 Standard LoRA baseline | 3–4 | PEFT LoRA on a placeholder base (control condition); fixed seeds | trains within the mid-range memory budget; exact-match + execution accuracy baseline | — |
 | 3 HydraLoRA module | 4–6 | Custom module: shared A, multiple B heads (one per bucket); **hard-coded routing** via the shared classifier (deliberate design choice: auditable, avoids gating collapse — state this in the thesis). Build incrementally, validate on a tiny subset first (PEFT has no multi-head B) | unit test: correct head receives each example; param count reported | — |
 | 4 Placeholder comparison | 4–6 | LoRA vs HydraLoRA, identical base/data/epochs/budget; metrics: exact-match, JOIN/aggregation accuracy, trainable params, per bucket with paired stats | winner + runner-up identified | early finding |
 | 5 Re-validation | 6–7 | Re-run on Agent 2's distilled and native bases (shared config); shorter pass | table for both bases | — |
@@ -121,7 +121,7 @@ Parallel-work fix: build tooling now, run an early QAT-vs-PTQ pass on a self-fin
 | 4 Core comparison | 7–8 | Same on Agent 3's **winning** architecture: unquantized ceiling, PTQ baseline, QAT; find the bit-level inflection point per bucket | winning strategy identified with CIs | — |
 | 5 Cross-check | 8 | Apply the winning strategy to Agent 3's **runner-up**; same bit-rates/protocol; report ranking stable or reversed | cross-architecture result (reversal is a valid finding) | — |
 | 6 Live sub-agents | 8–9 | Execution sub-agent (read-only SQL run; `harness.run_sql` is the stand-in); Error-Diagnosis sub-agent: classify error (no such column/table, ambiguous, syntax) → hint back to Agent 3's generator within the bounded retry. *Starting point:* the reference prototype's "smart hint" categories | harness retry fixes cases the raw-error hint cannot | → harness |
-| 7 Deployment model | 8–9 | Final deployment-ready quantized model, fits 8GB, latency reported | end-to-end run on target hardware | — |
+| 7 Deployment model | 8–9 | Final deployment-ready quantized model, fits mid-range hardware, latency reported | end-to-end run on target hardware | — |
 | 8 Report/integration | 9–12 | Analysis, thesis chapter, feasibility testing | — | — |
 
 Risks: depends on Agent 3's artefacts (mitigated by placeholder pass); equal-budget fairness between QAT and PTQ; need to distinguish this from arXiv 2607.25583 ("How Small Can You Go?") in the literature review.
@@ -131,7 +131,7 @@ Risks: depends on Agent 3's artefacts (mitigated by placeholder pass); equal-bud
 ## 5. Integration phase (all, Months 9–12)
 
 1. Replace harness stand-ins with real Agent 3 `generate` and Agent 4 `execute`/diagnosis; keep JSON-lines trace logging.
-2. End-to-end evaluation on Chinook / Spider dev / TPC-H: execution accuracy by bucket, VRAM, latency; compare to MATS' published figures (efficiency framing: one shared model + adapters + quantization on 8GB vs MATS' 9B/five models/24GB).
+2. End-to-end evaluation on Chinook / Spider dev / TPC-H: execution accuracy by bucket, VRAM, latency; compare to MATS' published figures (efficiency framing: one shared model + adapters + quantization on mid-range hardware vs MATS' 9B/five models/24GB).
 3. Feasibility demonstration only — the four independent studies carry the novelty claims, not the assembled system.
 4. Dissertation write-up, paper, final presentation.
 
