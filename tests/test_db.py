@@ -26,6 +26,14 @@ def test_url_detection_and_redaction():
     assert not is_url("data/chinook.db") and is_url("postgresql+psycopg://u:p@h/db")
     assert redact("postgresql+psycopg://ro:s3cr3t@host:5432/bank") == "postgresql+psycopg://ro:***@host:5432/bank"
     assert redact("data/chinook.db") == "data/chinook.db"
+    assert redact("postgresql+psycopg://ro:p@ss@w0rd@host/bank") == "postgresql+psycopg://ro:***@host/bank"  # '@' in password
+    assert "w0rd" not in redact("could not connect: postgresql://ro:p@ss@w0rd@host/bank refused")
+
+
+def test_only_enforced_server_dialects_are_accepted():
+    for url in ["mysql+pymysql://ro:x@host/bank", "mssql+pyodbc://ro:x@host/bank"]:
+        with pytest.raises(DBError, match="not supported yet"):
+            query(url, "SELECT 1")
     assert dialect("data/chinook.db") == "SQLite"
 
 

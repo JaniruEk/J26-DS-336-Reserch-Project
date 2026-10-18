@@ -7,6 +7,7 @@ import os
 import re
 import time
 import uuid
+from collections import OrderedDict
 from functools import partial
 from pathlib import Path
 from typing import Annotated
@@ -74,9 +75,7 @@ def safe_has_rows(db):
 
 
 class SaveAnswer(BaseModel):
-    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_QUESTION)]
-    sql: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20000)]
-    db: str | None = None
+    trace: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]  # a /query answer, never client SQL
 
 
 class Query(BaseModel):
@@ -96,6 +95,7 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
     Path(log_path).parent.mkdir(parents=True, exist_ok=True)
     Path(answers_path).parent.mkdir(parents=True, exist_ok=True)
     answers = AnswerStore(answers_path)
+    answered = OrderedDict()  # trace -> (question, db name, sql) of successful /query answers: the only SQL /answers will save
 
     def log(trace, stage, **fields):
         with open(log_path, "a", encoding="utf-8") as f:
@@ -168,6 +168,9 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
                                  **({"rows": len(result)} if ok else {"error": result})})
             if ok:
                 cols = sql_columns(path, sql)
+                answered[trace] = (req.query, req.db or next(iter(dbs)), sql)
+                if len(answered) > 1000:  # ponytail: in-memory, recent answers only; a restart forgets unsaved traces
+                    answered.popitem(last=False)
                 return {**out, "ok": True, "sql": sql, "columns": cols, "rows": result, "chart": chart_hint(cols, result),
                         "attempts": attempt, "total_ms": ms(t0)}
             if str(result).startswith(BLOCKED):  # unsafe request: refuse, don't coax the model into a different query
@@ -190,15 +193,17 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
 
     @app.post("/answers")
     def save_answer(req: SaveAnswer):
-        name = req.db or next(iter(dbs))
-        if name not in dbs:
-            raise HTTPException(404, f"unknown db '{name}', choose from {list(dbs)}")
-        ok, rows = execute(dbs[name], req.sql)  # never store SQL that the guard or the read-only connection rejects
+        """Saves an answer the pipeline itself produced (by its trace id). Clients can't submit SQL, so this endpoint is no
+        back door around Agent 1's no-value-linking setting or the generator."""
+        if req.trace not in answered:
+            raise HTTPException(404, f"no recent successful answer with trace '{req.trace}'; ask the question again")
+        question, name, sql = answered[req.trace]
+        ok, rows = execute(dbs[name], sql)  # re-checked: never store SQL that the guard or the read-only connection rejects
         if not ok:
             raise HTTPException(422, f"SQL rejected: {rows}")
-        cols = sql_columns(dbs[name], req.sql)
-        answer_id = answers.add(req.question, name, req.sql, cols, chart_hint(cols, rows))
-        log(uuid.uuid4().hex[:8], "bi.save", answer_id=answer_id, question=req.question, sql=req.sql)
+        cols = sql_columns(dbs[name], sql)
+        answer_id = answers.add(question, name, sql, cols, chart_hint(cols, rows))
+        log(req.trace, "bi.save", answer_id=answer_id, question=question, sql=sql)
         return {"id": answer_id, "csv": f"answers/{answer_id}.csv", "chart": chart_hint(cols, rows), "rows": len(rows)}
 
     @app.get("/answers")

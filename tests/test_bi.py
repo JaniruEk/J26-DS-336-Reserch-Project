@@ -19,9 +19,15 @@ def db(tmp_path):
     return p
 
 
-def make(db, tmp_path, superset=lambda: None):
-    return TestClient(create_app({"t": db}, generate=None, log_path=str(tmp_path / "log.jsonl"),
-                                 answers_path=str(tmp_path / "answers.db"), superset=superset))
+def make(db, tmp_path, superset=lambda: None, sql="SELECT region FROM sales"):
+    """App whose stand-in generator always answers `sql`; answers can only be saved from a /query trace."""
+    return TestClient(create_app({"t": db}, generate=lambda q, ddl, **kw: sql, log_path=str(tmp_path / "log.jsonl"),
+                                 answers_path=str(tmp_path / "answers.db"), superset=superset, agent1_config={}))
+
+
+def ask_and_save(c, question="sales by region per month"):
+    r = c.post("/query", json={"query": question, "db": "t", "mode": "structural"}).json()
+    return r, c.post("/answers", json={"trace": r["trace"]})
 
 
 def test_chart_hint_rules():
@@ -35,10 +41,11 @@ def test_chart_hint_rules():
 
 
 def test_save_then_replay_csv_without_the_model(db, tmp_path):
-    c = make(db, tmp_path)
     sql = "SELECT region, SUM(total) AS total FROM sales GROUP BY region ORDER BY region"
-    r = c.post("/answers", json={"question": "sales by region", "db": "t", "sql": sql}).json()
-    assert r["chart"] == "bar" and r["rows"] == 2 and r["csv"] == f"answers/{r['id']}.csv"
+    c = make(db, tmp_path, sql=sql)
+    q, res = ask_and_save(c)
+    r = res.json()
+    assert q["ok"] and r["chart"] == "bar" and r["rows"] == 2 and r["csv"] == f"answers/{r['id']}.csv"
     csv1 = c.get(f"/answers/{r['id']}.csv").text
     assert csv1.splitlines() == ["region,total", "North,17.0", "South,5.0"]
     assert c.get(f"/answers/{r['id']}.csv").text == csv1  # replay is deterministic: same SQL, same rows
@@ -46,18 +53,21 @@ def test_save_then_replay_csv_without_the_model(db, tmp_path):
     assert c.get(f"/answers/{r['id']}").json()["rows"] == [["North", 17.0], ["South", 5.0]]
 
 
-def test_save_rejects_unsafe_or_broken_sql_and_unknown_ids(db, tmp_path):
-    c = make(db, tmp_path)
-    for sql in ["DELETE FROM sales", "SELECT nope FROM sales", "SELECT 1; DROP TABLE sales"]:
-        assert c.post("/answers", json={"question": "x", "db": "t", "sql": sql}).status_code == 422, sql
-    assert c.post("/answers", json={"question": "x", "db": "../etc", "sql": "SELECT 1"}).status_code == 404
+def test_answers_only_saves_sql_the_pipeline_produced(db, tmp_path):
+    c = make(db, tmp_path, sql="DELETE FROM sales")
+    q, res = ask_and_save(c)
+    assert not q["ok"] and res.status_code == 404  # refused answer: nothing to save
+    assert c.post("/answers", json={"trace": "made-up"}).status_code == 404
+    # the old client-SQL shape is rejected outright: no raw SQL door around Agent 1 / value-linking settings
+    assert c.post("/answers", json={"question": "x", "db": "t", "sql": "SELECT * FROM sales"}).status_code == 422
     assert c.get("/answers/99.csv").status_code == 404
     assert c.get("/answers").json() == []
 
 
 def test_saved_sql_that_stops_working_gives_409(db, tmp_path):
     c = make(db, tmp_path)
-    a = c.post("/answers", json={"question": "x", "db": "t", "sql": "SELECT region FROM sales"}).json()
+    _, res = ask_and_save(c)
+    a = res.json()
     con = sqlite3.connect(db)
     con.execute("ALTER TABLE sales RENAME TO sales_old")
     con.commit(); con.close()
@@ -66,9 +76,27 @@ def test_saved_sql_that_stops_working_gives_409(db, tmp_path):
 
 def test_superset_disabled_gives_501(db, tmp_path):
     c = make(db, tmp_path)
-    a = c.post("/answers", json={"question": "x", "db": "t", "sql": "SELECT region FROM sales"}).json()
-    assert c.post(f"/answers/{a['id']}/superset").status_code == 501
+    _, res = ask_and_save(c)
+    assert c.post(f"/answers/{res.json()['id']}/superset").status_code == 501
     assert c.get("/health").json()["superset"] is False
+
+
+def test_superset_needs_explicit_credentials(monkeypatch):
+    from harness.bi import superset_config
+    monkeypatch.setenv("SUPERSET_URL", "http://bi")
+    monkeypatch.delenv("SUPERSET_USER", raising=False)
+    monkeypatch.delenv("SUPERSET_PASSWORD", raising=False)
+    assert superset_config() is None  # no admin/admin fallback
+    monkeypatch.setenv("SUPERSET_USER", "bi_bot")
+    monkeypatch.setenv("SUPERSET_PASSWORD", "x")
+    assert superset_config()["user"] == "bi_bot"
+
+
+def test_csv_neutralises_spreadsheet_formulas():
+    from harness.bi import to_csv
+    out = to_csv(["=cmd", "n"], [("=HYPERLINK(\"http://x\")", -5), ("+1", 3), ("@SUM(A1)", 0), ("safe", 1)]).splitlines()
+    assert out[0] == "'=cmd,n" and out[1].startswith("\"'=HYPERLINK") and out[1].endswith(",-5")
+    assert out[2] == "'+1,3" and out[3] == "'@SUM(A1),0" and out[4] == "safe,1"
 
 
 def test_superset_push_sends_dataset_then_chart():

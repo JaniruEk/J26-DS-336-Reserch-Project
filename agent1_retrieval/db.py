@@ -21,15 +21,21 @@ def is_url(db):
 
 
 def redact(db):
-    """Safe to show or log: hides the password in a URL."""
-    return re.sub(r"(://[^:/@]+:)[^@]+@", r"\1***@", str(db))
+    """Safe to show or log: hides the password in a URL, also inside error text. Greedy up to the LAST '@' of the
+    token, so a password containing '@' is hidden completely."""
+    return re.sub(r"(://[^:/@\s]+:)\S*@", r"\1***@", str(db))
+
+
+ENFORCED = ("postgresql",)  # server dialects whose read-only mode, one-statement rule and timeout this module enforces
 
 
 @lru_cache(maxsize=None)
 def _engine(url):
     from sqlalchemy import create_engine, make_url
-    args = {"options": "-c default_transaction_read_only=on"} if make_url(url).get_backend_name() == "postgresql" else {}
-    return create_engine(url, pool_pre_ping=True, connect_args=args)
+    backend = make_url(url).get_backend_name()
+    if backend not in ENFORCED:  # ponytail: add MySQL/SQL Server/Oracle only with their own read-only + timeout session setup
+        raise DBError(f"'{backend}' databases are not supported yet: read-only access is only enforced for SQLite and PostgreSQL")
+    return create_engine(url, pool_pre_ping=True, connect_args={"options": "-c default_transaction_read_only=on"})
 
 
 _HIDDEN = re.compile(r"'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"|--[^\n]*|/\*.*?\*/", re.S)

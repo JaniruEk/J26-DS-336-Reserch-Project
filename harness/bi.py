@@ -24,11 +24,17 @@ def chart_hint(columns, rows):
     return "table"
 
 
+def _cell(v):
+    """Neutralise spreadsheet formulas (CSV injection): a text cell starting with = + - @ tab or CR gets a leading quote.
+    Numbers are left alone, so -5 stays a number."""
+    return "'" + v if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r") else v
+
+
 def to_csv(columns, rows):
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(columns)
-    w.writerows(rows)
+    w.writerow([_cell(c) for c in columns])
+    w.writerows([_cell(v) for v in r] for r in rows)
     return buf.getvalue()
 
 
@@ -67,13 +73,15 @@ class AnswerStore:
 
 
 def superset_config():
-    """Superset connection from env vars; None when not configured (the endpoint then answers 501).
-    SUPERSET_DATABASES maps our db keys to Superset database ids, e.g. '{"chinook": 1}'."""
-    url = os.environ.get("SUPERSET_URL")
-    if not url:
+    """Superset connection from env vars; None when not fully configured (the endpoint then answers 501).
+    SUPERSET_DATABASES maps our db keys to Superset database ids, e.g. '{"chinook": 1}'.
+    No default credentials: use a dedicated low-privilege Superset account that can only create datasets/charts,
+    and a Superset database connection that logs in with a SELECT-only database user."""
+    url, user, password = (os.environ.get(k) for k in ("SUPERSET_URL", "SUPERSET_USER", "SUPERSET_PASSWORD"))
+    if not (url and user and password):
         return None
-    return {"url": url.rstrip("/"), "user": os.environ.get("SUPERSET_USER", "admin"),
-            "password": os.environ.get("SUPERSET_PASSWORD", "admin"),
+    return {"url": url.rstrip("/"), "user": user,
+            "password": password,
             "databases": json.loads(os.environ.get("SUPERSET_DATABASES", "{}"))}
 
 
