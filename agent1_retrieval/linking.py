@@ -9,10 +9,10 @@ Lemma overlap and word vectors cannot read three things that real schemas and qu
 Every kept column carries the name of the signal that kept it, so a decision can always be explained.
 """
 import re
-import sqlite3
 import time
 from functools import lru_cache
 
+from .db import DBError, is_url, quote, session
 from .pruning import lemma, nlp, split_ident
 
 ABBREV = {
@@ -102,9 +102,6 @@ class ValueLinker:
         self.max_distinct, self.budget_ms, self.max_probes = max_distinct, budget_ms, max_probes
         self._cat = None
 
-    def _con(self):
-        return sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
-
     @staticmethod
     def _text(typ):
         return not typ or any(k in typ.lower() for k in ("char", "text", "clob", "string"))
@@ -116,19 +113,17 @@ class ValueLinker:
     def _categorical(self):
         if self._cat is None:
             self._cat = {}
-            con = self._con()
-            try:
+            db = self.db_path
+            with session(db) as run:
                 for t in self.tables.values():
                     for c in self._text_cols(t):
+                        qc, qt = quote(db, c), quote(db, t.name)
                         try:
-                            vals = con.execute(f'SELECT DISTINCT "{c}" FROM "{t.name}" WHERE "{c}" IS NOT NULL LIMIT ?',
-                                               (self.max_distinct + 1,)).fetchall()
-                        except sqlite3.Error:
+                            _, vals = run(f"SELECT DISTINCT {qc} FROM {qt} WHERE {qc} IS NOT NULL LIMIT {self.max_distinct + 1}")
+                        except DBError:
                             continue
                         if 0 < len(vals) <= self.max_distinct:
                             self._cat[(t.name, c)] = {_norm(str(v)) for (v,) in vals if isinstance(v, str)}
-            finally:
-                con.close()
         return self._cat
 
     def link(self, query, names):
@@ -139,24 +134,25 @@ class ValueLinker:
                 hits.setdefault(t, set()).add(c)
         cands = literals(query)
         if cands:
-            con, t0, n = self._con(), time.perf_counter(), 0
-            try:
+            db, t0, n = self.db_path, time.perf_counter(), 0
+            with session(db) as run:
                 for t in names:
                     for c in self._text_cols(self.tables[t]):
                         if c in hits.get(t, ()):
                             continue
+                        qc = quote(db, c)
+                        # same case-insensitive equality either way; SQLite keeps its original NOCASE form
+                        cond = f"{qc} = :v COLLATE NOCASE" if not is_url(db) else f"LOWER({qc}) = LOWER(:v)"
                         for lit in cands:
                             n += 1
                             if n > self.max_probes or (time.perf_counter() - t0) * 1000 > self.budget_ms:
                                 return hits
                             try:
-                                if con.execute(f'SELECT 1 FROM "{t}" WHERE "{c}" = ? COLLATE NOCASE LIMIT 1', (lit,)).fetchone():
+                                if run(f"SELECT 1 FROM {quote(db, t)} WHERE {cond} LIMIT 1", {"v": lit})[1]:
                                     hits.setdefault(t, set()).add(c)
                                     break
-                            except sqlite3.Error:
+                            except DBError:
                                 break
-            finally:
-                con.close()
         return hits
 
 

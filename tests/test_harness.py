@@ -22,7 +22,8 @@ def db(tmp_path):
 
 def client(db, tmp_path, generate):
     log = tmp_path / "log.jsonl"
-    return TestClient(create_app({"t": db}, generate=generate, log_path=str(log))), log
+    return TestClient(create_app({"t": db}, generate=generate, log_path=str(log), answers_path=str(tmp_path / "answers.db"),
+                                 superset=lambda: None)), log
 
 
 def test_retry_loop_passes_error_hint_and_logs_every_handoff(db, tmp_path):
@@ -138,3 +139,9 @@ def test_wrong_inputs_are_rejected_cleanly(db, tmp_path):
 def test_multiple_statements_are_an_error_not_a_crash(db):
     ok, err = run_sql(db, "SELECT 1; SELECT 2")
     assert not ok and err
+
+
+def test_chat_page_has_save_as_chart(db, tmp_path):
+    c, _ = client(db, tmp_path, None)
+    page = c.get("/chat").text
+    assert "Save as chart" in page and 'fetch("answers"' in page

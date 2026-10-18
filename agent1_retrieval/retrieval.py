@@ -52,7 +52,7 @@ def _enc():
 
 class Retriever:
     def __init__(self, db_path, depth=1, threshold=0.6, labels=False, adaptive=False, multi_anchors=0, gate=True, min_cols=0, chroma_path=None,
-                 rich=False, infer_missing_fks=False):
+                 rich=False, infer_missing_fks=False, value_linking=True):
         # adaptive: +1 FK hop for questions predicted multi-join. multi_anchors=k: for those questions also take the top-k
         # semantic tables and connect them to the main anchor along shortest FK paths (bridge tables included).
         self.db_path, self.depth, self.threshold, self.labels, self.adaptive = db_path, depth, threshold, labels, adaptive
@@ -60,6 +60,8 @@ class Retriever:
         # rich: extra linking signals in pruning (linking.py). infer_missing_fks: add FKs implied by column names
         # when the schema declares none (both opt-in, so the Phase 1-7 numbers reproduce with the defaults).
         self.rich = rich
+        # value_linking=False: rich linking never reads data values (switch off for databases holding personal data)
+        self.value_linking = value_linking
         self.tables = reflect(db_path)
         self.inferred = infer_fks(self.tables) if infer_missing_fks else []
         self.adj = adjacency(self.tables)
@@ -72,7 +74,7 @@ class Retriever:
             import chromadb
             # own on-disk client per Retriever: the shared in-process EphemeralClient intermittently returned no results across many collections
             client = chromadb.PersistentClient(self.chroma_path or tempfile.mkdtemp())
-            self._col = client.get_or_create_collection("schema_" + hashlib.md5(self.db_path.encode()).hexdigest()[:12],
+            self._col = client.get_or_create_collection("schema_" + hashlib.md5(str(self.db_path).encode()).hexdigest()[:12],
                                                         embedding_function=_embedder())
             if self._col.count() != len(self.tables):
                 self._col.upsert(ids=list(self.tables), documents=[render(t) for t in self.tables.values()])
@@ -146,7 +148,7 @@ class Retriever:
         terms = query_terms(query) if mode == "hybrid_pruned" else None
         reasons = None
         if terms is not None:
-            values = self._value_links(query, names) if self.rich else {}
+            values = self._value_links(query, names) if self.rich and self.value_linking else {}
             qlem = {t.lemma_.lower() for t in terms}
             reasons = {n: explain_columns(self.tables[n], terms, self.threshold, self.labels, rich=self.rich,
                                           values=values.get(n, ()),
