@@ -150,16 +150,33 @@ def test_chat_page_has_save_as_chart(db, tmp_path):
 
 def test_add_database_at_runtime(db, tmp_path):
     up = tmp_path / "uploads"
-    c = TestClient(create_app({"t": db}, generate=lambda q, ddl, **kw: "SELECT total FROM invoice", log_path=str(tmp_path / "l.jsonl"),
-                              answers_path=str(tmp_path / "a.db"), superset=lambda: None, uploads_dir=str(up)))
-    r = c.post("/dbs/upload?name=shop", content=Path(db).read_bytes())
+    make = lambda **kw: TestClient(create_app({"t": db}, generate=lambda q, ddl, **k: "SELECT total FROM invoice",
+                                              log_path=str(tmp_path / "l.jsonl"), answers_path=str(tmp_path / "a.db"),
+                                              superset=lambda: None, uploads_dir=str(up), **kw))
+    c = make(admin_token="t0k", admin_hosts={"testserver"}, db_hosts=set())
+    H = {"X-J26-Admin": "t0k"}
+    r = c.post("/dbs/upload?name=shop", content=Path(db).read_bytes(), headers=H)
     assert r.status_code == 200 and r.json()["tables"] == 1 and (up / "shop.db").exists()
     assert c.post("/query", json={"query": "total of each invoice", "db": "shop"}).json()["rows"] == [[9.5]]
-    assert c.post("/dbs/upload?name=shop", content=Path(db).read_bytes()).status_code == 409  # never overwrite
-    assert c.post("/dbs/upload?name=..%2Fevil", content=b"x").status_code == 422  # name is the file name: no paths
-    assert c.post("/dbs/upload?name=junk", content=b"not a database").status_code == 400
-    assert not (up / "junk.db").exists() and not (up / "junk.part").exists()
-    assert c.post("/dbs", json={"name": "p", "url": db}).status_code == 422  # a client can't point at a file on disk
-    r = c.post("/dbs", json={"name": "m", "url": "mysql+pymysql://u:secret@h/x"})
-    assert r.status_code == 400 and "secret" not in r.text  # only read-only-enforced dialects; password never echoed
+    assert c.post("/dbs/upload?name=shop", content=Path(db).read_bytes(), headers=H).status_code == 409  # never overwrite
+    assert (up / "shop.db").stat().st_size > 0  # the refused upload did not touch the existing file
+    assert c.post("/dbs/upload?name=..%2Fevil", content=b"x", headers=H).status_code == 422  # name is the file name: no paths
+    assert c.post("/dbs/upload?name=junk", content=b"not a database", headers=H).status_code == 400
+    assert not (up / "junk.db").exists() and not list(up.glob("*.part"))
+    assert c.post("/dbs", json={"name": "p", "url": db}, headers=H).status_code == 422  # a client can't point at a file on disk
+    r = c.post("/dbs", json={"name": "m", "url": "mysql+pymysql://u:secret@h/x"}, headers=H)
+    assert r.status_code == 422 and "secret" not in r.text  # only read-only-enforced dialects; password never echoed
+    for bad in ("postgresql+psycopg://u:p@h/x?host=/var/run", "postgresql+psycopg://u:p@h/x?passfile=/etc/x",
+                "postgresql+psycopg://u:p@/x"):  # no host overrides, files or Unix sockets
+        assert c.post("/dbs", json={"name": "q", "url": bad}, headers=H).status_code == 422, bad
+    r = c.post("/dbs", json={"name": "q", "url": "postgresql+psycopg://u:p@127.0.0.1:1/x?connect_timeout=1"}, headers=H)
+    assert r.status_code == 400 and "could not connect" in r.json()["detail"]  # generic: no driver detail to probe with
     assert c.get("/dbs").json() == ["t", "shop"]
+    # admin only, never from another site
+    assert c.post("/dbs/upload?name=a1", content=Path(db).read_bytes()).status_code == 403  # no custom header
+    assert c.post("/dbs/upload?name=a1", content=Path(db).read_bytes(), headers={"X-J26-Admin": "nope"}).status_code == 403
+    assert make(admin_token="t0k").post("/dbs/upload?name=a1", content=b"x", headers=H).status_code == 403  # Host 'testserver' not allowed
+    assert make(admin_token="", admin_hosts={"testserver"}).post(  # no token set: only this machine ('testclient' is not)
+        "/dbs/upload?name=a1", content=b"x", headers={"X-J26-Admin": "local"}).status_code == 403
+    assert make(admin_token="t0k", admin_hosts={"testserver"}, db_hosts={"db.bank.local"}).post(
+        "/dbs", json={"name": "q", "url": "postgresql+psycopg://u:p@evil.example/x"}, headers=H).status_code == 403

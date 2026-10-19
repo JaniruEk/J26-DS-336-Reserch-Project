@@ -51,6 +51,7 @@
     <input id="dburl" placeholder="postgresql+psycopg://readonly_user:password@host:5432/dbname  (press Enter)" autocomplete="off">
     <label>Name <input id="dbname" placeholder="filled in for you" maxlength="40"></label>
     <span class="muted">letters, digits, _</span>
+    <label>Admin token <input id="dbtoken" type="password" placeholder="only from another machine" autocomplete="off"></label>
     <label><input type="checkbox" id="novalues"> don't read data values (personal data)</label>
     <button type="button" id="connect">Connect</button>
     <div class="muted">Use a read-only database login. Connections are kept in memory only and are forgotten when the server restarts; uploaded files are kept.</div>
@@ -94,7 +95,10 @@ async function addDb(req, fallback) {
     $("#addmsg").innerHTML = `<div class="err">Could not reach the server: ${esc(err.message)}</div>`;
   }
 }
-const upload = file => addDb(name => fetch(`dbs/upload?name=${encodeURIComponent(name)}`, {method: "POST", body: file}),
+// Adding a database is an admin action: the server requires this header (other websites can't send it) and, from
+// another machine, the admin token as its value.
+const adminHeader = () => ({"X-J26-Admin": $("#dbtoken").value || "local"});
+const upload = file => addDb(name => fetch(`dbs/upload?name=${encodeURIComponent(name)}`, {method: "POST", body: file, headers: adminHeader()}),
                              file.name.replace(/\.[^.]*$/, ""));
 $("#dbfile").onchange = () => $("#dbfile").files[0] && upload($("#dbfile").files[0]);
 // The whole page takes the drop: a file dropped just outside the box would otherwise make the browser open it and leave the chat.
@@ -102,7 +106,7 @@ const drop = $("#drop");
 window.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
 window.ondragleave = e => { if (!e.relatedTarget) drop.classList.remove("over"); };
 window.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); e.dataTransfer.files[0] && upload(e.dataTransfer.files[0]); };
-const connect = () => $("#dburl").value.trim() ? addDb(name => fetch("dbs", {method: "POST", headers: {"Content-Type": "application/json"},
+const connect = () => $("#dburl").value.trim() ? addDb(name => fetch("dbs", {method: "POST", headers: {"Content-Type": "application/json", ...adminHeader()},
   body: JSON.stringify({name, url: $("#dburl").value.trim(), read_values: !$("#novalues").checked})}),
   (dbPart($("#dburl").value.trim())))
   : ($("#addmsg").innerHTML = '<div class="err">Paste a database link first.</div>');

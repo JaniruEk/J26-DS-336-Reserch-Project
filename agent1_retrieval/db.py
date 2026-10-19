@@ -29,7 +29,7 @@ def redact(db):
 ENFORCED = ("postgresql",)  # server dialects whose read-only mode, one-statement rule and timeout this module enforces
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=32)  # bounded: URLs can be added at runtime (harness /dbs), failed attempts must not pile up
 def _engine(url):
     from sqlalchemy import create_engine, make_url
     backend = make_url(url).get_backend_name()

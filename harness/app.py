@@ -2,10 +2,12 @@
 Agent 1 is real. Agents 3 (generate) and 4 (execute) are injectable callables; the defaults are stand-ins
 (local phi3 + plain sqlite) until the teammates' components replace them.
 Run: uvicorn harness.app:app   |   GET / = Agent 1 Retrieval Explorer   |   GET /chat = team chatbot   |   POST /query {"query": "...", "db": "chinook"}"""
+import hmac
 import json
 import os
 import re
 import sqlite3
+import tempfile
 import time
 import uuid
 from collections import OrderedDict
@@ -32,7 +34,14 @@ DEFAULT_DBS = {**{k: p for k, p in {"chinook": "data/chinook.db", "northwind": "
                **{f"spider/{p.stem}": p.as_posix() for p in sorted(Path("data/spider").glob("*/*.sqlite"))},
                **{p.stem: p.as_posix() for p in sorted(Path("data/uploads").glob("*.db"))}} or {"chinook": "data/chinook.db"}
 DB_NAME = re.compile(r"[A-Za-z0-9_]{1,40}")  # names of databases added at runtime (also the upload's file name)
-MAX_UPLOAD = 500 * 2**20  # bytes
+MAX_UPLOAD = 500 * 2**20  # bytes per file
+MAX_UPLOADS = 50  # files kept in uploads_dir
+LOOPBACK = {"127.0.0.1", "::1", "localhost"}
+URL_OPTIONS = {"sslmode", "connect_timeout"}  # the only ?options a connection URL may carry (no host/hostaddr/passfile/service overrides)
+
+
+def env_set(name):
+    return {v.strip().lower() for v in os.environ.get(name, "").split(",") if v.strip()}
 
 
 def env_dbs():
@@ -105,7 +114,14 @@ class NewDB(BaseModel):
 
 def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute=run_sql, log_path="data/handoff.log.jsonl",
                agent1_config=LIVE, answers_path="data/answers.db", superset=superset_config, no_value_linking=None,
-               glossaries=None, uploads_dir="data/uploads"):
+               glossaries=None, uploads_dir="data/uploads", admin_token=None, admin_hosts=None, db_hosts=None):
+    """Adding databases at runtime (/dbs, /dbs/upload) is an admin action. admin_token (env J26_ADMIN_TOKEN): required
+    from other machines; unset = only requests from this machine may add databases. admin_hosts (env J26_ALLOWED_HOSTS):
+    extra Host header names the app is reached by (DNS-rebinding check). db_hosts (env J26_DB_HOSTS): if set, the only
+    database hosts /dbs may connect to."""
+    admin_token = os.environ.get("J26_ADMIN_TOKEN") if admin_token is None else admin_token
+    admin_hosts = LOOPBACK | (env_set("J26_ALLOWED_HOSTS") if admin_hosts is None else set(admin_hosts))
+    db_hosts = env_set("J26_DB_HOSTS") if db_hosts is None else set(db_hosts)
     """agent1_config: Retriever options for the live Agent 1 (pass {} for the original Phase 1-7 settings).
     superset: callable returning the Superset config or None (BI push disabled).
     dbs: name -> SQLite path or SQLAlchemy URL. no_value_linking: db names whose data values Agent 1 must not read."""
@@ -160,10 +176,24 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
     def list_dbs():
         return list(dbs)
 
+    def admin(request):
+        """Adding a database changes what the server connects to and stores, so: never from another website, admin only."""
+        sent = request.headers.get("x-j26-admin")
+        if sent is None:  # a custom header: another site's form or fetch can't send it (CORS preflight, never granted here)
+            raise HTTPException(403, "missing X-J26-Admin header")
+        host = (request.headers.get("host") or "").rsplit(":", 1)[0].strip("[]").lower()
+        if host not in admin_hosts:  # DNS rebinding: a foreign name pointed at this machine
+            raise HTTPException(403, f"adding databases is not allowed via host '{host}' (see J26_ALLOWED_HOSTS)")
+        if admin_token:
+            if not hmac.compare_digest(sent.encode(), admin_token.encode()):
+                raise HTTPException(403, "wrong admin token")
+        elif (request.client.host if request.client else "") not in LOOPBACK:
+            raise HTTPException(403, "adding databases from another machine needs J26_ADMIN_TOKEN set on the server")
+
     def new_name(name):
         if not DB_NAME.fullmatch(name):
             raise HTTPException(422, "name: 1-40 letters, digits or _")
-        if name in dbs or (Path(uploads_dir) / f"{name}.db").exists():
+        if name in dbs:
             raise HTTPException(409, f"a database called '{name}' already exists")
 
     def add_db(name, db, read_values=True):
@@ -171,31 +201,58 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
         try:
             tables = reflect(db)
         except Exception as e:  # bad URL, refused login, unreachable host, not a database file
-            raise HTTPException(400, f"could not open the database: {redact(str(e).strip().splitlines()[0] if str(e).strip() else type(e).__name__)}")
+            log(uuid.uuid4().hex[:8], "dbs.add_failed", name=name, error=redact(str(e)))  # detail for the operator's log only
+            raise HTTPException(400, "could not connect: check the host, port, database name and read-only login"
+                                if is_url(db) else "could not open the database file")
         if not tables:
             raise HTTPException(400, "the database has no tables")
+        if name in dbs:  # a concurrent request took the name while this one was connecting
+            raise HTTPException(409, f"a database called '{name}' already exists")
         dbs[name] = db
         if not read_values:
             no_values.add(name)
         return {"name": name, "tables": len(tables), "schema_only": not safe_has_rows(db)}
 
     @app.post("/dbs")
-    def connect_db(req: NewDB):
+    def connect_db(req: NewDB, request: Request):
         """Connect a server database (PostgreSQL). Kept in memory only, so the password is never written to disk."""
+        admin(request)
         new_name(req.name)
-        if not is_url(req.url):
+        from sqlalchemy.engine import make_url
+        try:
+            url = make_url(req.url) if is_url(req.url) else None
+        except Exception:
+            url = None
+        if url is None:
             raise HTTPException(422, "url must look like postgresql+psycopg://user:password@host:5432/dbname (upload SQLite files instead)")
+        if url.get_backend_name() != "postgresql":
+            raise HTTPException(422, "only PostgreSQL links can be added (read-only access is enforced for PostgreSQL)")
+        if not url.host or url.host.startswith("/"):
+            raise HTTPException(422, "the link needs a host name (no Unix sockets)")
+        if set(url.query) - URL_OPTIONS:
+            raise HTTPException(422, f"unsupported link options: {sorted(set(url.query) - URL_OPTIONS)} (allowed: {sorted(URL_OPTIONS)})")
+        if db_hosts and url.host.lower() not in db_hosts:
+            raise HTTPException(403, f"host '{url.host}' is not in the allowed database hosts (J26_DB_HOSTS)")
         return add_db(req.name, req.url, req.read_values)
 
     @app.post("/dbs/upload")
     async def upload_db(request: Request, name: str):
         """Upload a SQLite file as the raw request body. Saved under uploads_dir, so it is still there after a restart."""
+        admin(request)
         new_name(name)
-        dest = Path(uploads_dir) / f"{name}.db"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        part, size = dest.with_suffix(".part"), 0
+        up = Path(uploads_dir)
+        up.mkdir(parents=True, exist_ok=True)
+        if len(list(up.glob("*.db"))) >= MAX_UPLOADS:
+            raise HTTPException(507, f"upload limit reached ({MAX_UPLOADS} files); remove old uploads first")
+        dest = up / f"{name}.db"
+        try:  # claim the name atomically: two uploads with the same name can't both get it
+            os.close(os.open(dest, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+        except FileExistsError:
+            raise HTTPException(409, f"a database called '{name}' already exists")
+        fd, part = tempfile.mkstemp(dir=up, suffix=".part")  # unique per request
+        size = 0
         try:
-            with open(part, "wb") as f:
+            with os.fdopen(fd, "wb") as f:
                 async for chunk in request.stream():
                     size += len(chunk)
                     if size > MAX_UPLOAD:
@@ -204,7 +261,7 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
             with open(part, "rb") as f:
                 if f.read(16) != b"SQLite format 3\x00":
                     raise HTTPException(400, "not a SQLite database file")
-            con = sqlite3.connect(f"file:{part.as_posix()}?mode=ro", uri=True)
+            con = sqlite3.connect(f"file:{Path(part).as_posix()}?mode=ro", uri=True)
             try:
                 if con.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                     raise HTTPException(400, "the SQLite file is damaged")
@@ -212,10 +269,10 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
                 raise HTTPException(400, f"the SQLite file is damaged: {e}")
             finally:
                 con.close()
-            part.replace(dest)
+            os.replace(part, dest)
             return add_db(name, dest.as_posix())
-        except HTTPException:
-            part.unlink(missing_ok=True)
+        except BaseException:  # this request created dest, so only it removes it
+            Path(part).unlink(missing_ok=True)
             dest.unlink(missing_ok=True)
             raise
 
