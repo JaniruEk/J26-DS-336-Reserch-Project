@@ -35,7 +35,8 @@ def _engine(url):
     backend = make_url(url).get_backend_name()
     if backend not in ENFORCED:  # ponytail: add MySQL/SQL Server/Oracle only with their own read-only + timeout session setup
         raise DBError(f"'{backend}' databases are not supported yet: read-only access is only enforced for SQLite and PostgreSQL")
-    return create_engine(url, pool_pre_ping=True, connect_args={"options": "-c default_transaction_read_only=on"})
+    return create_engine(url, pool_pre_ping=True, connect_args={"options": "-c default_transaction_read_only=on",
+                                                                    "connect_timeout": 10})  # unreachable host: fail, don't hang
 
 
 _HIDDEN = re.compile(r"'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"|--[^\n]*|/\*.*?\*/", re.S)

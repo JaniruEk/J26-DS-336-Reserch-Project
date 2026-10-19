@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saved Answers Dashboard</title>
+<style>
+  :root { color-scheme: light dark; --fg:#0b0b0b; --muted:#52514e; --line:#dddcd7; --grid:#ecebe7; --bg:#fff; --tile:#fcfcfb; --bad:#fdecea; --series:#2a78d6; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#f0efec; --muted:#c3c2b7; --line:#3a3a38; --grid:#2a2a28; --bg:#121211; --tile:#1a1a19; --bad:#3a1c1a; --series:#3987e5; } }
+  body { font: 15px/1.45 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 1200px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; } a { color: var(--series); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .bar-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  button { padding: 6px 12px; font: inherit; font-size: 13px; }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 12px; align-items: start; }
+  .tile { background: var(--tile); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
+  .tile h2 { font-size: 15px; margin: 0 0 2px; }
+  .err { background: var(--bad); padding: 6px 8px; border-radius: 4px; font-size: 13px; }
+  .hero { font-size: 48px; font-weight: 600; line-height: 1.1; margin: 12px 0; }
+  .hbar { display: grid; grid-template-columns: minmax(60px, 35%) 1fr; gap: 2px 8px; align-items: center; margin-top: 8px; font-size: 13px; }
+  .hbar .lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+  .hbar .track { position: relative; height: 18px; }
+  .hbar .fill { height: 14px; margin-top: 2px; background: var(--series); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .hbar .hit { position: absolute; inset: 0; }
+  .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .plot { display: grid; grid-template-columns: auto 1fr; gap: 0 6px; margin-top: 8px; }
+  .yaxis { display: flex; flex-direction: column; justify-content: space-between; text-align: right; color: var(--muted); font-size: 12px; }
+  .line { position: relative; height: 180px; }
+  .line svg { width: 100%; height: 100%; display: block; }
+  .line .cross { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--muted); display: none; pointer-events: none; }
+  .line .dot { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--series);
+               box-shadow: 0 0 0 2px var(--tile); display: none; pointer-events: none; }
+  table { border-collapse: collapse; font-size: 13px; margin-top: 8px; width: 100%; }
+  th, td { border-bottom: 1px solid var(--line); padding: 3px 6px; text-align: left; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; max-height: 320px; overflow-y: auto; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; font-size: 13px; }
+  pre { white-space: pre-wrap; font-size: 12px; margin: 4px 0; }
+  #tip { position: fixed; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 12px; padding: 4px 8px;
+         border-radius: 4px; display: none; z-index: 10; max-width: 260px; }
+</style>
+</head>
+<body>
+<h1>Saved Answers Dashboard</h1>
+<div class="muted">Answers saved from the <a href="chat">chat</a>. Each tile re-runs its saved SQL read-only against the live database; no model is involved,
+  so the numbers are always current and the query never changes.</div>
+<div class="bar-top">
+  <button id="refresh">Refresh all</button>
+  <span class="muted" id="status"></span>
+</div>
+<div id="grid"></div>
+<div id="tip"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num = v => typeof v === "number" ? new Intl.NumberFormat(undefined, {maximumFractionDigits: 2}).format(v) : String(v ?? "");
+const compact = v => typeof v === "number" && Math.abs(v) >= 10000 ? new Intl.NumberFormat(undefined, {notation: "compact", maximumFractionDigits: 1}).format(v) : num(v);
+const MAX_BARS = 15, MAX_ROWS = 50;
+
+const tip = $("#tip");
+const showTip = (e, html) => { tip.innerHTML = html; tip.style.display = "block";
+  tip.style.left = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8) + "px"; tip.style.top = (e.clientY + 12) + "px"; };
+const hideTip = () => tip.style.display = "none";
+
+function table(cols, rows) {
+  const shown = rows.slice(0, MAX_ROWS);
+  return `<div class="scroll"><table><tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr>` +
+    shown.map(r => `<tr>${r.map(v => `<td class="${typeof v === "number" ? "num" : ""}">${esc(num(v))}</td>`).join("")}</tr>`).join("") +
+    `</table></div><div class="muted">${rows.length > MAX_ROWS ? `Showing ${MAX_ROWS} of ${rows.length} rows.` : `${rows.length} row(s).`}</div>`;
+}
+
+// Horizontal bars: category labels stay readable at any width; one series, so no legend (the title names it).
+function bars(a, rows, tile) {
+  const shown = rows.slice(0, MAX_BARS), max = Math.max(0, ...shown.map(r => r[1]));
+  const html = `<div class="hbar">${shown.map((r, i) => `<div class="lab" title="${esc(r[0])}">${esc(r[0])}</div>
+      <div class="track"><div class="fill" style="width:${max > 0 ? Math.max(0, r[1]) / max * 100 : 0}%"></div><div class="hit" data-i="${i}"></div></div>`).join("")}
+    <div></div><div class="axis"><span>0</span><span>${esc(compact(max))}</span></div></div>` +
+    (rows.length > MAX_BARS ? `<div class="muted">Showing the first ${MAX_BARS} of ${rows.length}; the table view has all.</div>` : "");
+  return [html, () => tile.querySelectorAll(".hit").forEach(h => {
+    const r = shown[h.dataset.i];
+    h.onmousemove = e => showTip(e, `${esc(r[0])}<br><b>${esc(num(r[1]))}</b> ${esc(a.columns[1])}`);
+    h.onmouseleave = hideTip;
+  })];
+}
+
+// Line over time: 2px line, crosshair + tooltip on hover. y-axis includes 0 (saved answers are mostly totals and counts,
+// and a cut axis makes a 2% change look like a cliff).
+function line(a, rows, tile) {
+  const ys = rows.map(r => r[1]), lo = Math.min(0, ...ys), hi = Math.max(0, ...ys), span = hi - lo || 1;
+  const x = i => rows.length === 1 ? 50 : i / (rows.length - 1) * 100, y = v => 95 - (v - lo) / span * 90;
+  const grid = [5, 50, 95].map(g => `<line x1="0" x2="100" y1="${g}" y2="${g}" stroke="var(--grid)" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join("");
+  const html = `<div class="plot"><div class="yaxis"><span>${esc(compact(hi))}</span><span>${esc(compact((hi + lo) / 2))}</span><span>${esc(compact(lo))}</span></div>
+    <div class="line"><svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="${esc(a.question)}">${grid}
+      <polyline fill="none" stroke="var(--series)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"
+        points="${rows.map((r, i) => `${x(i)},${y(r[1])}`).join(" ")}"/></svg><div class="cross"></div><div class="dot"></div></div>
+    <div></div><div class="axis"><span>${esc(rows[0][0])}</span><span>${esc(rows[rows.length - 1][0])}</span></div></div>`;
+  return [html, () => {
+    const box = tile.querySelector(".line"), cross = box.querySelector(".cross"), dot = box.querySelector(".dot");
+    box.onmousemove = e => {
+      const rect = box.getBoundingClientRect(), i = Math.round((e.clientX - rect.left) / rect.width * (rows.length - 1));
+      const r = rows[Math.max(0, Math.min(rows.length - 1, i))], idx = rows.indexOf(r);
+      cross.style.left = dot.style.left = x(idx) + "%"; dot.style.top = y(r[1]) + "%";
+      cross.style.display = dot.style.display = "block";
+      showTip(e, `${esc(r[0])}<br><b>${esc(num(r[1]))}</b> ${esc(a.columns[1])}`);
+    };
+    box.onmouseleave = () => { cross.style.display = dot.style.display = "none"; hideTip(); };
+  }];
+}
+
+function body(a, rows, tile, asTable) {
+  if (asTable || a.chart === "table" || !rows.length) return [rows.length ? table(a.columns, rows) : '<div class="muted">No rows right now.</div>', () => {}];
+  if (a.chart === "number") return [`<div class="hero">${esc(compact(rows[0][0]))}</div><div class="muted">${esc(a.columns[0])}</div>`, () => {}];
+  return (a.chart === "line" ? line : bars)(a, rows, tile);
+}
+
+async function render(a, tile) {
+  tile.innerHTML = `<h2>${esc(a.question)}</h2><div class="muted">${esc(a.db)} · loading…</div>`;
+  const res = await fetch(`answers/${a.id}`), r = await res.json();
+  let asTable = false;
+  const draw = () => {
+    const [html, wire] = res.ok ? body(a, r.rows, tile, asTable) : [`<div class="err">${esc(r.detail)}</div>`, () => {}];
+    tile.innerHTML = `<h2>${esc(a.question)}</h2>
+      <div class="muted">${esc(a.db)} · updated ${new Date().toLocaleTimeString()}</div>${html}
+      <div class="actions">
+        ${res.ok && (a.chart === "bar" || a.chart === "line") && r.rows.length ? `<button class="toggle">${asTable ? "Chart view" : "Table view"}</button>` : ""}
+        <a href="answers/${a.id}.csv" target="_blank">CSV</a>
+        <button class="remove">Remove</button>
+      </div>
+      <details><summary class="muted">SQL</summary><pre>${esc(a.sql)}</pre></details>`;
+    wire();
+    tile.querySelector(".toggle")?.addEventListener("click", () => { asTable = !asTable; draw(); });
+    tile.querySelector(".remove").onclick = async () => {
+      if (!confirm(`Remove "${a.question}" from the dashboard?`)) return;
+      const d = await fetch(`answers/${a.id}`, {method: "DELETE"});
+      d.ok ? tile.remove() : alert("Could not remove it.");
+    };
+  };
+  draw();
+}
+
+async function load() {
+  $("#status").textContent = "Loading…";
+  try {
+    const list = await (await fetch("answers")).json();
+    $("#grid").innerHTML = "";
+    if (!list.length) { $("#grid").innerHTML = '<div class="muted">Nothing saved yet. Ask a question in the <a href="chat">chat</a> and press "Save as chart".</div>'; }
+    await Promise.all(list.map(a => { const t = document.createElement("div"); t.className = "tile"; $("#grid").append(t); return render(a, t); }));
+    $("#status").textContent = `${list.length} saved answer(s) · refreshed ${new Date().toLocaleTimeString()}`;
+  } catch (err) {
+    $("#status").textContent = `Could not reach the server: ${err.message}`;
+  }
+}
+$("#refresh").onclick = load;
+load();
+</script>
+</body>
+</html>

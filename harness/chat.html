@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Local SQL Assistant</title>
 <style>
-  :root { --fg:#111; --muted:#666; --line:#ccc; --bg:#fff; --me:#eef3ff; --bot:#f6f6f6; --ok:#e8f5e9; --bad:#fdecea; }
+  :root { color-scheme: light dark; --fg:#111; --muted:#666; --line:#ccc; --bg:#fff; --me:#eef3ff; --bot:#f6f6f6; --ok:#e8f5e9; --bad:#fdecea; }
   @media (prefers-color-scheme: dark) { :root { --fg:#eee; --muted:#999; --line:#444; --bg:#161616; --me:#1e2a44; --bot:#222; --ok:#1d3320; --bad:#3a1c1a; } }
   body { font: 15px/1.45 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 900px; margin: 0 auto; padding: 16px; }
   h1 { font-size: 20px; margin: 0 0 4px; } .muted { color: var(--muted); font-size: 13px; }
@@ -23,12 +23,40 @@
   .agent { border-left: 3px solid var(--line); padding: 4px 10px; margin: 8px 0; }
   .agent h3 { font-size: 14px; margin: 0 0 4px; }
   .ok { background: var(--ok); } .bad { background: var(--bad); }
+  .strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
+  .stage { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+  .stage b { display: block; font-size: 13px; } .stage .who { color: var(--muted); font-size: 12px; }
+  .badge { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 9px; border: 1px solid var(--line); margin: 2px 0; }
+  .io { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 4px 12px; }
+  .io > div { min-width: 0; overflow-x: auto; }
+  .iolab { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin: 6px 0 2px; }
+  .drop { display: block; border: 2px dashed var(--line); border-radius: 8px; padding: 18px; text-align: center; cursor: pointer; margin: 4px 0 8px; }
+  .drop.over { border-color: var(--fg); background: var(--me); }
+  #dburl { width: 100%; box-sizing: border-box; margin: 4px 0; } #add { margin-top: 8px; }
+  .badge.real { background: var(--ok); } .badge.stand-in { background: var(--bad); }
 </style>
 </head>
 <body>
 <h1>Local SQL Assistant</h1>
+<div class="muted"><a href="dashboard">Dashboard of saved answers</a> · <a href="./">Retrieval explorer</a></div>
 <div class="muted">Ask the database a question in plain English. Everything runs on this machine.
-  Agent 1 is the real retrieval component; SQL generation (Agent 3) and execution (Agent 4) are placeholders until the fine-tuned and quantized models are plugged in.</div>
+  Each answer shows the four-agent pipeline; stages marked <i>stand-in</i> run a placeholder until that member's model is plugged in.</div>
+<details id="add" open><summary><b>Add a database</b></summary>
+  <div class="agent">
+    <label id="drop" class="drop">
+      <b>Drop a SQLite database file here</b> (.db, .sqlite) <span class="muted">or click to choose one</span>
+      <input type="file" id="dbfile" accept=".db,.sqlite,.sqlite3" hidden>
+    </label>
+    <h3>Or paste a PostgreSQL link</h3>
+    <input id="dburl" placeholder="postgresql+psycopg://readonly_user:password@host:5432/dbname  (press Enter)" autocomplete="off">
+    <label>Name <input id="dbname" placeholder="filled in for you" maxlength="40"></label>
+    <span class="muted">letters, digits, _</span>
+    <label><input type="checkbox" id="novalues"> don't read data values (personal data)</label>
+    <button type="button" id="connect">Connect</button>
+    <div class="muted">Use a read-only database login. Connections are kept in memory only and are forgotten when the server restarts; uploaded files are kept.</div>
+    <div id="addmsg"></div>
+  </div>
+</details>
 <div id="log"></div>
 
 <form id="f"><div>
@@ -42,9 +70,44 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ROW_LIMIT = 50;
 
-let SUPERSET = false;
-fetch("health").then(r => r.json()).then(h => (SUPERSET = h.superset, $("#db").innerHTML = h.dbs.map(d =>
-  `<option value="${esc(d)}">${esc(d)}${h.schema_only.includes(d) ? " (schema only, no rows)" : ""}</option>`).join("")));
+let SUPERSET = false, STAND_INS = ["gate", "generate", "execute"];
+const loadDbs = pick => fetch("health").then(r => r.json()).then(h => (SUPERSET = h.superset, STAND_INS = h.stand_ins, $("#db").innerHTML = h.dbs.map(d =>
+  `<option value="${esc(d)}"${d === pick ? " selected" : ""}>${esc(d)}${h.schema_only.includes(d) ? " (schema only, no rows)" : ""}</option>`).join("")));
+loadDbs();
+
+// Add a database while the app runs: upload a SQLite file, or connect a server by URL.
+// Suggested name: file name or the database part of the link, cleaned to letters/digits/_.
+// Database name from a link: the path after the host. Cut at the last '@' first so no part of user:password can leak into it.
+const dbPart = u => ((u.includes("@") ? u.slice(u.lastIndexOf("@") + 1) : u.split("//")[1] ?? "").match(/\/([^?]+)/) ?? [])[1] ?? "db";
+const suggest = s => s.replace(/[^A-Za-z0-9_]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "db";
+async function addDb(req, fallback) {
+  if (!$("#dbname").value.trim()) $("#dbname").value = suggest(fallback);
+  const name = $("#dbname").value.trim();
+  $("#addmsg").innerHTML = '<span class="muted">Checking the database…</span>';
+  try {
+    const res = await req(name), r = await res.json();
+    if (!res.ok) { $("#addmsg").innerHTML = `<div class="err">${esc(Array.isArray(r.detail) ? "Fill in the name and the database." : r.detail)}</div>`; return; }
+    $("#addmsg").innerHTML = `Added <b>${esc(r.name)}</b>: ${r.tables} table(s)${r.schema_only ? ", schema only (no rows)" : ""}. It is now selected below.`;
+    $("#dburl").value = ""; $("#dbfile").value = ""; $("#dbname").value = "";
+    loadDbs(r.name);
+  } catch (err) {
+    $("#addmsg").innerHTML = `<div class="err">Could not reach the server: ${esc(err.message)}</div>`;
+  }
+}
+const upload = file => addDb(name => fetch(`dbs/upload?name=${encodeURIComponent(name)}`, {method: "POST", body: file}),
+                             file.name.replace(/\.[^.]*$/, ""));
+$("#dbfile").onchange = () => $("#dbfile").files[0] && upload($("#dbfile").files[0]);
+// The whole page takes the drop: a file dropped just outside the box would otherwise make the browser open it and leave the chat.
+const drop = $("#drop");
+window.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+window.ondragleave = e => { if (!e.relatedTarget) drop.classList.remove("over"); };
+window.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); e.dataTransfer.files[0] && upload(e.dataTransfer.files[0]); };
+const connect = () => $("#dburl").value.trim() ? addDb(name => fetch("dbs", {method: "POST", headers: {"Content-Type": "application/json"},
+  body: JSON.stringify({name, url: $("#dburl").value.trim(), read_values: !$("#novalues").checked})}),
+  (dbPart($("#dburl").value.trim())))
+  : ($("#addmsg").innerHTML = '<div class="err">Paste a database link first.</div>');
+$("#connect").onclick = connect;
+$("#dburl").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); connect(); } };
 
 // "Explore, then promote": freeze a trusted answer's SQL so dashboards replay it without the model.
 async function save(btn, trace) {
@@ -55,7 +118,7 @@ async function save(btn, trace) {
       body: JSON.stringify({trace})});
     const a = await res.json();
     if (!res.ok) { box.innerHTML = `<div class="err">${esc(a.detail)}</div>`; return; }
-    let html = `Saved as answer #${a.id} (${esc(a.chart)} chart). Dashboard data URL: <a href="${esc(a.csv)}" target="_blank">${esc(a.csv)}</a>`;
+    let html = `Saved as answer #${a.id} (${esc(a.chart)} chart), now on the <a href="dashboard" target="_blank">dashboard</a>. Data URL for other BI tools: <a href="${esc(a.csv)}" target="_blank">${esc(a.csv)}</a>`;
     if (SUPERSET) {
       const s = await fetch(`answers/${a.id}/superset`, {method: "POST"});
       const j = await s.json();
@@ -81,42 +144,96 @@ function rowsTable(rows, cols = []) {
     (rows.length > ROW_LIMIT ? `<div class="muted">Showing ${ROW_LIMIT} of ${rows.length} rows.</div>` : `<div class="muted">${rows.length} row(s).</div>`);
 }
 
-function trace(r) {
-  const c = r.context;
-  const a1 = `<div class="agent"><h3>Agent 1 · Retrieval and pruning (Ekanayake)</h3>
-    complexity <b>${esc(c.complexity)}</b> · anchor <b>${esc(c.anchor ?? "none")}</b> · ${c.tokens} schema tokens · ${c.latency_ms} ms
-    ${c.matched ? "" : "<br><b>No question word matches this schema → question declined.</b>"}
-    <table>${Object.entries(c.tables).map(([t, cols]) => `<tr><th>${esc(t)}</th><td>${esc(cols.join(", "))}</td></tr>`).join("")}</table></div>`;
-  const a3 = `<div class="agent"><h3>Agent 3 · SQL generation (Thathsarani) <span class="muted">— placeholder: phi3 via Ollama</span></h3>` +
-    (r.steps.length ? r.steps.map(s => `<div>attempt ${s.attempt} · ${s.generate_ms} ms${s.hint ? " · <i>retry with error hint</i>" : ""}<pre>${esc(s.sql)}</pre></div>`).join("")
-                    : "<div class='muted'>not called</div>") + `</div>`;
-  const a4 = `<div class="agent"><h3>Agent 4 · Execution (Karunanayake) <span class="muted">— placeholder: read-only SQLite, max 3 attempts</span></h3>` +
-    (r.steps.length ? r.steps.map(s => `<div class="${s.ok ? "ok" : "bad"}">attempt ${s.attempt} · ${s.execute_ms} ms · ${s.ok ? `${s.rows} row(s)` : esc(s.error)}</div>`).join("")
-                    : "<div class='muted'>not called</div>") + `</div>`;
-  return `<details><summary>Pipeline trace · ${r.attempts} attempt(s) · ${r.total_ms} ms total · trace ${esc(r.trace)}</summary>${a1}${a3}${a4}</details>`;
+// One box per agent, in pipeline order. "stand-in" = placeholder until the owner's component is plugged in.
+function strip(r) {
+  const c = r.context, n = r.steps.length, last = r.steps[n - 1];
+  const sum = k => Math.round(r.steps.reduce((t, s) => t + s[k], 0));
+  const stage = (title, who, key, body) => {
+    const real = !STAND_INS.includes(key);
+    return `<div class="stage"><b>${title}</b><span class="who">${who}</span><br>
+      <span class="badge ${real ? "real" : "stand-in"}">${real ? "real" : "stand-in"}</span><div>${body}</div></div>`;
+  };
+  return `<div class="strip">` +
+    stage("1 · Question gate", "Agent 2 · Wathsala", "gate",
+      (c.matched ? "database question" : "<b>declined</b>: no word matches this schema") +
+      `<div class="muted">placeholder: Agent 1 word-match check; distilled classifier not wired in</div>`) +
+    stage("2 · Schema retrieval", "Agent 1 · Ekanayake", "retrieve",
+      `${Object.keys(c.tables).length} table(s) · ${c.tokens} tokens · ${c.latency_ms} ms<br>complexity <b>${esc(c.complexity)}</b>`) +
+    stage("3 · SQL generation", "Agent 3 · Thathsarani", "generate",
+      n ? `${n} attempt(s) · ${sum("generate_ms")} ms` + (STAND_INS.includes("generate")
+            ? `<div class="muted">placeholder: phi3 via Ollama, no HydraLoRA head</div>`
+            : `<br>head <b>${esc(c.complexity)}</b>`)
+        : `<span class="muted">not called</span>`) +
+    stage("4 · Execution", "Agent 4 · Karunanayake", "execute",
+      n ? (last.ok ? `${last.rows} row(s)` : `failed: ${esc(last.error)}`) + ` · ${sum("execute_ms")} ms` +
+            (STAND_INS.includes("execute") ? `<div class="muted">placeholder: read-only SQL, raw-error retry hint</div>` : "")
+        : `<span class="muted">not called</span>`) +
+    `</div>`;
+}
+
+// Pipeline trace: for every agent, exactly what it received (input) and what it handed on (output).
+const io = (input, output) => `<div class="io"><div><div class="iolab">Input</div>${input}</div><div><div class="iolab">Output</div>${output}</div></div>`;
+const kv = o => `<table>${Object.entries(o).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${v}</td></tr>`).join("")}</table>`;
+const agentBox = (title, note, body) => `<div class="agent"><h3>${title}${note ? ` <span class="muted">— ${note}</span>` : ""}</h3>${body}</div>`;
+const stand = (key, text) => STAND_INS.includes(key) ? `placeholder: ${text}` : "";
+
+function trace(r, db) {
+  const c = r.context, reasons = c.trace?.reasons ?? {}, roles = c.trace?.roles ?? {};
+  const why = Object.entries(reasons).map(([t, cols]) => {
+    const kept = Object.entries(cols).filter(([, w]) => w !== "pruned"), cut = Object.keys(cols).filter(k => cols[k] === "pruned");
+    return `<tr><th>${esc(t)}<div class="muted">${esc(roles[t] ?? "")}</div></th>
+      <td>${kept.map(([k, w]) => `${esc(k)} <span class="muted">(${esc(w.replace(/_/g, " "))})</span>`).join(", ")}
+      ${cut.length ? `<div class="muted">pruned: ${esc(cut.join(", "))}</div>` : ""}</td></tr>`;
+  }).join("");
+
+  const gate = agentBox("Agent 2 · Question gate (Wathsala)", stand("gate", "Agent 1's word-match check"),
+    io(kv({question: esc(c.query)}),
+       kv({decision: c.matched ? "database question → continue" : "<b>declined</b> (no word matches this schema)"})));
+
+  const a1 = agentBox("Agent 1 · Schema retrieval and pruning (Ekanayake)", "",
+    io(kv({question: esc(c.query), database: esc(db), mode: esc(c.mode)}),
+       kv({complexity: `<b>${esc(c.complexity)}</b>`, anchor: esc(c.anchor ?? "none"), "schema size": `${c.tokens} tokens`, time: `${c.latency_ms} ms`}) +
+       `<div class="iolab">Tables and columns kept, with the reason</div><table>${why}</table>
+        <details><summary>Pruned schema handed to Agent 3 (ddl, ${c.tokens} tokens)</summary><pre>${esc(c.ddl)}</pre></details>
+        <details><summary>Full handoff JSON</summary><pre>${esc(JSON.stringify(c, null, 2))}</pre></details>`));
+
+  const none = '<div class="muted">not called</div>';
+  const a3 = agentBox("Agent 3 · SQL generation (Thathsarani)", stand("generate", "phi3 via Ollama"),
+    r.steps.length ? r.steps.map(s => `<div class="iolab">Attempt ${s.attempt} · ${s.generate_ms} ms</div>` +
+      io(kv({question: esc(c.query), complexity: esc(c.complexity), schema: "pruned ddl from Agent 1",
+             "retry hint": s.hint ? `<pre>${esc(s.hint)}</pre>` : '<span class="muted">none (first attempt)</span>'}),
+         `<pre>${esc(s.sql)}</pre>`)).join("") : none);
+
+  const a4 = agentBox("Agent 4 · Execution (Karunanayake)", stand("execute", "read-only SQL, raw error used as the retry hint"),
+    r.steps.length ? r.steps.map(s => `<div class="iolab">Attempt ${s.attempt} · ${s.execute_ms} ms</div>` +
+      io(kv({sql: `<pre>${esc(s.sql)}</pre>`, database: esc(db)}),
+         s.ok ? `<div class="ok">${s.rows} row(s)${r.columns ? ` · columns: ${esc(r.columns.join(", "))}` : ""}</div>`
+              : `<div class="bad">error: ${esc(s.error)}</div><div class="muted">${s.attempt < r.attempts ? "→ sent back to Agent 3 as the retry hint" : "final"}</div>`)).join("") : none);
+
+  return strip(r) + `<details><summary>Pipeline trace: inputs and outputs of each agent · ${r.attempts} attempt(s) · ${r.total_ms} ms total · trace ${esc(r.trace)}</summary>${gate}${a1}${a3}${a4}</details>`;
 }
 
 $("#f").onsubmit = async e => {
   e.preventDefault();
-  const q = $("#q").value;
+  const q = $("#q").value, db = $("#db").value;
   add("me", esc(q || "(empty)"));
   $("#q").value = ""; $("#go").disabled = true;
   const wait = add("bot", '<span class="muted">Thinking… (the local model can take a few seconds)</span>');
   try {
     const res = await fetch("query", {method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({query: q, db: $("#db").value})});
+      body: JSON.stringify({query: q, db})});
     const r = await res.json();
     if (!res.ok) {
       const msg = Array.isArray(r.detail) ? "Please type a question (1–500 characters)." : r.detail;
       wait.innerHTML = `<div class="err">${esc(msg)}</div>`;
     } else if (r.ok) {
       wait.innerHTML = rowsTable(r.rows, r.columns) + `<details open><summary>SQL</summary><pre>${esc(r.sql)}</pre></details>` +
-        `<div class="muted"><button class="save">Save as chart</button> suggested chart: ${esc(r.chart)} · check the SQL before saving</div>` + trace(r);
+        `<div class="muted"><button class="save">Save as chart</button> suggested chart: ${esc(r.chart)} · check the SQL before saving</div>` + trace(r, db);
       wait.querySelector(".save").onclick = e => save(e.target, r.trace);
     } else {
       const msg = String(r.error).startsWith("Blocked") ? "Refused: this assistant is read-only and only answers questions; it never changes the data."
         : r.attempts ? `I couldn't produce a working query after ${r.attempts} attempt(s). Last error: ${r.error}` : r.error;
-      wait.innerHTML = `<div class="err">${esc(msg)}</div>` + trace(r);
+      wait.innerHTML = `<div class="err">${esc(msg)}</div>` + trace(r, db);
     }
   } catch (err) {
     wait.innerHTML = `<div class="err">Could not reach the server: ${esc(err.message)}</div>`;

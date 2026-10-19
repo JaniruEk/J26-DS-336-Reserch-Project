@@ -5,6 +5,7 @@ Run: uvicorn harness.app:app   |   GET / = Agent 1 Retrieval Explorer   |   GET 
 import json
 import os
 import re
+import sqlite3
 import time
 import uuid
 from collections import OrderedDict
@@ -12,12 +13,12 @@ from functools import partial
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel, StringConstraints
 
 from agent1_retrieval import LIVE, MODES, Agent1
-from agent1_retrieval.db import DBError, dialect, query, tables_with_rows
+from agent1_retrieval.db import DBError, dialect, is_url, query, redact, tables_with_rows
 from agent1_retrieval.execution import ollama_generate
 from agent1_retrieval.schema import reflect
 
@@ -25,7 +26,13 @@ from .bi import AnswerStore, chart_hint, push_to_superset, superset_config, to_c
 
 MAX_ATTEMPTS = 3
 MAX_QUESTION = 500  # chars; longer input is rejected at the boundary, before any agent runs
-DEFAULT_DBS = {k: p for k, p in {"chinook": "data/chinook.db", "tpch": "data/tpch.db"}.items() if Path(p).exists()} or {"chinook": "data/chinook.db"}
+# every downloaded research database (scripts/get_*.py); Spider dev DBs listed as spider/<name>
+DEFAULT_DBS = {**{k: p for k, p in {"chinook": "data/chinook.db", "northwind": "data/northwind.db", "tpch": "data/tpch.db"}.items()
+                  if Path(p).exists()},
+               **{f"spider/{p.stem}": p.as_posix() for p in sorted(Path("data/spider").glob("*/*.sqlite"))},
+               **{p.stem: p.as_posix() for p in sorted(Path("data/uploads").glob("*.db"))}} or {"chinook": "data/chinook.db"}
+DB_NAME = re.compile(r"[A-Za-z0-9_]{1,40}")  # names of databases added at runtime (also the upload's file name)
+MAX_UPLOAD = 500 * 2**20  # bytes
 
 
 def env_dbs():
@@ -90,9 +97,15 @@ class Query(BaseModel):
     mode: str = "hybrid_pruned"
 
 
+class NewDB(BaseModel):
+    name: str
+    url: str  # server database URL; SQLite files come in through /dbs/upload, never as a path
+    read_values: bool = True  # False: Agent 1 never reads data values from it (personal data)
+
+
 def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute=run_sql, log_path="data/handoff.log.jsonl",
                agent1_config=LIVE, answers_path="data/answers.db", superset=superset_config, no_value_linking=None,
-               glossaries=None):
+               glossaries=None, uploads_dir="data/uploads"):
     """agent1_config: Retriever options for the live Agent 1 (pass {} for the original Phase 1-7 settings).
     superset: callable returning the Superset config or None (BI push disabled).
     dbs: name -> SQLite path or SQLAlchemy URL. no_value_linking: db names whose data values Agent 1 must not read."""
@@ -104,6 +117,9 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
     Path(answers_path).parent.mkdir(parents=True, exist_ok=True)
     answers = AnswerStore(answers_path)
     answered = OrderedDict()  # trace -> (question, db name, sql) of successful /query answers: the only SQL /answers will save
+    # pipeline stages still running a placeholder; the chat page badges them. Agent 2's question gate is not wired in yet.
+    stand_ins = ["gate"] + [name for name, is_default in (
+        ("generate", isinstance(generate, partial) and generate.func is ollama_generate), ("execute", execute is run_sql)) if is_default]
 
     def log(trace, stage, **fields):
         with open(log_path, "a", encoding="utf-8") as f:
@@ -131,14 +147,77 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
     def chat():
         return FileResponse(Path(__file__).with_name("chat.html"))
 
+    @app.get("/dashboard", include_in_schema=False)
+    def dashboard():
+        return FileResponse(Path(__file__).with_name("dashboard.html"))
+
     @app.get("/health")
     def health():
         return {"ok": True, "dbs": list(dbs), "schema_only": [n for n, p in dbs.items() if not safe_has_rows(p)], "max_attempts": MAX_ATTEMPTS,
-                "superset": superset() is not None}
+                "superset": superset() is not None, "stand_ins": stand_ins}
 
     @app.get("/dbs")
     def list_dbs():
         return list(dbs)
+
+    def new_name(name):
+        if not DB_NAME.fullmatch(name):
+            raise HTTPException(422, "name: 1-40 letters, digits or _")
+        if name in dbs or (Path(uploads_dir) / f"{name}.db").exists():
+            raise HTTPException(409, f"a database called '{name}' already exists")
+
+    def add_db(name, db, read_values=True):
+        """Register a database while the app runs; it must open and have at least one table."""
+        try:
+            tables = reflect(db)
+        except Exception as e:  # bad URL, refused login, unreachable host, not a database file
+            raise HTTPException(400, f"could not open the database: {redact(str(e).strip().splitlines()[0] if str(e).strip() else type(e).__name__)}")
+        if not tables:
+            raise HTTPException(400, "the database has no tables")
+        dbs[name] = db
+        if not read_values:
+            no_values.add(name)
+        return {"name": name, "tables": len(tables), "schema_only": not safe_has_rows(db)}
+
+    @app.post("/dbs")
+    def connect_db(req: NewDB):
+        """Connect a server database (PostgreSQL). Kept in memory only, so the password is never written to disk."""
+        new_name(req.name)
+        if not is_url(req.url):
+            raise HTTPException(422, "url must look like postgresql+psycopg://user:password@host:5432/dbname (upload SQLite files instead)")
+        return add_db(req.name, req.url, req.read_values)
+
+    @app.post("/dbs/upload")
+    async def upload_db(request: Request, name: str):
+        """Upload a SQLite file as the raw request body. Saved under uploads_dir, so it is still there after a restart."""
+        new_name(name)
+        dest = Path(uploads_dir) / f"{name}.db"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        part, size = dest.with_suffix(".part"), 0
+        try:
+            with open(part, "wb") as f:
+                async for chunk in request.stream():
+                    size += len(chunk)
+                    if size > MAX_UPLOAD:
+                        raise HTTPException(413, f"file is larger than {MAX_UPLOAD // 2**20} MB")
+                    f.write(chunk)
+            with open(part, "rb") as f:
+                if f.read(16) != b"SQLite format 3\x00":
+                    raise HTTPException(400, "not a SQLite database file")
+            con = sqlite3.connect(f"file:{part.as_posix()}?mode=ro", uri=True)
+            try:
+                if con.execute("PRAGMA quick_check").fetchone()[0] != "ok":
+                    raise HTTPException(400, "the SQLite file is damaged")
+            except sqlite3.DatabaseError as e:
+                raise HTTPException(400, f"the SQLite file is damaged: {e}")
+            finally:
+                con.close()
+            part.replace(dest)
+            return add_db(name, dest.as_posix())
+        except HTTPException:
+            part.unlink(missing_ok=True)
+            dest.unlink(missing_ok=True)
+            raise
 
     @app.post("/retrieve")
     def retrieve(req: Query):
@@ -195,6 +274,8 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
         return a
 
     def replay(a):
+        if a["db"] not in dbs:  # e.g. a runtime-connected server database after a restart
+            raise HTTPException(409, f"database '{a['db']}' is not connected; add it again on the chat page")
         ok, rows = execute(dbs[a["db"]], a["sql"])  # same read-only guard as live answers
         if not ok:
             raise HTTPException(409, f"saved SQL no longer runs: {rows}")
@@ -229,6 +310,12 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
     def answer_json(answer_id: int):
         a = stored(answer_id)
         return {**a, "rows": replay(a)}
+
+    @app.delete("/answers/{answer_id}")
+    def remove_answer(answer_id: int):
+        stored(answer_id)
+        answers.remove(answer_id)
+        return {"removed": answer_id}
 
     @app.post("/answers/{answer_id}/superset")
     def answer_to_superset(answer_id: int):

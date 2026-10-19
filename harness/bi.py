@@ -67,6 +67,10 @@ class AnswerStore:
             c.row_factory = sqlite3.Row
             return [{**dict(r), "columns": json.loads(r["columns"])} for r in c.execute("SELECT * FROM answers ORDER BY id DESC")]
 
+    def remove(self, answer_id):
+        with self._con() as c:
+            c.execute("DELETE FROM answers WHERE id = ?", (answer_id,))
+
     def set_superset(self, answer_id, chart_id):
         with self._con() as c:
             c.execute("UPDATE answers SET superset_chart_id = ? WHERE id = ?", (chart_id, answer_id))

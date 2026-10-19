@@ -101,6 +101,7 @@ def test_chat_page_and_health(db, tmp_path):
     assert "Local SQL Assistant" in c.get("/chat").text
     h = c.get("/health").json()
     assert h["dbs"] == ["t"] and h["schema_only"] == []
+    assert h["stand_ins"] == ["gate", "execute"]  # test generator injected; executor and gate are still placeholders
 
 
 def test_runaway_query_is_aborted(db):
@@ -145,3 +146,20 @@ def test_chat_page_has_save_as_chart(db, tmp_path):
     c, _ = client(db, tmp_path, None)
     page = c.get("/chat").text
     assert "Save as chart" in page and 'fetch("answers"' in page
+
+
+def test_add_database_at_runtime(db, tmp_path):
+    up = tmp_path / "uploads"
+    c = TestClient(create_app({"t": db}, generate=lambda q, ddl, **kw: "SELECT total FROM invoice", log_path=str(tmp_path / "l.jsonl"),
+                              answers_path=str(tmp_path / "a.db"), superset=lambda: None, uploads_dir=str(up)))
+    r = c.post("/dbs/upload?name=shop", content=Path(db).read_bytes())
+    assert r.status_code == 200 and r.json()["tables"] == 1 and (up / "shop.db").exists()
+    assert c.post("/query", json={"query": "total of each invoice", "db": "shop"}).json()["rows"] == [[9.5]]
+    assert c.post("/dbs/upload?name=shop", content=Path(db).read_bytes()).status_code == 409  # never overwrite
+    assert c.post("/dbs/upload?name=..%2Fevil", content=b"x").status_code == 422  # name is the file name: no paths
+    assert c.post("/dbs/upload?name=junk", content=b"not a database").status_code == 400
+    assert not (up / "junk.db").exists() and not (up / "junk.part").exists()
+    assert c.post("/dbs", json={"name": "p", "url": db}).status_code == 422  # a client can't point at a file on disk
+    r = c.post("/dbs", json={"name": "m", "url": "mysql+pymysql://u:secret@h/x"})
+    assert r.status_code == 400 and "secret" not in r.text  # only read-only-enforced dialects; password never echoed
+    assert c.get("/dbs").json() == ["t", "shop"]

@@ -128,3 +128,16 @@ def test_superset_push_sends_dataset_then_chart():
     assert chart["datasource_id"] == 7 and chart["viz_type"] == "echarts_timeseries_bar" and json.loads(chart["params"])["x_axis"] == "region" and json.loads(chart["query_context"])["queries"][0]["columns"] == ["region"]
     with pytest.raises(ValueError):
         push_to_superset({**cfg, "databases": {}}, answer, client)
+
+
+def test_dashboard_page_remove_and_disconnected_db(db, tmp_path):
+    c = make(db, tmp_path, sql="SELECT region, SUM(total) FROM sales GROUP BY region")
+    assert "Saved Answers Dashboard" in c.get("/dashboard").text
+    _, s = ask_and_save(c)
+    aid = s.json()["id"]
+    later = TestClient(create_app({"other": db}, generate=lambda q, ddl, **kw: "", log_path=str(tmp_path / "log.jsonl"),
+                                  answers_path=str(tmp_path / "answers.db"), superset=lambda: None, agent1_config={}))
+    r = later.get(f"/answers/{aid}")  # its database is no longer configured (e.g. runtime connection after a restart)
+    assert r.status_code == 409 and "not connected" in r.json()["detail"]
+    assert c.delete(f"/answers/{aid}").status_code == 200
+    assert c.get(f"/answers/{aid}").status_code == 404 and c.delete(f"/answers/{aid}").status_code == 404
