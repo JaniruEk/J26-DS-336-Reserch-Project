@@ -44,9 +44,10 @@ def prf(pred, gold):
     return (hit / len(pred) if pred else 0.0), (hit / len(gold) if gold else 1.0)
 
 
-def run(db, pairs, modes=MODES, quiet=False, generate=None, **kw):
+def run(db, pairs, modes=MODES, quiet=False, generate=None, oracle=False, **kw):
     """Rows per (mode, bucket|ALL): (tokens, ms, tblP, tblR, colP, colR, exec_ok|None).
-    generate(question, ddl) -> sql enables execution accuracy (needs a DB with data)."""
+    generate(question, ddl) -> sql enables execution accuracy (needs a DB with data).
+    oracle: complexity-adaptive width routes on the gold label instead of the classifier (upper bound)."""
     retrievers = {}  # pairs may carry their own "db" (Spider spans many); `db` is the fallback
     rows = defaultdict(list)
     for p in pairs:
@@ -57,7 +58,7 @@ def run(db, pairs, modes=MODES, quiet=False, generate=None, **kw):
         gt, gc = gold_links(r.tables, p["sql"])
         bucket = classify_sql(p["sql"])
         for mode in modes:
-            ctx = r.retrieve(p["question"], mode)
+            ctx = r.retrieve(p["question"], mode, complexity=bucket if oracle else None)
             pt, rt = prf(set(ctx.columns), gt)
             pc, rc = prf({(t, c) for t, cs in ctx.columns.items() for c in cs}, gc)
             ex = None
@@ -117,6 +118,8 @@ if __name__ == "__main__":
     ap.add_argument("--recommended", action="store_true", help="= --anchors 3 --ungated --min-cols 8 --rich (the PP1 config, RECOMMENDED)")
     ap.add_argument("--value-hints", action="store_true", help="show the code values of low-cardinality columns in the schema")
     ap.add_argument("--glossary", help="JSON file {'Table.Column': 'meaning'} shown as column comments")
+    ap.add_argument("--narrow-simple", type=float, metavar="TAU", help="anchor table only when P(simple) >= TAU")
+    ap.add_argument("--oracle", action="store_true", help="with --narrow-simple: route on the gold complexity label")
     ap.add_argument("--exec", metavar="MODEL", help="execution accuracy with this Ollama model (e.g. phi3)")
     a = ap.parse_args()
     if a.recommended:
@@ -124,4 +127,4 @@ if __name__ == "__main__":
     run(a.db, [p for f in a.pairs for p in json.load(open(f, encoding="utf-8"))], generate=(lambda q, ddl, **kw: ollama_generate(q, ddl, a.exec, **kw)) if a.exec else None,
         modes=tuple(a.modes), depth=a.depth, threshold=a.threshold, labels=a.labels, adaptive=a.adaptive,
         multi_anchors=a.anchors, gate=not a.ungated, min_cols=a.min_cols, rich=a.rich, infer_missing_fks=a.infer_fks,
-        value_hints=a.value_hints, glossary=a.glossary)
+        value_hints=a.value_hints, glossary=a.glossary, narrow_simple=a.narrow_simple, oracle=a.oracle)

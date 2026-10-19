@@ -11,7 +11,8 @@ class Agent1:
         c = self.retriever.retrieve(query, self.mode)
         return {
             "query": query,
-            "complexity": classify_query(query),  # simple | single-join | multi-join | aggregation -> Agent 3 head routing
+            # simple | single-join | multi-join | aggregation -> Agent 3 head routing
+            "complexity": classify_query(query, self.retriever.classifier_input()),
             "mode": c.mode,
             "anchor": c.anchor,  # table the retrieval started from (None = nothing matched; ddl is then empty)
             "matched": self.retriever.matched(query),  # False = no question word matches the schema -> pipeline should decline

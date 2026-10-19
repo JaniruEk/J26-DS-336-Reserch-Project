@@ -5,10 +5,10 @@ import json
 import tempfile
 import time
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 
-from .complexity import classify_query
+from .complexity import classify_query, p_simple
 from .pruning import explain_columns, is_relevant, lemma, query_terms, split_ident
 from .schema import adjacency, infer_fks, reflect, render
 
@@ -19,8 +19,9 @@ MODES = ("semantic", "structural", "hybrid", "hybrid_pruned")
 # re-run with Ollama (`evaluate --recommended --exec phi3`). Constructor defaults stay as before so Phase 1-7 reproduce.
 RECOMMENDED = {"multi_anchors": 3, "gate": False, "min_cols": 8, "rich": True}
 # Live app default = RECOMMENDED + code values in the schema (measured 19 Oct 2026: value-coded exec .31->.69 phi3,
-# .12->.56 Qwen-Coder-1.5B; ordinary questions unharmed). RECOMMENDED itself stays fixed so earlier results reproduce.
-LIVE = {**RECOMMENDED, "value_hints": True}
+# .12->.56 Qwen-Coder-1.5B; ordinary questions unharmed) + the schema-aware complexity label for Agent 3's routing
+# (148 eval questions: .588 -> .676, McNemar p=.029). RECOMMENDED itself stays fixed so earlier results reproduce.
+LIVE = {**RECOMMENDED, "value_hints": True, "schema_classifier": True}
 
 
 @dataclass
@@ -57,7 +58,14 @@ def _enc():
 
 class Retriever:
     def __init__(self, db_path, depth=1, threshold=0.6, labels=False, adaptive=False, multi_anchors=0, gate=True, min_cols=0, chroma_path=None,
-                 rich=False, infer_missing_fks=False, value_linking=True, value_hints=False, glossary=None):
+                 rich=False, infer_missing_fks=False, value_linking=True, value_hints=False, glossary=None, narrow_simple=None,
+                 schema_classifier=False):
+        # schema_classifier: complexity labels from question text + this database's schema (complexity_schema.joblib)
+        # instead of text alone; used for the handoff label and for narrow_simple. Off = the original text-only model.
+        self.schema_classifier = schema_classifier
+        # narrow_simple=tau: complexity-adaptive width. If the classifier is at least tau sure the question is 'simple',
+        # hybrid modes send only the anchor table (wide context distracts small models on easy questions); None = off.
+        self.narrow_simple = narrow_simple
         # adaptive: +1 FK hop for questions predicted multi-join. multi_anchors=k: for those questions also take the top-k
         # semantic tables and connect them to the main anchor along shortest FK paths (bridge tables included).
         self.db_path, self.depth, self.threshold, self.labels, self.adaptive = db_path, depth, threshold, labels, adaptive
@@ -124,6 +132,10 @@ class Retriever:
         best = max(self.tables.values(), key=score, default=None)
         return best.name if best and score(best) > 0 else None
 
+    def classifier_input(self):
+        """What classify_query / p_simple get as `retriever`: self for the schema-aware model, None for text only."""
+        return self if self.schema_classifier else None
+
     def matched(self, query):
         """Confidence gate: does any question word match any table or column name (lemma, else similarity)?
         False for gibberish / off-topic questions, which the semantic anchor would otherwise map to its nearest table anyway."""
@@ -138,10 +150,16 @@ class Retriever:
             seen += [n for n in dict.fromkeys(frontier)]
         return seen
 
-    def retrieve(self, query, mode="hybrid_pruned"):
+    def retrieve(self, query, mode="hybrid_pruned", complexity=None):
+        """complexity: known label (evaluation only, 'oracle' routing); None = the live classifier decides."""
         assert mode in MODES, mode
         t0 = time.perf_counter()
-        multi = mode.startswith("hybrid") and (self.adaptive or self.multi_anchors) and (not self.gate or classify_query(query) == "multi-join")
+        if mode.startswith("hybrid") and self.narrow_simple is not None and (
+                complexity == "simple" if complexity else p_simple(query, self.classifier_input()) >= self.narrow_simple):
+            c = self.retrieve(query, "semantic")
+            return replace(c, mode=mode, ms=(time.perf_counter() - t0) * 1000, roles={n: "anchor" for n in c.columns},
+                           reasons={n: {k: "simple_question" for k in cs} for n, cs in c.columns.items()} if mode == "hybrid_pruned" else None)
+        multi = mode.startswith("hybrid") and (self.adaptive or self.multi_anchors) and (not self.gate or classify_query(query, self.classifier_input()) == "multi-join")
         anchors = ([self._structural_anchor(query)] if mode == "structural"
                    else self._semantic_anchors(query, self.multi_anchors if multi and self.multi_anchors else 1))
         anchor = anchors[0] if anchors and anchors[0] else None

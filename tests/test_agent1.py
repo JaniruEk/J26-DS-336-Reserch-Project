@@ -177,3 +177,26 @@ def test_value_hints_reach_the_schema_and_respect_privacy_and_glossary(coded_db,
     gl._semantic_anchors = lambda q, k=1: ["account"]
     assert "/* A = active, C = closed, D = dormant */" in gl.retrieve(q, "hybrid").text
     assert Retriever(coded_db).retrieve(q, "structural").text.count("/*") == 0  # off by default: earlier results unchanged
+
+
+def test_complexity_adaptive_width(tiny_db):
+    wide = Retriever(tiny_db).retrieve("total of each invoice with the customer name", "hybrid_pruned", complexity="single-join")
+    r = Retriever(tiny_db, narrow_simple=0.5)
+    narrow = r.retrieve("total of each invoice with the customer name", "hybrid_pruned", complexity="simple")  # oracle: simple
+    assert len(narrow.columns) == 1 and len(wide.columns) > 1 and narrow.mode == "hybrid_pruned"
+    assert set(narrow.reasons[narrow.anchor].values()) == {"simple_question"}  # whole anchor table, explained
+    assert len(r.retrieve("total of each invoice with the customer name", "hybrid_pruned", complexity="single-join").columns) > 1
+    assert Retriever(tiny_db, narrow_simple=1.01).retrieve("list invoices", "hybrid_pruned").columns.keys() == \
+        Retriever(tiny_db).retrieve("list invoices", "hybrid_pruned").columns.keys()  # threshold never met: unchanged
+
+
+def test_schema_aware_classifier(tiny_db):
+    from agent1_retrieval import BUCKETS, Agent1
+    from agent1_retrieval.complexity import classify_query, schema_features
+    r = Retriever(tiny_db)
+    f = schema_features(r, "total of each invoice with the customer first name")
+    assert len(f) == 7 and f[0] == 2 and f[5] == 2  # names 2 tables; 2 tables cover its words
+    assert schema_features(r, "list all invoices")[5] == 1
+    assert classify_query("total of each invoice with the customer first name", r) in BUCKETS
+    out = Agent1(tiny_db, schema_classifier=True).run("total of each invoice with the customer first name")
+    assert out["complexity"] in BUCKETS
