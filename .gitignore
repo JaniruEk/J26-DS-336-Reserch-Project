@@ -17,3 +17,11 @@ data/
 .env
 
 venv/
+
+# Spider dataset (also covered by data/ above)
+data/spider_data/
+
+# Day 5 generated results
+results/day5/baseline_predictions.json
+results/day5/execution_feedback.csv
+results/day5/execution_feedback.json

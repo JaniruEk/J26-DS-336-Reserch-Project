@@ -28,7 +28,7 @@ The above candidate is conducting research for their undergraduate dissertation 
 
 # ABSTRACT
 
-Off-the-shelf Small Language Models in the parameter range that fits an 8GB-VRAM hardware budget (approximately 0.5B–1.5B parameters) are generic, general-purpose models never optimised for multi-step reasoning, and fine-tuning alone cannot reliably instil reasoning capacity a base model does not already possess some trace of. Knowledge distillation — compressing a larger, stronger teacher model's behaviour into a small student model — offers an underexplored alternative path for constructing the foundation model underlying a locally-deployed Text-to-SQL system. This component investigates whether a small model built via knowledge distillation retains better multi-join and aggregation reasoning after identical fine-tuning, compared to a natively small model of the same parameter count, under the same hardware and training budget. Evidence from deep-learning and edge-inference literature establishes that model capacity constrains achievable reasoning ability, but does not directly compare distilled-versus-native small models under a controlled, identical fine-tuning regime for SQL generation specifically. The identified gap is addressed through response-based distillation: a larger teacher model (approximately 7B parameters) generates a dataset of prompt-response pairs, used to train a small student model via standard supervised fine-tuning; the distilled student is then compared against a natively small model of equal size, first on general reasoning retention, and subsequently after both are fine-tuned identically using the project's shared fine-tuning configuration. The research follows a Design Science methodology with an iterative development approach, given the exploratory nature of distillation-dataset design at this project's scope. Within the complete system, this component is the earliest-required output in the pipeline: its distilled and native base models are the required input for the fine-tuning component, and by extension for the quantization component, making this component's timely delivery a critical dependency for the rest of the team.
+Off-the-shelf Small Language Models in the parameter range that fits a mid-range hardware budget (approximately 0.5B–1.5B parameters) are generic, general-purpose models never optimised for multi-step reasoning, and fine-tuning alone cannot reliably instil reasoning capacity a base model does not already possess some trace of. Knowledge distillation — compressing a larger, stronger teacher model's behaviour into a small student model — offers an underexplored alternative path for constructing the foundation model underlying a locally-deployed Text-to-SQL system. This component investigates whether a small model built via knowledge distillation retains better multi-join and aggregation reasoning after identical fine-tuning, compared to a natively small model of the same parameter count, under the same hardware and training budget. Evidence from deep-learning and edge-inference literature establishes that model capacity constrains achievable reasoning ability, but does not directly compare distilled-versus-native small models under a controlled, identical fine-tuning regime for SQL generation specifically. The identified gap is addressed through response-based distillation: a larger teacher model (approximately 7B parameters) generates a dataset of prompt-response pairs, used to train a small student model via standard supervised fine-tuning; the distilled student is then compared against a natively small model of equal size, first on general reasoning retention, and subsequently after both are fine-tuned identically using the project's shared fine-tuning configuration. The research follows a Design Science methodology with an iterative development approach, given the exploratory nature of distillation-dataset design at this project's scope. Within the complete system, this component is the earliest-required output in the pipeline: its distilled and native base models are the required input for the fine-tuning component, and by extension for the quantization component, making this component's timely delivery a critical dependency for the rest of the team.
 Keywords: Knowledge Distillation, Small Language Models, Text-to-SQL, Model Compression, Teacher-Student Training
 
 # ACKNOWLEDGEMENT
@@ -88,7 +88,7 @@ Appendix 3 – AI Use Disclosure
 
 ## 1.1 Background and Context
 
-Enterprises require natural-language database querying entirely on local infrastructure, ruling out large cloud-hosted foundation models and necessitating Small Language Models within an 8GB-VRAM hardware budget. However, off-the-shelf small models are generic, general-purpose models, and this project's problem statement identifies 'severe hallucinations on complicated, multi-table joins and large database schema' as the resulting failure mode.
+Enterprises require natural-language database querying entirely on local infrastructure, ruling out large cloud-hosted foundation models and necessitating Small Language Models within a mid-range hardware budget. However, off-the-shelf small models are generic, general-purpose models, and this project's problem statement identifies 'severe hallucinations on complicated, multi-table joins and large database schema' as the resulting failure mode.
 Fine-tuning a small model for a narrow task such as Text-to-SQL can improve surface-level task performance, but cannot reliably instil reasoning capacity that was never present in the base model to begin with. This raises the question of whether the base model itself — before any task-specific fine-tuning — can be constructed differently to provide a stronger reasoning foundation within the same parameter budget.
 Knowledge distillation, in which a larger, more capable teacher model's behaviour is compressed into a small student model, is a well-established technique in general machine learning literature, but its specific value for constructing SQL-reasoning-capable foundation models at this parameter scale, prior to task-specific fine-tuning, is underexplored. This component investigates that question directly, isolating distillation as the sole variable by fine-tuning both a distilled and a native small model identically.
 This work aligns with SDG 9 (Industry, Innovation and Infrastructure) and the CEAI research cluster's focus on resource-constrained, locally deployable AI systems.
@@ -114,7 +114,7 @@ Provides the theoretical justification for this component's hypothesis: capacity
 | Method | Survey of techniques for deploying LLMs on resource-constrained edge and IoT hardware, including model compression and distillation. |
 | Dataset / Context | Cross-study review of edge-deployment LLM techniques. |
 | Key Findings | Distillation is identified as a practical technique for constructing capable small models for edge deployment, though the survey notes that most reported distillation work targets general capability rather than domain-specific reasoning tasks such as SQL generation. |
-| Strengths | Confirms distillation's practical viability for edge-class hardware, directly relevant to this project's 8GB-VRAM constraint. |
+| Strengths | Confirms distillation's practical viability for edge-class hardware, directly relevant to this project's mid-range hardware target. |
 | Limitations | Does not provide a controlled, task-specific (SQL) comparison between distilled and native small models under identical downstream fine-tuning. |
 
 Confirms distillation as a technically appropriate and practically feasible approach for this component's hardware target, while identifying the specific gap (task-specific, controlled comparison) this component addresses.
@@ -255,7 +255,7 @@ Requirements were informed by consultation with the project supervisor during th
 
 ## Target Market and Customer Persona
 
-This component contributes to a product targeting enterprises requiring capable natural-language SQL generation within an 8GB-VRAM hardware budget, without reliance on larger, more expensive local infrastructure.
+This component contributes to a product targeting enterprises requiring capable natural-language SQL generation within a mid-range hardware budget, without reliance on larger, more expensive local infrastructure.
 
 ## Value Proposition
 
@@ -283,7 +283,7 @@ The teacher-prompting strategy, the distillation dataset composition, and the re
 
 # 7. BUDGET AND JUSTIFICATION
 
-This component's development is the most resource-intensive in the project, requiring compute for teacher-model inference (exceeding local 8GB-VRAM capacity) and student-model training, plus a share of shared project costs.
+This component's development is the most resource-intensive in the project, requiring compute for teacher-model inference (exceeding local mid-range hardware capacity) and student-model training, plus a share of shared project costs.
 Table — Budget Justification
 
 | Item | Description | Estimated Cost (LKR) |
@@ -295,7 +295,7 @@ Table — Budget Justification
 | Contingency | Buffer for compute overruns, given this component's position as the project's most resource-intensive and schedule-critical stage. | 10,000 |
 
 Total Estimated Budget: LKR 61,000
-This component's budget is the largest among the four individual components because teacher-model inference (approximately 7B parameters) exceeds the local 8GB-VRAM hardware budget and must be run via rented compute; the contingency allocation reflects this component's critical-path position, where delays would cascade to the fine-tuning and quantization components.
+This component's budget is the largest among the four individual components because teacher-model inference (approximately 7B parameters) exceeds the local mid-range hardware budget and must be run via rented compute; the contingency allocation reflects this component's critical-path position, where delays would cascade to the fine-tuning and quantization components.
 
 # 8. WORK BREAKDOWN STRUCTURE (WBS)
 

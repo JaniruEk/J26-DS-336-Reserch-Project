@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local SQL Assistant</title>
+<style>
+  :root { --fg:#111; --muted:#666; --line:#ccc; --bg:#fff; --me:#eef3ff; --bot:#f6f6f6; --ok:#e8f5e9; --bad:#fdecea; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#eee; --muted:#999; --line:#444; --bg:#161616; --me:#1e2a44; --bot:#222; --ok:#1d3320; --bad:#3a1c1a; } }
+  body { font: 15px/1.45 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; } .muted { color: var(--muted); font-size: 13px; }
+  #log { margin: 16px 0 96px; }
+  .msg { padding: 10px 12px; border-radius: 8px; margin: 10px 0; overflow-x: auto; }
+  .me { background: var(--me); margin-left: 15%; } .bot { background: var(--bot); margin-right: 5%; }
+  .err { background: var(--bad); padding: 6px 8px; border-radius: 4px; }
+  form { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg); border-top: 1px solid var(--line); padding: 12px 16px; }
+  form div { max-width: 900px; margin: 0 auto; display: flex; gap: 8px; }
+  input { flex: 1; padding: 8px; font: inherit; } select, button { padding: 8px 12px; font: inherit; }
+  table { border-collapse: collapse; margin: 6px 0; font-size: 13px; }
+  th, td { border: 1px solid var(--line); padding: 3px 6px; text-align: left; vertical-align: top; }
+  pre { white-space: pre-wrap; margin: 4px 0; font-size: 13px; }
+  details { margin-top: 8px; } summary { cursor: pointer; color: var(--muted); }
+  .agent { border-left: 3px solid var(--line); padding: 4px 10px; margin: 8px 0; }
+  .agent h3 { font-size: 14px; margin: 0 0 4px; }
+  .ok { background: var(--ok); } .bad { background: var(--bad); }
+</style>
+</head>
+<body>
+<h1>Local SQL Assistant</h1>
+<div class="muted">Ask the database a question in plain English. Everything runs on this machine.
+  Agent 1 is the real retrieval component; SQL generation (Agent 3) and execution (Agent 4) are placeholders until the fine-tuned and quantized models are plugged in.</div>
+<div id="log"></div>
+
+<form id="f"><div>
+  <input id="q" placeholder="e.g. Which 5 customers spent the most in total?" autofocus autocomplete="off">
+  <select id="db"></select>
+  <button id="go">Ask</button>
+</div></form>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ROW_LIMIT = 50;
+
+let SUPERSET = false;
+fetch("health").then(r => r.json()).then(h => (SUPERSET = h.superset, $("#db").innerHTML = h.dbs.map(d =>
+  `<option value="${esc(d)}">${esc(d)}${h.schema_only.includes(d) ? " (schema only, no rows)" : ""}</option>`).join("")));
+
+// "Explore, then promote": freeze a trusted answer's SQL so dashboards replay it without the model.
+async function save(btn, trace) {
+  btn.disabled = true;
+  const box = btn.parentElement;
+  try {
+    const res = await fetch("answers", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({trace})});
+    const a = await res.json();
+    if (!res.ok) { box.innerHTML = `<div class="err">${esc(a.detail)}</div>`; return; }
+    let html = `Saved as answer #${a.id} (${esc(a.chart)} chart). Dashboard data URL: <a href="${esc(a.csv)}" target="_blank">${esc(a.csv)}</a>`;
+    if (SUPERSET) {
+      const s = await fetch(`answers/${a.id}/superset`, {method: "POST"});
+      const j = await s.json();
+      html += s.ok ? ` · <a href="${esc(j.url)}" target="_blank">Open chart in Superset</a>` : `<div class="err">${esc(j.detail)}</div>`;
+    }
+    box.innerHTML = html;
+  } catch (err) {
+    box.innerHTML = `<div class="err">Could not save: ${esc(err.message)}</div>`;
+  }
+}
+
+function add(cls, html) {
+  const d = document.createElement("div");
+  d.className = "msg " + cls; d.innerHTML = html;
+  $("#log").append(d); d.scrollIntoView({behavior: "smooth", block: "end"});
+  return d;
+}
+
+function rowsTable(rows, cols = []) {
+  if (!rows.length) return "<div>The query ran but returned no rows.</div>";
+  const shown = rows.slice(0, ROW_LIMIT);
+  return `<table>${cols.length ? `<tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr>` : ""}${shown.map(r => `<tr>${r.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table>` +
+    (rows.length > ROW_LIMIT ? `<div class="muted">Showing ${ROW_LIMIT} of ${rows.length} rows.</div>` : `<div class="muted">${rows.length} row(s).</div>`);
+}
+
+function trace(r) {
+  const c = r.context;
+  const a1 = `<div class="agent"><h3>Agent 1 · Retrieval and pruning (Ekanayake)</h3>
+    complexity <b>${esc(c.complexity)}</b> · anchor <b>${esc(c.anchor ?? "none")}</b> · ${c.tokens} schema tokens · ${c.latency_ms} ms
+    ${c.matched ? "" : "<br><b>No question word matches this schema → question declined.</b>"}
+    <table>${Object.entries(c.tables).map(([t, cols]) => `<tr><th>${esc(t)}</th><td>${esc(cols.join(", "))}</td></tr>`).join("")}</table></div>`;
+  const a3 = `<div class="agent"><h3>Agent 3 · SQL generation (Thathsarani) <span class="muted">— placeholder: phi3 via Ollama</span></h3>` +
+    (r.steps.length ? r.steps.map(s => `<div>attempt ${s.attempt} · ${s.generate_ms} ms${s.hint ? " · <i>retry with error hint</i>" : ""}<pre>${esc(s.sql)}</pre></div>`).join("")
+                    : "<div class='muted'>not called</div>") + `</div>`;
+  const a4 = `<div class="agent"><h3>Agent 4 · Execution (Karunanayake) <span class="muted">— placeholder: read-only SQLite, max 3 attempts</span></h3>` +
+    (r.steps.length ? r.steps.map(s => `<div class="${s.ok ? "ok" : "bad"}">attempt ${s.attempt} · ${s.execute_ms} ms · ${s.ok ? `${s.rows} row(s)` : esc(s.error)}</div>`).join("")
+                    : "<div class='muted'>not called</div>") + `</div>`;
+  return `<details><summary>Pipeline trace · ${r.attempts} attempt(s) · ${r.total_ms} ms total · trace ${esc(r.trace)}</summary>${a1}${a3}${a4}</details>`;
+}
+
+$("#f").onsubmit = async e => {
+  e.preventDefault();
+  const q = $("#q").value;
+  add("me", esc(q || "(empty)"));
+  $("#q").value = ""; $("#go").disabled = true;
+  const wait = add("bot", '<span class="muted">Thinking… (the local model can take a few seconds)</span>');
+  try {
+    const res = await fetch("query", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({query: q, db: $("#db").value})});
+    const r = await res.json();
+    if (!res.ok) {
+      const msg = Array.isArray(r.detail) ? "Please type a question (1–500 characters)." : r.detail;
+      wait.innerHTML = `<div class="err">${esc(msg)}</div>`;
+    } else if (r.ok) {
+      wait.innerHTML = rowsTable(r.rows, r.columns) + `<details open><summary>SQL</summary><pre>${esc(r.sql)}</pre></details>` +
+        `<div class="muted"><button class="save">Save as chart</button> suggested chart: ${esc(r.chart)} · check the SQL before saving</div>` + trace(r);
+      wait.querySelector(".save").onclick = e => save(e.target, r.trace);
+    } else {
+      const msg = String(r.error).startsWith("Blocked") ? "Refused: this assistant is read-only and only answers questions; it never changes the data."
+        : r.attempts ? `I couldn't produce a working query after ${r.attempts} attempt(s). Last error: ${r.error}` : r.error;
+      wait.innerHTML = `<div class="err">${esc(msg)}</div>` + trace(r);
+    }
+  } catch (err) {
+    wait.innerHTML = `<div class="err">Could not reach the server: ${esc(err.message)}</div>`;
+  } finally {
+    $("#go").disabled = false; $("#q").focus();
+  }
+};
+</script>
+</body>
+</html>

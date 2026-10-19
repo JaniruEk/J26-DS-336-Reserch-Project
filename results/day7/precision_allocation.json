@@ -1,0 +1,162 @@
+[
+    {
+        "layer": 0,
+        "sensitivity_score": 0.0,
+        "precision": "INT4"
+    },
+    {
+        "layer": 1,
+        "sensitivity_score": -0.015999999999999997,
+        "precision": "INT4"
+    },
+    {
+        "layer": 2,
+        "sensitivity_score": 0.007999999999999959,
+        "precision": "INT4"
+    },
+    {
+        "layer": 3,
+        "sensitivity_score": 0.0,
+        "precision": "INT4"
+    },
+    {
+        "layer": 4,
+        "sensitivity_score": -0.015999999999999997,
+        "precision": "INT4"
+    },
+    {
+        "layer": 5,
+        "sensitivity_score": -0.024000000000000053,
+        "precision": "INT4"
+    },
+    {
+        "layer": 6,
+        "sensitivity_score": -0.015999999999999997,
+        "precision": "INT4"
+    },
+    {
+        "layer": 7,
+        "sensitivity_score": 0.0,
+        "precision": "INT4"
+    },
+    {
+        "layer": 8,
+        "sensitivity_score": 0.0,
+        "precision": "INT4"
+    },
+    {
+        "layer": 9,
+        "sensitivity_score": -0.015999999999999997,
+        "precision": "INT4"
+    },
+    {
+        "layer": 10,
+        "sensitivity_score": 0.007999999999999959,
+        "precision": "INT4"
+    },
+    {
+        "layer": 11,
+        "sensitivity_score": 0.023999999999999955,
+        "precision": "INT8"
+    },
+    {
+        "layer": 12,
+        "sensitivity_score": -0.015999999999999997,
+        "precision": "INT4"
+    },
+    {
+        "layer": 13,
+        "sensitivity_score": 0.007999999999999959,
+        "precision": "INT4"
+    },
+    {
+        "layer": 14,
+        "sensitivity_score": 0.03999999999999995,
+        "precision": "INT8"
+    },
+    {
+        "layer": 15,
+        "sensitivity_score": -0.032,
+        "precision": "INT4"
+    },
+    {
+        "layer": 16,
+        "sensitivity_score": -0.015999999999999997,
+        "precision": "INT4"
+    },
+    {
+        "layer": 17,
+        "sensitivity_score": 0.023999999999999955,
+        "precision": "INT4"
+    },
+    {
+        "layer": 18,
+        "sensitivity_score": -0.032,
+        "precision": "INT4"
+    },
+    {
+        "layer": 19,
+        "sensitivity_score": 0.023999999999999955,
+        "precision": "INT4"
+    },
+    {
+        "layer": 20,
+        "sensitivity_score": 0.0,
+        "precision": "INT4"
+    },
+    {
+        "layer": 21,
+        "sensitivity_score": 0.0,
+        "precision": "INT4"
+    },
+    {
+        "layer": 22,
+        "sensitivity_score": 0.0,
+        "precision": "INT4"
+    },
+    {
+        "layer": 23,
+        "sensitivity_score": 0.0,
+        "precision": "INT4"
+    },
+    {
+        "layer": 24,
+        "sensitivity_score": -0.015999999999999997,
+        "precision": "INT4"
+    },
+    {
+        "layer": 25,
+        "sensitivity_score": -0.015999999999999997,
+        "precision": "INT4"
+    },
+    {
+        "layer": 26,
+        "sensitivity_score": 0.0,
+        "precision": "INT4"
+    },
+    {
+        "layer": 27,
+        "sensitivity_score": 0.0,
+        "precision": "INT4"
+    },
+    {
+        "layer": 28,
+        "sensitivity_score": -0.015999999999999997,
+        "precision": "INT4"
+    },
+    {
+        "layer": 29,
+        "sensitivity_score": 0.072,
+        "precision": "INT8"
+    },
+    {
+        "layer": 30,
+        "sensitivity_score": -0.015999999999999997,
+        "precision": "INT4"
+    },
+    {
+        "layer": 31,
+        "sensitivity_score": 0.03199999999999997,
+        "precision": "INT8"
+    }
+]

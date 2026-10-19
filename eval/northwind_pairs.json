@@ -1,0 +1,102 @@
+[
+ {
+  "db": "data/northwind.db",
+  "question": "List the names of all shipping companies.",
+  "sql": "SELECT CompanyName FROM Shippers;"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Which products are discontinued?",
+  "sql": "SELECT ProductName FROM Products WHERE Discontinued = '1';"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Show the company names and phone numbers of suppliers in Germany.",
+  "sql": "SELECT CompanyName, Phone FROM Suppliers WHERE Country = 'Germany';"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "List the first and last names of employees based in London.",
+  "sql": "SELECT FirstName, LastName FROM Employees WHERE City = 'London';"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Which products have fewer than 10 units in stock?",
+  "sql": "SELECT ProductName, UnitsInStock FROM Products WHERE UnitsInStock < 10;"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "List each product with its category name.",
+  "sql": "SELECT p.ProductName, c.CategoryName FROM Products p JOIN Categories c ON p.CategoryID = c.CategoryID;"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Which products are supplied by companies in Japan?",
+  "sql": "SELECT p.ProductName FROM Products p JOIN Suppliers s ON p.SupplierID = s.SupplierID WHERE s.Country = 'Japan';"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Show the names of products in the Seafood category.",
+  "sql": "SELECT p.ProductName FROM Products p JOIN Categories c ON p.CategoryID = c.CategoryID WHERE c.CategoryName = 'Seafood';"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Which territories are in the Eastern region?",
+  "sql": "SELECT t.TerritoryDescription FROM Territories t JOIN Regions r ON t.RegionID = r.RegionID WHERE r.RegionDescription = 'Eastern';"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Which customers placed orders that were shipped to Mexico?",
+  "sql": "SELECT DISTINCT c.CompanyName FROM Customers c JOIN Orders o ON c.CustomerID = o.CustomerID WHERE o.ShipCountry = 'Mexico';"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Which customers ordered products from the Beverages category?",
+  "sql": "SELECT DISTINCT cu.CompanyName FROM Customers cu JOIN Orders o ON cu.CustomerID = o.CustomerID JOIN \"Order Details\" od ON o.OrderID = od.OrderID JOIN Products p ON od.ProductID = p.ProductID JOIN Categories c ON p.CategoryID = c.CategoryID WHERE c.CategoryName = 'Beverages';"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "List each employee together with the territories they cover.",
+  "sql": "SELECT e.FirstName, e.LastName, t.TerritoryDescription FROM Employees e JOIN EmployeeTerritories et ON e.EmployeeID = et.EmployeeID JOIN Territories t ON et.TerritoryID = t.TerritoryID;"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Which employees cover territories in the Western region?",
+  "sql": "SELECT DISTINCT e.FirstName, e.LastName FROM Employees e JOIN EmployeeTerritories et ON e.EmployeeID = et.EmployeeID JOIN Territories t ON et.TerritoryID = t.TerritoryID JOIN Regions r ON t.RegionID = r.RegionID WHERE r.RegionDescription = 'Western';"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Show the products in order 10248 and the names of their suppliers.",
+  "sql": "SELECT p.ProductName, s.CompanyName FROM \"Order Details\" od JOIN Products p ON od.ProductID = p.ProductID JOIN Suppliers s ON p.SupplierID = s.SupplierID WHERE od.OrderID = 10248;"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Which shipping companies delivered orders placed by customers from Brazil?",
+  "sql": "SELECT DISTINCT s.CompanyName FROM Shippers s JOIN Orders o ON s.ShipperID = o.ShipVia JOIN Customers c ON o.CustomerID = c.CustomerID WHERE c.Country = 'Brazil';"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "How many products are in each category?",
+  "sql": "SELECT c.CategoryName, COUNT(p.ProductID) FROM Categories c JOIN Products p ON c.CategoryID = p.CategoryID GROUP BY c.CategoryName;"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "What is the average unit price of products for each supplier country?",
+  "sql": "SELECT s.Country, AVG(p.UnitPrice) FROM Products p JOIN Suppliers s ON p.SupplierID = s.SupplierID GROUP BY s.Country;"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "How many orders did each employee handle?",
+  "sql": "SELECT e.FirstName, e.LastName, COUNT(o.OrderID) FROM Employees e JOIN Orders o ON e.EmployeeID = o.EmployeeID GROUP BY e.EmployeeID;"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "What is the total freight cost for each shipping company?",
+  "sql": "SELECT s.CompanyName, SUM(o.Freight) FROM Shippers s JOIN Orders o ON s.ShipperID = o.ShipVia GROUP BY s.CompanyName;"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "How many customers are there in each country?",
+  "sql": "SELECT Country, COUNT(*) FROM Customers GROUP BY Country;"
+ }
+]

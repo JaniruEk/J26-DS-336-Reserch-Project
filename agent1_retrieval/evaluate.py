@@ -9,6 +9,7 @@ from collections import defaultdict
 from statistics import mean
 
 from .complexity import BUCKETS, classify_sql
+from .db import dialect
 from .execution import exec_match, ollama_generate
 from .retrieval import MODES, Retriever
 from .stats import bootstrap_ci, mcnemar_exact
@@ -62,7 +63,8 @@ def run(db, pairs, modes=MODES, quiet=False, generate=None, **kw):
             ex = None
             if generate:
                 try:
-                    ex = exec_match(path, generate(p["question"], ctx.text), p["sql"])
+                    d = dialect(path)  # SQLite calls unchanged (same prompts, cache stays valid)
+                    ex = exec_match(path, generate(p["question"], ctx.text, **({} if d == "SQLite" else {"dialect": d})), p["sql"])
                 except Exception as e:  # model/connection failure counts as a miss but is reported
                     print("generate failed:", type(e).__name__, e)
                     ex = False
@@ -110,8 +112,16 @@ if __name__ == "__main__":
     ap.add_argument("--anchors", type=int, default=0, help="multi_anchors k")
     ap.add_argument("--min-cols", type=int, default=0, help="leave tables with <= N columns unpruned")
     ap.add_argument("--ungated", action="store_true", help="apply multi-anchor to every question, not only predicted multi-join")
+    ap.add_argument("--rich", action="store_true", help="extra linking signals in pruning (linking.py)")
+    ap.add_argument("--infer-fks", action="store_true", help="infer FKs from column names")
+    ap.add_argument("--recommended", action="store_true", help="= --anchors 3 --ungated --min-cols 8 --rich (the PP1 config, RECOMMENDED)")
+    ap.add_argument("--value-hints", action="store_true", help="show the code values of low-cardinality columns in the schema")
+    ap.add_argument("--glossary", help="JSON file {'Table.Column': 'meaning'} shown as column comments")
     ap.add_argument("--exec", metavar="MODEL", help="execution accuracy with this Ollama model (e.g. phi3)")
     a = ap.parse_args()
-    run(a.db, [p for f in a.pairs for p in json.load(open(f, encoding="utf-8"))], generate=(lambda q, ddl: ollama_generate(q, ddl, a.exec)) if a.exec else None,
+    if a.recommended:
+        a.anchors, a.ungated, a.min_cols, a.rich = 3, True, 8, True
+    run(a.db, [p for f in a.pairs for p in json.load(open(f, encoding="utf-8"))], generate=(lambda q, ddl, **kw: ollama_generate(q, ddl, a.exec, **kw)) if a.exec else None,
         modes=tuple(a.modes), depth=a.depth, threshold=a.threshold, labels=a.labels, adaptive=a.adaptive,
-        multi_anchors=a.anchors, gate=not a.ungated, min_cols=a.min_cols)
+        multi_anchors=a.anchors, gate=not a.ungated, min_cols=a.min_cols, rich=a.rich, infer_missing_fks=a.infer_fks,
+        value_hints=a.value_hints, glossary=a.glossary)
