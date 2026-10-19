@@ -17,7 +17,8 @@ def copy(sqlite_path, url, keep_case=False):
         # as_generic(): SQLite's DATETIME/NVARCHAR become types PostgreSQL understands
         cols = [Column(low(c["name"]), c["type"].as_generic(), primary_key=c["name"] in pk) for c in insp.get_columns(name)]
         fks = [ForeignKeyConstraint([low(c) for c in fk["constrained_columns"]],
-                                    [f"{low(fk['referred_table'])}.{low(c)}" for c in fk["referred_columns"]])
+                                    [f"{low(fk['referred_table'])}.{low(c)}" for c in fk["referred_columns"]],
+                                    deferrable=True, initially="DEFERRED")  # checked at commit: self-references (Employees.ReportsTo) load in any order
                for fk in insp.get_foreign_keys(name)]
         Table(low(name), meta, *cols, *fks)
     meta.drop_all(dst)

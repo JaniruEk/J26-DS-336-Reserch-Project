@@ -99,7 +99,7 @@ def test_pg_through_the_harness_with_value_linking_switch(tmp_path):
     c = make(set())
     r = c.post("/query", json={"query": "What is the total revenue per billing country?", "db": "pg"}).json()
     assert r["ok"] and r["rows"][0][0] == "USA" and r["chart"] == "bar" and seen == ["PostgreSQL"]
-    a = c.post("/answers", json={"question": "revenue", "db": "pg", "sql": r["sql"]}).json()
+    a = c.post("/answers", json={"trace": r["trace"]}).json()  # saved by trace: clients never submit SQL
     assert c.get(f"/answers/{a['id']}.csv").text.splitlines()[1].startswith("USA,")
     q = "Which customers are from Canada?"
     on = c.post("/retrieve", json={"query": q, "db": "pg"}).json()

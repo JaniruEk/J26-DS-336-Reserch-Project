@@ -8,8 +8,8 @@ SLIIT B.Sc. (Hons) IT, Data Science, Y4S1 final-year research project (Sept 2026
 - [Individual_Proposal_Ekanayake_J26-DS-336.md](Individual_Proposal_Ekanayake_J26-DS-336.md) — complete individual proposal for Agent 1
 - [Individual_Proposal_Wathsala_J26-DS-336.md](Individual_Proposal_Wathsala_J26-DS-336.md) — Agent 2 (distillation)
 - [Individual_Proposal_Thathsarani_J26-DS-336.md](Individual_Proposal_Thathsarani_J26-DS-336.md) — Agent 3 (LoRA vs HydraLoRA)
-- [Individual_Proposal_Karunanayake_J26-DS-336.md](Individual_Proposal_Karunanayake_J26-DS-336.md) — Agent 4 (QAT vs PTQ + cross-check)
-- [Execution_Plan_J26-DS-336.md](Execution_Plan_J26-DS-336.md) — phase-by-phase plans for all four members (shared assets, interfaces to lock, per-agent phases/exit criteria); Agent 1 phases 1–6 done
+- [Individual_Proposal_Karunanayake_J26-DS-336.md](Individual_Proposal_Karunanayake_J26-DS-336.md) — Agent 4 (still describes the old QAT vs PTQ scope; superseded by adaptive mixed precision, see Execution Plan section 4)
+- [Execution_Plan_J26-DS-336.md](Execution_Plan_J26-DS-336.md) — phase-by-phase plans for all four members (shared assets, shared config, research protocol, per-agent phases and progress, value-coded data, security and deployment, reports to read); updated 19 Oct 2026
 - [Market_Research_Comparable_Systems.md](Market_Research_Comparable_Systems.md) — prior-art / novelty check
 
 ## Problem & framing
@@ -24,7 +24,7 @@ Regulated enterprises (regional banks, insurers, credit unions, FinTech) want NL
 | 1 Retrieval | J.K.B. Ekanayake (IT23199262) | Schema retrieval + column-level pruning; builds shared complexity classifier |
 | 2 Foundation model | W.A.T. Wathsala (IT23282704) | Knowledge distillation (~7B teacher → small student vs. native baseline); critical path |
 | 3 Fine-tuned generation | K.G.Y.V. Thathsarani (IT23404250) | Standard LoRA vs. HydraLoRA (hard-coded complexity routing); live SQL generation; outputs winner **and runner-up** |
-| 4 Quantized execution | K.M.I.N. Karunanayake (IT23179912) | QAT vs. PTQ (8/4-bit, GGUF/AWQ); cross-check winner strategy on Agent 3's runner-up; SQL execution + error diagnosis/retry |
+| 4 Quantized execution | K.M.I.N. Karunanayake (IT23179912) | Adaptive mixed-precision quantization (final scope, 19 Oct 2026; replaced QAT vs PTQ): per-layer SQL-task sensitivity → sensitive layers INT8, rest INT4, vs uniform INT4/INT8; on Qwen2.5-1.5B-Instruct (28 layers; her earlier Phi-3 Mini work = preliminary), final allocation on Agent 3's winner; SQL execution + error diagnosis/retry |
 
 Handoffs: A1→A3 pruned schema context + complexity label (live); A2→A3 two base checkpoints (distilled, native); A3→A4 winner+runner-up artefacts (offline) and candidate SQL (live); A4→user executed SQL + results. Retry loop: A4 Error-Diagnosis → A3 Generation, bounded attempts. **Still open:** exact handoff formats (DDL vs JSON; checkpoint format).
 
@@ -36,6 +36,7 @@ Handoffs: A1→A3 pruned schema context + complexity label (live); A2→A3 two b
 
 ## Shared foundations
 - Complexity taxonomy: simple / single-join / multi-join / aggregation (from ground-truth SQL).
+- Base model (agreed 19 Oct 2026): **Qwen2.5-1.5B-Instruct** (general, not Coder) for Agents 2–4; teacher Qwen2.5-7B-Instruct (to confirm). phi3 / Phi-3 Mini / Qwen2.5-Coder results are preliminary stand-ins.
 - DB proxies: Chinook (primary), Spider, TPC-H. Synthetic Python-generated pairs fill thin buckets.
 - Orchestration: lightweight FastAPI harness (sequencing, structured handoff logging, bounded retry) — deliberately NOT LangGraph; shared infra, not anyone's novelty.
 - Parallel-work fix: Agent 3 runs LoRA-vs-Hydra on a placeholder base first, Agent 4 on a placeholder fine-tuned model; both re-run on real upstream artefacts.
@@ -43,7 +44,7 @@ Handoffs: A1→A3 pruned schema context + complexity label (live); A2→A3 two b
 ## Novelty positioning (from market research — keep claims honest)
 - Closest competitor: **MATS** (arXiv 2512.18622; 5 SLM agents, 9B total, 24GB GPU, 87.1% Spider / 64.73% BIRD). Do NOT claim multi-agent SLM text-to-SQL as novel. Claim efficiency (one shared base + adapters + quantization on mid-range hardware) and depth on fine-tuning/quantization.
 - Strongest claim: complexity-routed HydraLoRA for SQL (Thathsarani). Be ready to defend hard-coded vs learned router (auditable, avoids gating collapse).
-- Quantization: QAT vs PTQ + cross-check is a narrow but real gap; distinguish from arXiv 2607.25583 ("How Small Can You Go?", 60M model).
+- Quantization (Agent 4, mixed precision): per-layer mixed precision is NOT new (HAWQ/HAWQ-V2, OWQ, SpQR, SliM-LLM, llama.cpp `Q4_K_M`). Claim only task-specific (SQL, per complexity bucket) vs generic sensitivity; baselines must include `Q4_K_M` and random layers at equal INT8 count. Plan: Execution Plan section 4. Her Day 6 sensitivity used 25 questions (most layers differ by 0–1 question = noise).
 - Schema retrieval is crowded (GRASP, RASL, RSL-SQL, SchemaGraphSQL) — Ekanayake's contribution is the four-mode ablation/measurement rigor, not a novel retrieval algorithm. Read GRASP and RASL.
 - Privacy: combination of local hosting + active schema pruning (Prem-1B-SQL skips pruning; MaskSQL uses redaction instead of local hosting).
 - Commercial tools (Snowflake Cortex Analyst, Databricks Genie, ThoughtSpot): cite once as market context / proof of demand.
@@ -72,8 +73,21 @@ Reference prototype: github.com/JaniruEk/enterprise-slm-framework (`pillar1_rag/
 - PostgreSQL findings (Chinook copy, phi3, n=14, too small for significance): exec hybrid .43 / pruned .50 on lower-cased PG vs .43 / .57 on SQLite; pruned colR drops .95 -> .79 because lower-cased names (`firstname`, `billingcountry`) can't be split on capitals -> same naming limitation as TPC-H. Case-preserved PG copy gives SQLite-identical tables/columns on 12-13/14 questions (remaining diff: type names NVARCHAR vs VARCHAR shift the anchor embedding). Bug found and fixed: PG returns NUMERIC sums as `Decimal`, chart hint now treats it as numeric. Writes are blocked even for the DB owner and via `WITH ... DELETE`.
 - Security review fixes (18 Oct): `/answers` saves by trace only (was: any client SQL, a raw-SQL door around `no_value_linking`); CSV export neutralises formula cells (`=`,`+`,`-`,`@`, tab, CR; numbers untouched); Superset needs explicit credentials; `db.ENFORCED = ('postgresql',)` — MySQL/SQL Server/Oracle URLs are refused until they get their own read-only + timeout setup; `redact()` hides passwords containing '@'. Still open (deployment decision): no login/API key on the harness endpoints — run it only on a private network until added.
 - Known flaky: `tests/test_pp1_fixes.py::test_warm_latency_under_500ms_on_chinook` fails on this machine (~730 ms worst case) with or without the BI changes — timing/load, not a regression.
+- Deployment runtime (decided 18 Oct): keep Ollama for PP1; deployment = llama.cpp in-process (`llama-cpp-python`, GGUF base + LoRA adapters), research eval = transformers+PEFT. Implement after Agent 3/4 artefacts exist, behind `J26_RUNTIME` env switch. Prerequisite team decision: HydraLoRA heads as separate adapters on a quantized base (preferred) vs merged per head; Agent 4 must quantize the deployed configuration. Plan: reports/Deployment_runtime_plan.md.
 - Not built yet: re-run with Agent 3's fine-tuned model; agree handoff format with Thathsarani.
 - Note: proposal's dataset sample labels `SELECT COUNT(*) FROM Track` "Simple" and a 1-join query "Multi-join"; `classify_sql` follows the structural rule (aggregate→aggregation, 1 JOIN→single-join), so those labels differ.
+
+## Generalisation test: Northwind (unseen database, 19 Oct 2026)
+- Northwind SQLite (`data/northwind.db`, from github.com/jpwhite3/northwind-SQLite3; 13 tables, 13 FKs, ~625k rows incl. 609k `Order Details`) + a PostgreSQL copy (`scripts/load_postgres.py`, db `northwind` in the `j26-postgres` container). 20 gold pairs, 5 per bucket: `eval/northwind_pairs.json` (PG variant = same SQL with `"order details"`). Agent 1 was never tuned on it.
+- Retrieval (recommended config, hybrid_pruned): SQLite 227 tok, colR .99 (hybrid 299, .99) — pruning cut ~24% tokens with zero recall loss. PG after fixes: 209 tok, colR .99.
+- Execution (n=20, all differences n.s.): SQLite phi3 hybrid .45 / pruned .40, Qwen2.5-Coder-1.5B .55 / .50; PG phi3 .45 / .50, Qwen .45 / .40. Multi-join is the weak bucket for both models (Qwen 0/5).
+- Bugs found by this test and fixed: (1) `schema.render` printed `CREATE TABLE Order Details` unquoted -> model wrote `OrderDetails`/syntax errors; `schema.ident` now quotes only names that need it (earlier token counts unchanged). (2) PG lower-cased names (`firstname`, `productname`) were pruned: the label-column rule now uses `identifier_words`, and `linking.segment` splits a known word ending in a schema head word (`HEADS`: name, title, date, code, price...) — PG colR .83 -> .99; Chinook/TPC-H/Spider numbers re-checked identical. Known oddity: `mandate` -> man+date. (3) loader: self-referencing FK (Employees.ReportsTo) -> FKs now DEFERRABLE INITIALLY DEFERRED.
+- Live demo finding: "total freight cost per shipping company" on northwind_postgres -> phi3 joined orders.shipvia to suppliers (same `companyname` column) instead of shippers: a plausible-looking wrong answer. Agent 1 had shippers as anchor; the multi_anchors=3 setting also pulled suppliers in as a distractor. Supports showing the SQL to users and is a trade-off to report.
+
+## Value-coded data (19 Oct 2026, branch `janiru/value-hints`)
+- Problem: "discontinued" -> `Discontinued = 'yes'` -> 0 rows (stored '1'/'0'); empty results are not errors, so no retry.
+- Agent 1 fix: `Retriever(value_hints=True)` + `linking.code_values` (code column = 2-6 short repeating values or 0/1 flags; 1,000-row sample then one bounded DISTINCT; never unique-per-row columns; off when `value_linking=False`); code columns kept through pruning (reason `code_column`); `schema.render(..., notes=)` prints `/* values: ... */`; `glossary` (dict or JSON path, `Table.Column` keys, applies even with value linking off; harness `J26_GLOSSARIES`). `LIVE = {**RECOMMENDED, value_hints: True}` is the harness default; `RECOMMENDED` unchanged for reproducibility. CLI `evaluate --value-hints --glossary`.
+- Results: `eval/value_coded_pairs.json` (16 q, 9 DBs) exec .31 -> .69 phi3 (p=.11), .12 -> .56 Qwen2.5-Coder-1.5B (p=.016); ordinary sets (148 q) .432 -> .446 / .446 -> .466 (n.s., no harm), +17 tokens. Other members' follow-ups: Execution Plan section 6 (Agent 3 train with value comments, Agent 2 distillation prompts, Agent 4 empty-result retry).
 
 ## Open TODOs
 - Paste remainder of combined proposal (Sections 4 onward) and save.

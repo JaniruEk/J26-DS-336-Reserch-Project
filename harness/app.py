@@ -16,7 +16,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel, StringConstraints
 
-from agent1_retrieval import MODES, RECOMMENDED, Agent1
+from agent1_retrieval import LIVE, MODES, Agent1
 from agent1_retrieval.db import DBError, dialect, query, tables_with_rows
 from agent1_retrieval.execution import ollama_generate
 from agent1_retrieval.schema import reflect
@@ -37,6 +37,12 @@ def env_dbs():
 def env_no_value_linking():
     """J26_NO_VALUE_LINKING=bank,hr : databases whose data values Agent 1 must never read (personal data)."""
     return {n.strip() for n in os.environ.get("J26_NO_VALUE_LINKING", "").split(",") if n.strip()}
+
+
+def env_glossaries():
+    """J26_GLOSSARIES='{"bank": "config/bank_glossary.json"}' : per-database data dictionary, {"Table.Column": "meaning"},
+    shown to the model as column comments (e.g. "C = closed, A = active"). Any database, any number."""
+    return json.loads(os.environ.get("J26_GLOSSARIES", "{}"))
 
 
 BLOCKED = "Blocked by SQL guard"  # an error starting with this is final: the harness does not retry it
@@ -85,12 +91,14 @@ class Query(BaseModel):
 
 
 def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute=run_sql, log_path="data/handoff.log.jsonl",
-               agent1_config=RECOMMENDED, answers_path="data/answers.db", superset=superset_config, no_value_linking=None):
+               agent1_config=LIVE, answers_path="data/answers.db", superset=superset_config, no_value_linking=None,
+               glossaries=None):
     """agent1_config: Retriever options for the live Agent 1 (pass {} for the original Phase 1-7 settings).
     superset: callable returning the Superset config or None (BI push disabled).
     dbs: name -> SQLite path or SQLAlchemy URL. no_value_linking: db names whose data values Agent 1 must not read."""
     dbs = dbs or env_dbs()
     no_values = env_no_value_linking() if no_value_linking is None else set(no_value_linking)
+    glossaries = env_glossaries() if glossaries is None else glossaries
     app, agents = FastAPI(title="J26-DS-336 harness"), {}
     Path(log_path).parent.mkdir(parents=True, exist_ok=True)
     Path(answers_path).parent.mkdir(parents=True, exist_ok=True)
@@ -109,7 +117,8 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
             raise HTTPException(422, f"mode must be one of {MODES}")
         if (name, req.mode) not in agents:
             try:
-                agents[name, req.mode] = Agent1(dbs[name], req.mode, **agent1_config, value_linking=name not in no_values)
+                agents[name, req.mode] = Agent1(dbs[name], req.mode, **agent1_config, value_linking=name not in no_values,
+                                                glossary=glossaries.get(name))
             except DBError as e:  # server database down / wrong credentials: say so, don't 500
                 raise HTTPException(503, f"database '{name}' unavailable: {e}")
         return dbs[name], agents[name, req.mode]

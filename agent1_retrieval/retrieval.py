@@ -1,8 +1,10 @@
 """Agent 1: four switchable retrieval modes built from three sub-agents
 (anchor selection -> FK traversal -> column pruning)."""
 import hashlib
+import json
 import tempfile
 import time
+from pathlib import Path
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -16,6 +18,9 @@ MODES = ("semantic", "structural", "hybrid", "hybrid_pruned")
 # TPC-H .97, Spider .98 (Spider never used for tuning). Execution accuracy for this exact config still has to be
 # re-run with Ollama (`evaluate --recommended --exec phi3`). Constructor defaults stay as before so Phase 1-7 reproduce.
 RECOMMENDED = {"multi_anchors": 3, "gate": False, "min_cols": 8, "rich": True}
+# Live app default = RECOMMENDED + code values in the schema (measured 19 Oct 2026: value-coded exec .31->.69 phi3,
+# .12->.56 Qwen-Coder-1.5B; ordinary questions unharmed). RECOMMENDED itself stays fixed so earlier results reproduce.
+LIVE = {**RECOMMENDED, "value_hints": True}
 
 
 @dataclass
@@ -52,7 +57,7 @@ def _enc():
 
 class Retriever:
     def __init__(self, db_path, depth=1, threshold=0.6, labels=False, adaptive=False, multi_anchors=0, gate=True, min_cols=0, chroma_path=None,
-                 rich=False, infer_missing_fks=False, value_linking=True):
+                 rich=False, infer_missing_fks=False, value_linking=True, value_hints=False, glossary=None):
         # adaptive: +1 FK hop for questions predicted multi-join. multi_anchors=k: for those questions also take the top-k
         # semantic tables and connect them to the main anchor along shortest FK paths (bridge tables included).
         self.db_path, self.depth, self.threshold, self.labels, self.adaptive = db_path, depth, threshold, labels, adaptive
@@ -62,6 +67,14 @@ class Retriever:
         self.rich = rich
         # value_linking=False: rich linking never reads data values (switch off for databases holding personal data)
         self.value_linking = value_linking
+        # value_hints: show the codes a column holds ("Discontinued TEXT /* values: '0', '1' */") so the model does not guess
+        # 'yes'. Needs value_linking (it reads data). glossary: {"Table.Column": "C = closed, A = active"} or a JSON file path,
+        # the bank's own data dictionary; it is configuration, not data, so it applies even with value_linking off.
+        self.value_hints = value_hints and value_linking
+        if isinstance(glossary, str):
+            glossary = json.loads(Path(glossary).read_text(encoding="utf-8"))
+        self.glossary = {k.lower(): v for k, v in (glossary or {}).items()}
+        self._codes = {}
         self.tables = reflect(db_path)
         self.inferred = infer_fks(self.tables) if infer_missing_fks else []
         self.adj = adjacency(self.tables)
@@ -155,11 +168,33 @@ class Retriever:
                                           named=self.rich and any(lemma(w) in qlem for w in split_ident(n)))
                        if len(self.tables[n].columns) > self.min_cols  # min_cols: leave narrow tables whole
                        else {c: "narrow_table" for c, _, _ in self.tables[n].columns} for n in names}
+            if self.value_hints:  # code columns are cheap and usually what gets filtered on ("still being sold" -> Discontinued)
+                for n in names:
+                    self._notes(n)
+                    for c in self._codes[n]:
+                        if reasons[n].get(c) == "pruned":
+                            reasons[n][c] = "code_column"
             cols = {n: [c for c, why in reasons[n].items() if why != "pruned"] for n in names}
         else:
             cols = {n: [c for c, _, _ in self.tables[n].columns] for n in names}
-        text = "\n\n".join(render(self.tables[n], cols[n]) for n in names)
+        text = "\n\n".join(render(self.tables[n], cols[n], self._notes(n)) for n in names)
         return Context(mode, anchor, cols, text, len(_enc().encode(text)), (time.perf_counter() - t0) * 1000, reasons, roles)
+
+    def _notes(self, name):
+        """Per-column comments for the schema shown to the model: glossary meaning and/or code values."""
+        if not (self.value_hints or self.glossary):
+            return None
+        if self.value_hints and name not in self._codes:
+            from .linking import code_values
+            self._codes[name] = code_values(self.db_path, self.tables[name])
+        notes = {}
+        for c, _, _ in self.tables[name].columns:
+            parts = [self.glossary[k] for k in (f"{name}.{c}".lower(),) if k in self.glossary]
+            if self.value_hints and c in self._codes[name]:
+                parts.append("values: " + ", ".join(repr(v) for v in self._codes[name][c]))
+            if parts:
+                notes[c] = "; ".join(parts)
+        return notes
 
     def _value_links(self, query, names):
         if self._values is None:

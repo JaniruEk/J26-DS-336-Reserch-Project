@@ -1,0 +1,82 @@
+[
+ {
+  "db": "data/northwind.db",
+  "question": "Which products are discontinued?",
+  "sql": "SELECT ProductName FROM Products WHERE Discontinued = '1';"
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Which products are still being sold?",
+  "sql": "SELECT ProductName FROM Products WHERE Discontinued = '0';"
+ },
+ {
+  "db": "data/spider/concert_singer/concert_singer.sqlite",
+  "question": "What are the names of the male singers?",
+  "sql": "SELECT Name FROM singer WHERE Is_male = 'T';"
+ },
+ {
+  "db": "data/spider/concert_singer/concert_singer.sqlite",
+  "question": "How many female singers are there?",
+  "sql": "SELECT COUNT(*) FROM singer WHERE Is_male = 'F';"
+ },
+ {
+  "db": "data/spider/employee_hire_evaluation/employee_hire_evaluation.sqlite",
+  "question": "List the names of employees who were hired full time.",
+  "sql": "SELECT e.Name FROM employee e JOIN hiring h ON e.Employee_ID = h.Employee_ID WHERE h.Is_full_time = 'T';"
+ },
+ {
+  "db": "data/spider/employee_hire_evaluation/employee_hire_evaluation.sqlite",
+  "question": "How many part-time hires are there?",
+  "sql": "SELECT COUNT(*) FROM hiring WHERE Is_full_time = 'F';"
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "How many female students are there?",
+  "sql": "SELECT COUNT(*) FROM Student WHERE Sex = 'F';"
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "List the first names of the male students.",
+  "sql": "SELECT Fname FROM Student WHERE Sex = 'M';"
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "How many of the pets are dogs?",
+  "sql": "SELECT COUNT(*) FROM Pets WHERE PetType = 'dog';"
+ },
+ {
+  "db": "data/spider/tvshow/tvshow.sqlite",
+  "question": "Which TV channels offer high-definition TV?",
+  "sql": "SELECT series_name FROM TV_Channel WHERE Hight_definition_TV = 'yes';"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "Which languages are official in Aruba?",
+  "sql": "SELECT cl.Language FROM countrylanguage cl JOIN country c ON cl.CountryCode = c.Code WHERE c.Name = 'Aruba' AND cl.IsOfficial = 'T';"
+ },
+ {
+  "db": "data/spider/world_1/world_1.sqlite",
+  "question": "How many official languages are there in total?",
+  "sql": "SELECT COUNT(*) FROM countrylanguage WHERE IsOfficial = 'T';"
+ },
+ {
+  "db": "data/spider/wta_1/wta_1.sqlite",
+  "question": "How many matches were won by left-handed players?",
+  "sql": "SELECT COUNT(*) FROM matches WHERE winner_hand = 'L';"
+ },
+ {
+  "db": "data/spider/wta_1/wta_1.sqlite",
+  "question": "List the distinct names of right-handed match winners.",
+  "sql": "SELECT DISTINCT winner_name FROM matches WHERE winner_hand = 'R';"
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "How many dogs were abandoned?",
+  "sql": "SELECT COUNT(*) FROM Dogs WHERE abandoned_yn = '1';"
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "List the names of the large dogs.",
+  "sql": "SELECT name FROM Dogs WHERE size_code = 'LGE';"
+ }
+]
