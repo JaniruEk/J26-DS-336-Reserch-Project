@@ -8,8 +8,8 @@ SLIIT B.Sc. (Hons) IT, Data Science, Y4S1 final-year research project (Sept 2026
 - [Individual_Proposal_Ekanayake_J26-DS-336.md](Individual_Proposal_Ekanayake_J26-DS-336.md) — complete individual proposal for Agent 1
 - [Individual_Proposal_Wathsala_J26-DS-336.md](Individual_Proposal_Wathsala_J26-DS-336.md) — Agent 2 (distillation)
 - [Individual_Proposal_Thathsarani_J26-DS-336.md](Individual_Proposal_Thathsarani_J26-DS-336.md) — Agent 3 (LoRA vs HydraLoRA)
-- [Individual_Proposal_Karunanayake_J26-DS-336.md](Individual_Proposal_Karunanayake_J26-DS-336.md) — Agent 4 (QAT vs PTQ + cross-check)
-- [Execution_Plan_J26-DS-336.md](Execution_Plan_J26-DS-336.md) — phase-by-phase plans for all four members (shared assets, interfaces to lock, per-agent phases/exit criteria); Agent 1 phases 1–6 done
+- [Individual_Proposal_Karunanayake_J26-DS-336.md](Individual_Proposal_Karunanayake_J26-DS-336.md) — Agent 4 (still describes the old QAT vs PTQ scope; superseded by adaptive mixed precision, see Execution Plan section 4)
+- [Execution_Plan_J26-DS-336.md](Execution_Plan_J26-DS-336.md) — phase-by-phase plans for all four members (shared assets, shared config, research protocol, per-agent phases and progress, value-coded data, security and deployment, reports to read); updated 19 Oct 2026
 - [Market_Research_Comparable_Systems.md](Market_Research_Comparable_Systems.md) — prior-art / novelty check
 
 ## Problem & framing
@@ -24,7 +24,7 @@ Regulated enterprises (regional banks, insurers, credit unions, FinTech) want NL
 | 1 Retrieval | J.K.B. Ekanayake (IT23199262) | Schema retrieval + column-level pruning; builds shared complexity classifier |
 | 2 Foundation model | W.A.T. Wathsala (IT23282704) | Knowledge distillation (~7B teacher → small student vs. native baseline); critical path |
 | 3 Fine-tuned generation | K.G.Y.V. Thathsarani (IT23404250) | Standard LoRA vs. HydraLoRA (hard-coded complexity routing); live SQL generation; outputs winner **and runner-up** |
-| 4 Quantized execution | K.M.I.N. Karunanayake (IT23179912) | QAT vs. PTQ (8/4-bit, GGUF/AWQ); cross-check winner strategy on Agent 3's runner-up; SQL execution + error diagnosis/retry |
+| 4 Quantized execution | K.M.I.N. Karunanayake (IT23179912) | Adaptive mixed-precision quantization (final scope, 19 Oct 2026; replaced QAT vs PTQ): per-layer SQL-task sensitivity → sensitive layers INT8, rest INT4, vs uniform INT4/INT8; on Qwen2.5-1.5B-Instruct (28 layers; her earlier Phi-3 Mini work = preliminary), final allocation on Agent 3's winner; SQL execution + error diagnosis/retry |
 
 Handoffs: A1→A3 pruned schema context + complexity label (live); A2→A3 two base checkpoints (distilled, native); A3→A4 winner+runner-up artefacts (offline) and candidate SQL (live); A4→user executed SQL + results. Retry loop: A4 Error-Diagnosis → A3 Generation, bounded attempts. **Still open:** exact handoff formats (DDL vs JSON; checkpoint format).
 
@@ -36,6 +36,7 @@ Handoffs: A1→A3 pruned schema context + complexity label (live); A2→A3 two b
 
 ## Shared foundations
 - Complexity taxonomy: simple / single-join / multi-join / aggregation (from ground-truth SQL).
+- Base model (agreed 19 Oct 2026): **Qwen2.5-1.5B-Instruct** (general, not Coder) for Agents 2–4; teacher Qwen2.5-7B-Instruct (to confirm). phi3 / Phi-3 Mini / Qwen2.5-Coder results are preliminary stand-ins.
 - DB proxies: Chinook (primary), Spider, TPC-H. Synthetic Python-generated pairs fill thin buckets.
 - Orchestration: lightweight FastAPI harness (sequencing, structured handoff logging, bounded retry) — deliberately NOT LangGraph; shared infra, not anyone's novelty.
 - Parallel-work fix: Agent 3 runs LoRA-vs-Hydra on a placeholder base first, Agent 4 on a placeholder fine-tuned model; both re-run on real upstream artefacts.
@@ -43,7 +44,7 @@ Handoffs: A1→A3 pruned schema context + complexity label (live); A2→A3 two b
 ## Novelty positioning (from market research — keep claims honest)
 - Closest competitor: **MATS** (arXiv 2512.18622; 5 SLM agents, 9B total, 24GB GPU, 87.1% Spider / 64.73% BIRD). Do NOT claim multi-agent SLM text-to-SQL as novel. Claim efficiency (one shared base + adapters + quantization on mid-range hardware) and depth on fine-tuning/quantization.
 - Strongest claim: complexity-routed HydraLoRA for SQL (Thathsarani). Be ready to defend hard-coded vs learned router (auditable, avoids gating collapse).
-- Quantization: QAT vs PTQ + cross-check is a narrow but real gap; distinguish from arXiv 2607.25583 ("How Small Can You Go?", 60M model).
+- Quantization (Agent 4, mixed precision): per-layer mixed precision is NOT new (HAWQ/HAWQ-V2, OWQ, SpQR, SliM-LLM, llama.cpp `Q4_K_M`). Claim only task-specific (SQL, per complexity bucket) vs generic sensitivity; baselines must include `Q4_K_M` and random layers at equal INT8 count. Plan: Execution Plan section 4. Her Day 6 sensitivity used 25 questions (most layers differ by 0–1 question = noise).
 - Schema retrieval is crowded (GRASP, RASL, RSL-SQL, SchemaGraphSQL) — Ekanayake's contribution is the four-mode ablation/measurement rigor, not a novel retrieval algorithm. Read GRASP and RASL.
 - Privacy: combination of local hosting + active schema pruning (Prem-1B-SQL skips pruning; MaskSQL uses redaction instead of local hosting).
 - Commercial tools (Snowflake Cortex Analyst, Databricks Genie, ThoughtSpot): cite once as market context / proof of demand.

@@ -6,7 +6,7 @@
 
 | Phase | Runtime | Why |
 |---|---|---|
-| Development and PP1 | **Ollama** (placeholder Qwen2.5-Coder-1.5B-Instruct, or phi3) | Tested end to end; no final model artefacts exist yet, so switching gains nothing |
+| Development and PP1 | **Ollama** (stand-ins phi3 / Qwen2.5-Coder-1.5B; team base model is Qwen2.5-1.5B-Instruct, agreed 19 Oct 2026) | Tested end to end; no final model artefacts exist yet, so switching gains nothing |
 | Research evaluation (Agents 2, 3, 4) | **Hugging Face transformers + PEFT** | Native adapter switching; what the training code already uses |
 | Deployment | **llama.cpp inside the application** (`llama-cpp-python`) | One process, no separate model server; loads Agent 4's GGUF and Agent 3's adapters directly; fast on mid-range hardware |
 
@@ -22,8 +22,8 @@ The harness takes the generator as a function: `create_app(generate=...)` with t
    - **A (preferred): quantize the base only, keep each head as a separate LoRA adapter (GGUF).** One base in memory, adapters switched per question. Less memory, one quantized model to evaluate.
    - **B: merge each head into the base and quantize each merged model.** Four full models, so 4x disk, and switching means loading another model.
    - Owners: Thathsarani (export format) and Karunanayake (what gets quantized).
-2. **Agent 4's QAT-vs-PTQ study must quantize the configuration that will be deployed** (under A: the base, evaluated with adapters attached). Otherwise the study's winner is not what ships.
-3. **Artefacts available:** Agent 4's final quantized base (GGUF) and Agent 3's winner adapters (GGUF LoRA, via llama.cpp's `convert_lora_to_gguf.py`).
+2. **Agent 4's mixed-precision study must quantize the configuration that will be deployed** (under A: the base, with layer sensitivity measured and evaluated with adapters attached). Otherwise the chosen INT4/INT8 allocation is not what ships.
+3. **Artefacts available:** Agent 4's final mixed-precision base (one GGUF with per-layer INT8/INT4 types) and Agent 3's winner adapters (GGUF LoRA, via llama.cpp's `convert_lora_to_gguf.py`).
 4. **Agent 3's live head routing** uses the complexity label from Agent 1's handoff (`complexity`), so the generator receives it per request.
 
 ## Implementation steps

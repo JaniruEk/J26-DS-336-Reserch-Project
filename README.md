@@ -16,7 +16,7 @@ question ─► Agent 1 Retrieval ─► Agent 3 Generation ─► Agent 4 Execu
 | 1 Schema retrieval and column-level pruning | J.K.B. Ekanayake (IT23199262) | `agent1_retrieval/`: working, evaluated (Phases 1–8) |
 | 2 Foundation model (distillation) | W.A.T. Wathsala (IT23282704) | see team branches |
 | 3 Fine-tuned generation (LoRA vs HydraLoRA) | K.G.Y.V. Thathsarani (IT23404250) | see team branches |
-| 4 Quantized execution (QAT vs PTQ) | K.M.I.N. Karunanayake (IT23179912) | see team branches |
+| 4 Quantized execution (adaptive mixed-precision INT4/INT8) | K.M.I.N. Karunanayake (IT23179912) | see team branches |
 | Harness (shared) | team | `harness/`: FastAPI sequencing, handoff logging, bounded retry, explorer and chat UI |
 
 ## Setup
