@@ -178,5 +178,12 @@ def test_add_database_at_runtime(db, tmp_path):
     assert make(admin_token="t0k").post("/dbs/upload?name=a1", content=b"x", headers=H).status_code == 403  # Host 'testserver' not allowed
     assert make(admin_token="", admin_hosts={"testserver"}).post(  # no token set: only this machine ('testclient' is not)
         "/dbs/upload?name=a1", content=b"x", headers={"X-J26-Admin": "local"}).status_code == 403
+    local = TestClient(create_app({"t": db}, log_path=str(tmp_path / "l.jsonl"), answers_path=str(tmp_path / "a.db"),
+                                  superset=lambda: None, uploads_dir=str(up), admin_token="", admin_hosts={"testserver"}),
+                       client=("127.0.0.1", 50000))  # a direct request from this machine, no token configured
+    assert local.post("/dbs/upload?name=l1", content=Path(db).read_bytes(), headers={"X-J26-Admin": "local"}).status_code == 200
+    r = local.post("/dbs/upload?name=l2", content=Path(db).read_bytes(),  # same peer via a reverse proxy: refused
+                   headers={"X-J26-Admin": "local", "X-Forwarded-For": "10.0.0.5"})
+    assert r.status_code == 403 and "proxy" in r.json()["detail"]
     assert make(admin_token="t0k", admin_hosts={"testserver"}, db_hosts={"db.bank.local"}).post(
         "/dbs", json={"name": "q", "url": "postgresql+psycopg://u:p@evil.example/x"}, headers=H).status_code == 403

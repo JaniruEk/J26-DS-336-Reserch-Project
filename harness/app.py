@@ -116,7 +116,8 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
                agent1_config=LIVE, answers_path="data/answers.db", superset=superset_config, no_value_linking=None,
                glossaries=None, uploads_dir="data/uploads", admin_token=None, admin_hosts=None, db_hosts=None):
     """Adding databases at runtime (/dbs, /dbs/upload) is an admin action. admin_token (env J26_ADMIN_TOKEN): required
-    from other machines; unset = only requests from this machine may add databases. admin_hosts (env J26_ALLOWED_HOSTS):
+    from other machines; unset = only direct (unproxied) requests from this machine may add databases, so any deployment
+    behind a reverse proxy must set it. admin_hosts (env J26_ALLOWED_HOSTS):
     extra Host header names the app is reached by (DNS-rebinding check). db_hosts (env J26_DB_HOSTS): if set, the only
     database hosts /dbs may connect to."""
     admin_token = os.environ.get("J26_ADMIN_TOKEN") if admin_token is None else admin_token
@@ -187,6 +188,10 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
         if admin_token:
             if not hmac.compare_digest(sent.encode(), admin_token.encode()):
                 raise HTTPException(403, "wrong admin token")
+        # No token: trust only a direct connection from this machine. Behind a reverse proxy every peer looks like
+        # loopback, so a request carrying proxy headers is refused: a proxied deployment must set J26_ADMIN_TOKEN.
+        elif any(h in request.headers for h in ("x-forwarded-for", "forwarded", "x-real-ip")):
+            raise HTTPException(403, "behind a proxy, adding databases needs J26_ADMIN_TOKEN set on the server")
         elif (request.client.host if request.client else "") not in LOOPBACK:
             raise HTTPException(403, "adding databases from another machine needs J26_ADMIN_TOKEN set on the server")
 
