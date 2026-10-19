@@ -1,7 +1,7 @@
 # J26-DS-336 — PP1 Panel Response (Team Document)
 
 Distributed Multi-Agent SLM Framework for Privacy-Preserving Enterprise Data Intelligence
-Panel: DS-P03 | Prepared 16 Oct 2026 | PP1 window noted in lecture: 20–27 Oct 2026
+Panel: DS-P03 | Prepared 16 Oct 2026, updated 19 Oct 2026 with each member's measured results | PP1 window noted in lecture: 20–27 Oct 2026
 
 This document turns the panel's comments and the extra feedback notes into **answers** (what we say) and **fixes** (what we build or show). Each member also has an individual file (01–04) with their own answers, two key functions, a 2-minute script and a checklist.
 
@@ -51,14 +51,16 @@ The honest concession: an organisation that already runs large GPU clusters can 
 
 **Why novelty is in the components, not in "multi-agent small models".** Multi-agent small-model Text-to-SQL already exists in the literature; the market-research note identifies MATS as the closest system. So we do not claim to be first at that. Each component addresses one measured weakness of small models:
 
-| Component | What is new (one line) |
-|---|---|
-| Agent 1 (Ekanayake) | Controlled four-mode ablation (semantic / structural / hybrid / hybrid + column pruning) measuring the token-vs-recall trade-off of column pruning for small local models, by complexity bucket. Schema retrieval is a crowded field, so the claim is the measurement, not a new algorithm |
-| Agent 2 (Wathsala) | Controlled test of whether a distilled small model beats a native small model of the same size after identical fine-tuning |
-| Agent 3 (Thathsarani) | Complexity-specialised fine-tuning (HydraLoRA heads routed by query complexity) vs one shared LoRA adapter |
-| Agent 4 (Karunanayake) | QAT vs PTQ for SQL specifically, plus a cross-check showing whether the answer holds on a different fine-tuning architecture |
+| Component | What is new (one line) | Why it matters for a small model (measured) | Status, 19 Oct |
+|---|---|---|---|
+| Agent 1 (Ekanayake) | Complexity-adaptive, data-minimised schema context: the schema's width is set from the question's predicted complexity, and only the needed columns are shown. Retrieval itself is a crowded field and is not claimed | A wide schema distracts a small model: phi3 scores .35 on simple questions with 3 tables, .71 with the right one | Built and running; two significant gains (value hints p = .016, classifier p = .029) |
+| Agent 2 (Wathsala) | Distillation as the base-model choice for SQL: distilled vs native student of the same size, identical fine-tuning, plus a gold-answer control (C0) | Only a small model can ship; the 7B teacher is used once, offline, never deployed | Pipeline validated on a pilot classifier; SQL distillation and the checkpoints for Agent 3 not built yet (critical path; fallback: released Qwen base) |
+| Agent 3 (Thathsarani) | HydraLoRA heads keyed to SQL query complexity, routed by an auditable label, vs one shared LoRA adapter | One adapter helped single-join (.29 → .68) but not multi-join: a small model's capacity goes where the data is | LoRA .55 vs base .41 (p = .012); HydraLoRA .52 with correct labels (n.s. vs LoRA), .39 with the live classifier |
+| Agent 4 (Karunanayake) | SQL-task-sensitive mixed precision: INT8 for the layers SQL depends on, INT4 for the rest, against generic and random layer choices with the same memory (scope changed from QAT vs PTQ) | SQL fails on one wrong character: uniform 4-bit lost 8 of 100 questions, mostly to garbled table names | Preliminary on Phi-3 (100 questions, one database); layer ranking still noise; moving to Qwen2.5-1.5B |
 
-**Fix.** Add one slide line for this answer, and produce one comparison table showing our small-model system's accuracy, latency and VRAM. **[EVIDENCE NEEDED]** Optional but strong: run the same held-out questions through a large hosted model on a *public* database (Chinook or Spider, which contain no private data) as a reference column, so the trade-off is shown as a measured number.
+Each member's individual file (01–04) has the full answer, the evidence and the prior work.
+
+**Fix.** Add one slide line for this answer and one table of measured results per component (above). Optional but strong: run the same held-out questions through a large hosted model on a *public* database (Chinook or Spider, which contain no private data) as a reference column, so the small-vs-large trade-off is shown as a measured number. **[EVIDENCE NEEDED]**
 
 ### 2.3 "Need to think about practical usage"
 
@@ -71,7 +73,7 @@ The honest concession: an organisation that already runs large GPU clusters can 
 
 ### 2.4 "Implement standalone application" (Ekanayake)
 
-See file 01. Agent 1 already runs on its own: there is a CLI, and `POST /retrieve` in `harness/app.py`. An explorer UI will be added so it can be demonstrated without any other agent running. It also plugs into the full chatbot.
+See file 01. Agent 1 runs on its own: a CLI, `POST /retrieve`, and the Retrieval Explorer page (`GET /`). It also runs inside the full application: chat with a per-agent trace, adding a database by file upload or PostgreSQL link, and a dashboard of saved answers.
 
 ### 2.5 Everyone explains the whole system (F4)
 
@@ -125,9 +127,9 @@ The proposal template required black-and-white diagrams not made with AI tools. 
 
 ```
 Agent 2 (Wathsala)           Agent 3 (Thathsarani)            Agent 4 (Karunanayake)
-teacher ~7B → dataset   →    LoRA vs HydraLoRA on base   →    QAT vs PTQ on Agent 3's winner
+teacher ~7B → dataset   →    LoRA vs HydraLoRA on base   →    SQL-sensitive INT8/INT4 mix on Agent 3's winner
 student SFT + native         winner AND runner-up              cross-check on the runner-up
-baseline, compare            published as artefacts            deployable quantized model
+baseline, compare            published as artefacts            deployable mixed-precision GGUF model
   │ base model artefact        │ finetuned_architecture          │ model used by live pipeline
 ```
 
@@ -140,7 +142,7 @@ baseline, compare            published as artefacts            deployable quanti
 | Agent 3 — Fine-tuned generation | Thathsarani | Question, PrunedSchema, label, base model | Candidate SQL (live); winner and runner-up artefacts (offline) | Yes |
 | Agent 4 — Quantized execution | Karunanayake | Candidate SQL, winner and runner-up artefacts | Result or bounded failure (live); quantization findings (offline) | Yes |
 
-**Contracts status:** `shared/schemas/` does not exist yet and must be created and agreed before PP1. Today, only Agent 1's output is defined. It is the dict returned by `Agent1(db, mode).run(query)` (`query, complexity, mode, anchor, tables, ddl, tokens, latency_ms`) and still needs Thathsarani's sign-off. The proposed checkpoint formats are in `reports/Base model selection for local Text2SQL.md`: HF safetensors, PEFT adapter folders, and GGUF/AWQ for quantized models.
+**Contracts status:** `shared/schemas/` does not exist yet and must be created and agreed before PP1. Today, only Agent 1's output is defined. It is the dict returned by `Agent1(db, mode).run(query)` (`query, complexity, mode, anchor, matched, tables, ddl, tokens, latency_ms, trace`) and still needs Thathsarani's sign-off. The harness calls Agent 3 as `generate(question, ddl, hint=None, dialect=...)` and Agent 4 as `execute(db, sql)`. The proposed checkpoint formats are in `reports/Base model selection for local Text2SQL.md`: HF safetensors, PEFT adapter folders, and GGUF/AWQ for quantized models.
 
 ---
 
@@ -148,9 +150,12 @@ baseline, compare            published as artefacts            deployable quanti
 
 The lecture's list of common PP1 failures includes "front end not covered, done only the back end" and "customer couldn't understand the system". A thin front end fixes both, and also demonstrates the four separate components.
 
-**Already in place:** `harness/app.py` provides `POST /query`. It runs Agent 1 → generate → execute with bounded retry (3 attempts) and logs every handoff to `data/handoff.log.jsonl`. Agents 3 and 4 plug in through `create_app(generate=..., execute=...)`.
+**Built (19 Oct):** `harness/app.py` provides `POST /query` (Agent 1 → generate → execute with bounded retry, 3 attempts, every handoff logged to `data/handoff.log.jsonl`) and three pages:
+- `/chat`: the chatbot. Each answer shows a four-stage pipeline strip (question gate → retrieval → generation → execution), each badged **real** or **stand-in**, and a trace with every agent's input and output, including the retry hint passed back.
+- `/` Retrieval Explorer, and `/dashboard` (saved answers as live charts, with a CSV link for Power BI or Excel).
+- Adding a database on the chat page: drop a SQLite file or paste a PostgreSQL link (read-only).
 
-**To build (about one day):** a Python chat interface calling `POST /query`. Streamlit's chat elements or Gradio are the quickest options.
+Agents 3 and 4 plug in through `create_app(generate=..., execute=...)`; their badges then switch from stand-in to real automatically. Agent 2's gate becomes real once its classifier is exported.
 
 **Screen layout:**
 - Chat area: question box, database selector, the generated SQL, the result table, and a plain-language error message when something fails.
@@ -210,7 +215,7 @@ Record each as a test case with input, expected result, actual result and pass/f
 3. **Awkward schemas:** one with missing foreign keys, and one larger than Chinook.
 4. **A live question** typed by a panel member. Rehearse the safe path (Section 9.2) in case it fails.
 
-**[EVIDENCE NEEDED]** End-to-end accuracy per complexity bucket on held-out questions.
+Done for Agent 1 with stand-in SQL models: Northwind (never tuned on) and PostgreSQL copies, plus per-bucket execution accuracy on Chinook + Spider (file 01). **[EVIDENCE NEEDED]** End-to-end accuracy per complexity bucket with Agent 3's fine-tuned model.
 
 ---
 
@@ -219,7 +224,7 @@ Record each as a test case with input, expected result, actual result and pass/f
 | NFR | What to measure or demonstrate | Evidence |
 |---|---|---|
 | Performance | Agent 1 (warm, n=148): **median 278 ms**, p95 380, max 617; 1/148 over the 500 ms target. End-to-end latency (median and slowest over N runs) | Timing table |
-| Resource use | VRAM and memory per quantization configuration on the mid-range target hardware | `nvidia-smi` screenshot + table |
+| Resource use | Memory per quantization configuration on the mid-range target hardware. Preliminary (Agent 4, Phi-3): INT8 86% and INT4 53% of FP16 peak memory | Table (file 03) + `nvidia-smi` screenshot |
 | Security: data stays local | Run a query with the network disabled, or show outbound-connection logs are empty | Screenshot/recording |
 | Security: safe execution | Read-only DB connection (done), SELECT-only validator, rejects multiple statements; destructive inputs refused | Test cases from Section 6 |
 | Security: input boundary | DB chosen by configured key, never a raw path (done) | Test case |

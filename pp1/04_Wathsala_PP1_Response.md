@@ -1,103 +1,154 @@
 # PP1 Panel Response — W.A.T. Wathsala (IT23282704)
 
-Component: **Agent 2 — Knowledge-Distilled Foundation Model** | Project J26-DS-336 | Panel DS-P03
-Read this with the team document (00). Items marked **[EVIDENCE NEEDED]** must be produced and measured by you.
+Component: **Agent 2 — Knowledge distillation for a small SQL base model (distilled vs native student)** | Project J26-DS-336 | Panel DS-P03
+Answers the proposal-presentation comments for Progress Presentation 1. Rewritten 19 Oct 2026 from the `Agent2/` notebooks on `main` (PRs #8, #15; branch `Tharushi`); the earlier draft is in git history. **[MEASURED]** = from the notebooks' printed outputs; **[TO RUN]** = not done yet.
 
-Your component is built once, offline, and is not called per query. That makes it the hardest one to show as "working", and the lecture says PP1 is about working, testable, defensible progress. Your best protection is to show real artefacts early: a generated dataset, a training run, a comparison table, and the handed-over model.
+**Status in one line:** the distillation pipeline works end to end on a pilot task (question classification). The SQL-oriented distillation and the two base checkpoints Agent 3 needs are not built yet. Agent 2 is on the team's critical path, so say this plainly and show the plan and dates.
 
 ---
 
-## 1. Panel comments: answers and fixes
+## 1. The proposal panel comments and the PP1 answer
 
-| Panel comment | What to say | Fix before PP1 | Evidence to show |
+Comments: *"Don't have proper component breakdown. Not explained novelty properly (what's the importance of SLM over LM). Need to think about practical usage."*
+
+| Panel comment | PP1 answer (one line) | Evidence to show | Section |
 |---|---|---|---|
-| **Don't have proper component breakdown** | Agent 2 has four steps. A teacher model of about 7B parameters generates prompt-response pairs. A small student is trained on them. A native model of the same size is kept as the baseline. The two are compared, and the winner is published as a versioned artefact for Agent 3. It is built once, so it has no live sub-agents. | Draw the four steps with the artefact handoff arrow to Agent 3. | Component diagram; model card |
-| **Not explained novelty properly (SLM over LM)** | This is your strongest answer to the panel's question. A small model has limited capacity, and fine-tuning can't create reasoning ability that isn't there. Distillation transfers a larger model's behaviour into the small one. Existing studies compare distilled and native small models on general tasks, not under identical SQL fine-tuning. I isolate distillation as the single variable. | Run the comparison: a reasoning score before fine-tuning, then exact-match and JOIN/aggregation accuracy after identical fine-tuning of both models. Include a "same prompts, gold-SQL targets" control (C0), so a distillation gain can't simply be extra in-domain training (see `reports/Base model selection for local Text2SQL.md`). | Comparison table (**[EVIDENCE NEEDED]**) |
-| **Need to think about practical usage** | Customers cannot buy bigger hardware, so a stronger base model of the same size is the cheapest improvement available. If distillation wins, the distilled model becomes the default shipped with the product. | Be explicit that the teacher runs on rented compute because it is too large for mid-range hardware, and that the shipped model does not. | Budget line and compute log |
+| No proper component breakdown | Five offline steps: choose models, build prompts, generate teacher outputs, train the student, compare against a native student; output = two base checkpoints for Agent 3. | Component diagram; the pilot run through every step | 4 |
+| Novelty not explained (SLM over LM) | The shipped model must be small, but small models lack reasoning; distillation moves a 7B teacher's behaviour into a 0.5–1.5B student without ever deploying the 7B model. The test isolates distillation as the only difference. | Pilot results and the lessons they gave; controlled design with a gold-label control | 2, 3 |
+| Practical usage | The bank runs only the small student on its own hardware; the teacher is used once, offline, on public training data, never on the bank's data. | Teacher vs student sizes; data sources | 6 |
 
 ---
 
-## 2. The nine feedback points, for Agent 2
+## 2. Novelty
 
-| Feedback | What you do |
+**Distillation as the base-model choice for SQL on small models:** does a student distilled from a ~7B teacher make a better *starting point* for SQL fine-tuning than a native model of the same size, when both are then fine-tuned identically by Agent 3?
+
+| Prior work | What it does | Difference |
+|---|---|---|
+| Knowledge distillation (Hinton et al. 2015; DistilBERT and successors) | Compress a large model into a small one, evaluated on general tasks | The question here is the effect on **later SQL fine-tuning**, per complexity bucket |
+| Distilled small models (e.g. distilled Qwen / DeepSeek variants) | Released models, compared on general benchmarks | Distilled vs native **of the same size and tokenizer**, then identical fine-tuning, so distillation is the only variable |
+
+**The control that makes it a finding (C0):** the native model fine-tuned on the same prompts with **gold** answers instead of teacher answers. Without it, a distillation gain could just be extra in-domain training. The pilot already showed this risk (Section 5: a fine-tuned teacher's soft targets were almost one-hot, so "distillation" became plain label training).
+
+**Say:** "Distillation is not new. The question is whether it gives a better base for SQL fine-tuning than a native model of the same size, with distillation as the only difference. A no-difference result is also a finding."
+
+---
+
+## 3. Why a small model, and why distillation
+
+- **The deployed model must be small.** Banks keep generative AI on-premise under their AI-governance policy, on mid-range hardware, so the shipped model is 0.5–1.5B parameters. A 7B teacher does not fit that budget for serving.
+- **Small models have less reasoning capacity.** Fine-tuning teaches a model the task format; it cannot easily add reasoning the model lacks. Distillation transfers some of a larger model's behaviour first.
+- **The large model is used once, offline.** The teacher runs only during training, on rented compute and public training data (Spider **train**). It is never deployed and never sees the bank's data.
+
+**One line for the panel:** "We can't ship the 7B model, so we use it once to teach the small one, and then measure whether the lesson survives SQL fine-tuning."
+
+---
+
+## 4. Component breakdown (all offline; built once)
+
+| # | Step | Decision | Input → Output |
+|---|---|---|---|
+| 1 | Select and freeze | Which teacher, student and native baseline? | candidates → pinned model versions (teacher Qwen2.5-7B-Instruct; student and native Qwen2.5, same size and tokenizer) |
+| 2 | Prompt pool | What does the teacher answer? | Spider **train** schemas + general reasoning prompts → 1,500–3,000 prompts, no overlap with `eval/*.json` |
+| 3 | Teacher generation | What does the teacher say? | prompts → teacher outputs (soft targets or responses), logged and versioned; only outputs whose SQL executes are kept |
+| 4 | Student training | Train the student on the teacher | outputs → distilled student checkpoint (and native + C0 control) |
+| 5 | Comparison and hand-off | Which base is better? | distilled vs native (paired tests) → **both** checkpoints + shared fine-tuning config → Agent 3 |
+
+**Diagram:** five boxes left to right, ending in an arrow "two checkpoints → Agent 3", in draw.io, black and white.
+
+---
+
+## 5. Pilot results: the method validated on a classification task [MEASURED]
+
+Task 1 ("DATABASE vs GENERAL question") was used to build and debug the distillation pipeline before the SQL task.
+
+- **Data:** database questions from `sql_create_context` (WikiSQL + Spider); general questions from 20 CLINC intents. 4,000 train, 799 validation, 1,200 test, with exact-duplicate leakage checked (0 overlaps).
+- **Models:** teacher Qwen2.5-7B-Instruct (4-bit); students Qwen2.5-0.5B-Instruct with LoRA (r 8), 3 epochs. Distillation loss: KL divergence on temperature-2 soft targets. Colab T4.
+
+| Model | Test accuracy (n = 1,200) |
 |---|---|
-| Testing, feedbacks | Tests for dataset generation (format, size, no duplicates), a training run that completes, and the evaluation harness; a check that the published artefact loads in Agent 3's code. Get supervisor feedback on the dataset design. |
-| Flow diagram | teacher → dataset → student → comparison with native → artefact registry → Agent 3. |
-| Frontend (chatbot) | No live step, so show a model-info panel (base model, version, distilled vs native, model card), not a fake live trace. |
-| Everyone explains | Memorise the 30-second whole-system explanation. |
-| Separate components and flows | Show your artefact contract with Agent 3 and say clearly why you are not a live step. |
-| Wrong inputs | Section 4. |
-| Not only sample data | Keep evaluation prompts separate from distillation prompts. Teacher prompts must never come from the Spider dev databases used in evaluation. |
-| NFRs | Reproducibility (versioned config and prompts), compute budget, artefact integrity (checksum), and the student's size on disk and in VRAM. |
-| Backup / demo | Dataset, student checkpoint and registry entry in two other places; a recorded evaluation run. This matters most for you, because rented compute may not be available on demo day. |
+| TF-IDF + logistic regression (baseline) | .983 |
+| Native 0.5B student | .997 (4 errors, raw-text input) |
+| Fine-tuned 7B teacher | .998 |
+| 0.5B student distilled from the fine-tuned teacher | .999 (1 error) |
+| 0.5B student distilled from the prompted teacher | .92 on validation (training prompt); .59 on test, evaluated on raw text |
+
+**What the pilot taught (the useful part):**
+1. **The pipeline works end to end:** soft targets from a 7B teacher, KL training of a 0.5B student, held-out test, leakage check.
+2. **Ceiling effect.** A simple baseline already scores .983, so this task cannot show a distillation effect. That's why the real study uses SQL, where small models fail on joins and aggregations.
+3. **The input format must match.** The .59 is not a teacher failure. The student was trained on a chat prompt and tested on raw text. The teacher's labels agreed with the truth on 90% of training rows. Re-evaluate with the training prompt.
+4. **A fine-tuned teacher gives nearly one-hot targets,** which makes "distillation" close to plain label training. That's the reason for the C0 control.
 
 ---
 
-## 3. Two key functions
+## 6. Practical usage
 
-1. **Distillation dataset generation:** run the teacher over general-reasoning and SQL-adjacent prompts and store the prompt-response pairs (about 1,500–3,000 pairs, as scoped in the proposal). *Demo:* the dataset file, its size and a few sample pairs.
-2. **Distilled-versus-native evaluation and artefact publishing:** compare the two models and publish the chosen one with a model card for Agent 3. *Demo:* the comparison table, then Agent 3 loading the published model.
-
----
-
-## 4. Wrong inputs to demonstrate (pick at least two)
-
-| Input | Expected from Agent 2 |
-|---|---|
-| Teacher output that is empty or malformed | Filtered out and counted, not added to the dataset |
-| Duplicate prompts | Detected and removed |
-| Training interrupted | Resumable from checkpoint, or fails with a clear message |
-| Artefact requested that doesn't exist | Registry returns a readable error to Agent 3 |
-| Model whose size doesn't match the student configuration | Rejected at registration |
+- **Only the small student ships.** It runs on the bank's mid-range GPU as the shared base for Agent 3's adapters and is quantized by Agent 4.
+- **No customer data in training.** Teacher prompts come from public datasets (Spider **train**), never from the evaluation sets or the bank's databases.
+- **Cheapest improvement available.** If distillation gives a better base at the same size, every query gets better at no extra hardware cost. If it doesn't, the native model ships and the team has saved a dead end.
+- **Agent 1's schema format is reused:** teacher prompts use the same pruned schema text, value comments included (`Sex VARCHAR(1) /* values: 'F', 'M' */`), so the student learns the format it will see live.
 
 ---
 
-## 5. 2-minute script (draft, about 200 words)
+## 7. Plan to the SQL study (critical path)
 
-Replace every bracket with a measured value before using it.
+| # | Step | Done when |
+|---|---|---|
+| 1 | Re-evaluate the prompted-teacher student with its training prompt; add a paired test (McNemar) between students | Pilot write-up correct |
+| 2 | Agree base size with the team (0.5B kept for PP1; 1.5B to match Agent 3's placeholder) and freeze the shared fine-tuning config | Config signed by Thathsarani |
+| 3 | SQL prompt pool from Spider **train** schemas + general reasoning prompts; teacher answers, keeping only SQL that executes | Versioned dataset |
+| 4 | Train the distilled student; prepare the native and C0 control | Three checkpoints |
+| 5 | Pre-fine-tuning comparison (general reasoning + SQL), paired tests | Early result |
+| 6 | Hand both checkpoints to Agent 3; after her identical fine-tuning, per-bucket execution accuracy | Final finding |
 
-> Good [morning]. I'm W.A.T. Wathsala, and my component is Agent 2: a knowledge-distilled foundation model.
->
-> The problem: models that fit on mid-range hardware are small and generic, and fine-tuning can't add reasoning ability that the base model doesn't already have. Our target is mid-range hardware, so we cannot just use a bigger model.
->
-> My approach is knowledge distillation. A larger teacher model of about 7 billion parameters generates prompt-response pairs, and a small student model is trained on them. I compare that student against a native small model of the same size, and then both are fine-tuned identically, so distillation is the only difference.
->
-> My two key functions are dataset generation and the distilled-versus-native comparison. I generated [N] pairs. Before any SQL fine-tuning, the distilled model scored [X] on reasoning against [Y] for the native model.
->
-> My component is built once, offline, so it is not a live step. I publish the chosen model as a versioned artefact with a model card, and Agent 3 loads it. Malformed teacher outputs and duplicates are filtered out automatically.
->
-> If distillation wins, the distilled model becomes the default shipped with the product. Thank you.
+**Fallback if time runs short:** Agent 3 keeps the released Qwen2.5 model as the native base, and Agent 2 delivers the distilled checkpoint as soon as it exists. Say this to the panel: it shows the critical-path risk is managed.
 
 ---
 
-## 6. Q&A preparation
+## 8. Limitations to state
+
+- No SQL distillation yet. The pilot task is classification and sits at the ceiling.
+- Pilot labels come from the source dataset, not from human annotation, and contain noise ("what is the spanish word for garden" is labelled DATABASE because it comes from WikiSQL).
+- Pilot comparisons have no paired test yet, and the students were not all evaluated on the same input format.
+- Checkpoints live on Google Drive only. Commit configs, and record checkpoint locations and hashes.
+
+---
+
+## 9. 2-minute script (about 230 words)
+
+> Good morning. I'm W.A.T. Wathsala, and my component is Agent 2: the small base model every other agent builds on.
+>
+> The bank has to run the model on its own mid-range hardware, so the shipped model must be small, around one billion parameters. Small models lack reasoning, and fine-tuning alone can't add much. Knowledge distillation lets a seven-billion-parameter teacher teach the small student once, offline, on public data, and the teacher is never deployed.
+>
+> My question is whether a distilled student is a better starting point for SQL fine-tuning than a native model of the same size. Distillation is the only difference, and I add a control trained on gold answers, so a gain can't just be extra training.
+>
+> So far I've built and tested the whole distillation pipeline on a pilot task, classifying questions as database or general. A 0.5B student distilled from the 7B teacher reached 99.9 percent. The pilot also taught me three things: this task is too easy to show an effect, the evaluation prompt must match training, and a fine-tuned teacher turns distillation into plain label training. That's why the real study uses SQL with that control.
+>
+> Next I build the SQL prompt set from Spider training schemas and hand both checkpoints to Agent 3. Thank you.
+
+---
+
+## 10. Q&A preparation
 
 | Question | Answer skeleton |
 |---|---|
-| What exactly did I build? | Teacher generation, student training, native baseline, evaluation harness, artefact registry. State what has actually run. |
-| Which sub-problem does it address? | Weak reasoning in small base models. |
-| How does it connect to the rest? | Agent 3 loads the published base model; Agent 4 is affected only indirectly. Contract: versioned artefact plus model card. |
-| What testing supports it? | Pre- and post-fine-tuning comparison, dataset tests, supervisor feedback. |
-| What proves I understand it? | Explain response-based distillation vs training on labels, and why the teacher shares the student's tokenizer; show the dataset and Git history. |
-| Isn't any gain just more training data? | That is why the C0 control exists: same prompts, gold-SQL targets. |
-| Why only a few thousand pairs? | Proof-of-concept scale, stated in the proposal; the comparison is controlled, not a production corpus. |
-| What if distillation shows no advantage? | A negative result is valid; the native model ships and the finding is reported. |
-| Are you on the critical path? | Yes: Agent 3 needs your artefact for real validation. A placeholder is in use now; state the re-validation plan. |
-| How did you use AI tools? | Match your AI-use record and diary. |
+| Why is your result a classifier, not SQL? | It was a pilot to build and debug the pipeline; the SQL study is next (Section 7). |
+| 99.9% vs 99.7%: is distillation better? | No claim: both are at the ceiling (a TF-IDF baseline gets 98.3%) and no paired test has been run. |
+| Why did one student get 59%? | Evaluated on raw text after being trained on a chat prompt; a format mismatch, being re-evaluated. |
+| Isn't distillation just more training? | Exactly the risk; the C0 control (gold answers, same prompts) separates the two. |
+| Agent 3 is waiting on you. | Fallback: Agent 3 trains on the released Qwen base now and re-runs on the distilled checkpoint. |
+| Does the teacher see bank data? | No: public training data only, offline, never deployed. |
+| How did you use AI tools? | Match the AI-use record and diary. |
 
 ---
 
-## 7. Evidence checklist
+## 11. Evidence checklist
 
-- [ ] Distillation dataset generated, with size and sample pairs **[EVIDENCE NEEDED]**
-- [ ] At least one student training run completed **[EVIDENCE NEEDED]**
-- [ ] Native baseline in place
-- [ ] Pre-fine-tuning comparison table **[EVIDENCE NEEDED]**
-- [ ] Artefact published with model card, loaded successfully by Agent 3
-- [ ] At least two wrong-input cases passing
-- [ ] Model-info panel in the chatbot or explorer
-- [ ] Tests passing, with a screenshot
-- [ ] Supervisor feedback on the dataset design recorded, converted to Planner tasks
-- [ ] Git, Planner, diary, AI-use record up to date
-- [ ] Backups of dataset, checkpoint and registry in two other places; fallback video recorded
-- [ ] Script timed at exactly 2 minutes
+- [x] Distillation pipeline end to end on the pilot (teacher soft targets, KL training, held-out test, leakage check)
+- [ ] Prompted-teacher student re-evaluated with its training prompt; paired tests between students
+- [ ] Base size and shared fine-tuning config agreed with Agent 3
+- [ ] SQL prompt pool from Spider train, teacher outputs filtered by execution
+- [ ] Distilled, native and C0 checkpoints; pre-fine-tuning comparison
+- [ ] Checkpoints handed to Agent 3 (location and hash recorded)
+- [ ] Component diagram drawn by hand
+- [ ] Script timed at 2 minutes
