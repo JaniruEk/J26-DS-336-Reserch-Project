@@ -99,8 +99,8 @@ def test_nl_classifier_and_handoff_contract(tiny_db):
     from agent1_retrieval import BUCKETS, Agent1, classify_query
     assert classify_query("How many customers are there in each market segment?") == "aggregation"
     out = Agent1(tiny_db, mode="structural").run("what is the total of each invoice")
-    assert set(out) == {"query", "complexity", "mode", "anchor", "tables", "ddl", "tokens", "latency_ms"}
-    assert out["complexity"] in BUCKETS and out["anchor"] == "invoice"
+    assert set(out) == {"query", "complexity", "mode", "anchor", "matched", "tables", "ddl", "tokens", "latency_ms", "trace"}
+    assert out["complexity"] in BUCKETS and out["anchor"] == "invoice" and out["matched"]
     assert _json.loads(_json.dumps(out)) == out  # contract must survive JSON transport
 
 
@@ -118,3 +118,62 @@ def test_stats_and_exec_match(tmp_path):
     assert exec_match(db, "SELECT a FROM t", "SELECT b FROM t") is False
     assert exec_match(db, "SELEKT nonsense", "SELECT a FROM t") is False  # invalid SQL = miss, not crash
     assert exec_match(db, "SELECT a FROM empty", "SELECT a FROM empty") is None  # trivial match is excluded
+
+
+def test_render_quotes_only_names_that_need_it(tmp_path):
+    """Regression (Northwind): `CREATE TABLE Order Details` made the model write OrderDetails / a syntax error."""
+    from agent1_retrieval.schema import render
+    p = str(tmp_path / "q.db")
+    c = sqlite3.connect(p)
+    c.executescript('CREATE TABLE Orders (OrderID INTEGER PRIMARY KEY); CREATE TABLE "Order Details" (OrderID INTEGER REFERENCES Orders(OrderID), "Unit Price" REAL);')
+    c.close()
+    t = reflect(p)
+    assert render(t["Orders"]) == "CREATE TABLE Orders (\n  OrderID INTEGER PRIMARY KEY\n);"  # plain names unchanged
+    ddl = render(t["Order Details"])
+    assert 'CREATE TABLE "Order Details"' in ddl and '"Unit Price" REAL' in ddl and "REFERENCES Orders(OrderID)" in ddl
+    m = sqlite3.connect(":memory:")
+    m.executescript(render(t["Orders"]) + ddl)  # the DDL shown to the model is valid SQL, quotes and all
+    assert [r[0] for r in m.execute("SELECT name FROM sqlite_master")][-1] == "Order Details"
+
+
+def test_lower_case_compound_names_are_split_but_real_words_are_not():
+    """Regression (PostgreSQL Northwind): lower-cased firstname/productname were pruned as unrelated words."""
+    from agent1_retrieval.linking import segment
+    assert segment("firstname") == ["first", "name"] and segment("productname") == ["product", "name"]
+    assert segment("category") == ["category"] and segment("customer") == ["customer"]
+
+
+@pytest.fixture
+def coded_db(tmp_path):
+    p = str(tmp_path / "coded.db")
+    c = sqlite3.connect(p)
+    c.executescript("""CREATE TABLE account (account_id INTEGER PRIMARY KEY, holder TEXT, status TEXT, balance REAL);""")
+    c.executemany("INSERT INTO account VALUES (?,?,?,?)",
+                  [(i, f"Person {i}", "AC"[i % 2] if i < 39 else "D", i * 10.0) for i in range(40)])
+    c.commit()
+    c.close()
+    return p
+
+
+def test_code_values_finds_codes_never_personal_data(coded_db):
+    from agent1_retrieval.linking import code_values
+    t = reflect(coded_db)["account"]
+    assert code_values(coded_db, t) == {"status": ["A", "C", "D"]}  # rare 'D' (1 of 40 rows) still listed
+    assert code_values(coded_db, t, sample=10) == {"status": ["A", "C", "D"]}  # judged on a sample, full list fetched
+
+
+def test_value_hints_reach_the_schema_and_respect_privacy_and_glossary(coded_db, tmp_path):
+    q = "how many dormant accounts are there"
+    r = Retriever(coded_db, value_hints=True)
+    r._semantic_anchors = lambda q, k=1: ["account"]
+    ddl = r.retrieve(q, "hybrid_pruned").text
+    assert "status TEXT /* values: 'A', 'C', 'D' */" in ddl and "Person" not in ddl  # codes kept through pruning
+    off = Retriever(coded_db, value_hints=True, value_linking=False)  # personal-data database: never reads values
+    off._semantic_anchors = lambda q, k=1: ["account"]
+    assert "values:" not in off.retrieve(q, "hybrid_pruned").text
+    g = tmp_path / "g.json"
+    g.write_text('{"Account.Status": "A = active, C = closed, D = dormant"}', encoding="utf-8")
+    gl = Retriever(coded_db, glossary=str(g), value_linking=False)  # glossary is configuration: applies even then
+    gl._semantic_anchors = lambda q, k=1: ["account"]
+    assert "/* A = active, C = closed, D = dormant */" in gl.retrieve(q, "hybrid").text
+    assert Retriever(coded_db).retrieve(q, "structural").text.count("/*") == 0  # off by default: earlier results unchanged

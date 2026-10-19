@@ -39,7 +39,7 @@ The identified gap spans four dimensions: (1) schema retrieval operates at table
 
 This project's proposed research contribution is a Distributed Multi-Agent SLM Framework organised as four independently evaluated, controlled comparisons: column-level schema pruning versus table-level retrieval; an asymmetric multi-head LoRA (HydraLoRA) architecture versus standard LoRA, specialised by query complexity; Quantization-Aware Training versus Post-Training Quantization; and a knowledge-distilled base model versus a natively small model, evaluated under identical fine-tuning. The fine-tuning-architecture and quantization-strategy comparisons connect through a single, lightweight cross-check — the winning quantization strategy is additionally applied to the runner-up fine-tuning architecture — testing whether the two decisions interact without requiring either component to own or depend on the other's internal implementation. The proposed product component is an on-premise, natural-language-to-SQL query engine for regulated enterprises.
 
-The research follows a Design Science methodology with an iterative, prototype-driven development approach. Evaluation uses token efficiency, schema-linking precision/recall, exact-match and JOIN/aggregation-specific SQL accuracy, and VRAM/latency footprint, stratified by a shared query-complexity taxonomy (simple, single-join, multi-join, aggregation) across all four studies. Following independent evaluation, the best-performing configuration from each study is assembled into an end-to-end pipeline, and this integration is validated as a feasibility demonstration — not an additional novelty claim — confirming that regulation-compliant, fully local natural-language database querying is achievable on 8GB-VRAM-class hardware without sacrificing multi-table reasoning accuracy.
+The research follows a Design Science methodology with an iterative, prototype-driven development approach. Evaluation uses token efficiency, schema-linking precision/recall, exact-match and JOIN/aggregation-specific SQL accuracy, and VRAM/latency footprint, stratified by a shared query-complexity taxonomy (simple, single-join, multi-join, aggregation) across all four studies. Following independent evaluation, the best-performing configuration from each study is assembled into an end-to-end pipeline, and this integration is validated as a feasibility demonstration — not an additional novelty claim — confirming that regulation-compliant, fully local natural-language database querying is achievable on mid-range hardware without sacrificing multi-table reasoning accuracy.
 
 **Keywords:** Text-to-SQL, Small Language Models, Retrieval-Augmented Generation, Parameter-Efficient Fine-Tuning, Knowledge Distillation, Model Quantization, Privacy-Preserving AI
 
@@ -109,7 +109,7 @@ Modern organisations increasingly need data-intelligence tools capable of execut
 
 Attempting to solve this with localized Small Language Models introduces a distinct technical challenge: off-the-shelf SLMs suffer substantial hallucination when reasoning over complicated, multi-table joins and large database schemas. Organisations are consequently placed in a difficult position — investing heavily in local AI infrastructure, or accepting an AI-governance risk most such organisations are not willing to take with live, sensitive data. This is directly relevant to the Corporate Business Intelligence, FinTech, and Data Warehousing verticals, and aligns with SDG 9 (Industry, Innovation and Infrastructure) and the CEAI research cluster's focus on resource-constrained, applied AI systems.
 
-This project addresses the problem through a Distributed Multi-Agent SLM Framework, in which four independently investigated components — schema retrieval, fine-tuning architecture, compression strategy, and foundation-model construction — are each evaluated as a standalone, controlled research question, before being combined into one working system that performs natural-language-to-SQL translation entirely on-premise or on an enterprise edge server, on hardware no more powerful than a consumer-grade 8GB-VRAM GPU.
+This project addresses the problem through a Distributed Multi-Agent SLM Framework, in which four independently investigated components — schema retrieval, fine-tuning architecture, compression strategy, and foundation-model construction — are each evaluated as a standalone, controlled research question, before being combined into one working system that performs natural-language-to-SQL translation entirely on-premise or on an enterprise edge server, on hardware no more powerful than a single mid-range GPU.
 
 ## 1.2 Literature Review
 
@@ -250,7 +250,7 @@ Provides the theoretical justification for this component's hypothesis: capacity
 | Method | Survey of techniques for deploying LLMs on resource-constrained edge and IoT hardware, including model compression and distillation. |
 | Dataset / Context | Cross-study review of edge-deployment LLM techniques. |
 | Key Findings | Distillation is identified as a practical technique for constructing capable small models for edge deployment, though the survey notes that most reported distillation work targets general capability rather than domain-specific reasoning tasks such as SQL generation. |
-| Strengths | Confirms distillation's practical viability for edge-class hardware, directly relevant to this project's 8GB-VRAM constraint. |
+| Strengths | Confirms distillation's practical viability for edge-class hardware, directly relevant to this project's mid-range hardware target. |
 | Limitations | Does not provide a controlled, task-specific (SQL) comparison between distilled and native small models under identical downstream fine-tuning. |
 
 Confirms distillation as a technically appropriate and practically feasible approach for this component's hardware target, while identifying the specific gap (task-specific, controlled comparison) this component addresses.
@@ -279,7 +279,7 @@ Reinforces why this component's controlled distilled-versus-native comparison ma
 
 ## 1.3 Research Gap
 
-Four specific, complementary gaps motivate this project's four research components, sharing one root cause: the fixed 8GB-VRAM hardware budget that rules out simply using bigger, cloud-hosted models.
+Four specific, complementary gaps motivate this project's four research components, sharing one root cause: the fixed mid-range hardware budget that rules out simply using bigger, cloud-hosted models.
 
 > **Ekanayake — Research Gap Statement**
 > Existing schema-retrieval approaches for local, SLM-scale Text-to-SQL systems operate at table-level granularity, injecting complete table schemas into a constrained context window regardless of column relevance; it is not yet established whether column-level pruning, evaluated under a fixed token budget and across varying query complexity, improves retrieval efficiency and downstream SQL accuracy over table-level-only retrieval strategies.
@@ -303,7 +303,7 @@ Four specific, complementary gaps motivate this project's four research componen
 
 ## 2.2 Specific Objectives
 
-Each member's specific objectives are designed as an independent, controlled comparison, sharing a common query-complexity taxonomy (simple / single-join / multi-join / aggregation) and the same 8GB-VRAM hardware budget.
+Each member's specific objectives are designed as an independent, controlled comparison, sharing a common query-complexity taxonomy (simple / single-join / multi-join / aggregation) and the same mid-range hardware budget.
 
 ### J.K.B. Ekanayake — Dynamic Schema Retrieval and Column-Level Pruning for Resource-Constrained Text-to-SQL
 
@@ -349,7 +349,7 @@ This study follows a Design Science research methodology across all four compone
 
 ### Shared Experimental Infrastructure
 
-- Hardware constraint: all experiments are conducted and evaluated against an 8GB-VRAM GPU (RTX 3070 Ti class) budget, representing realistic mid-tier enterprise edge hardware.
+- Hardware constraint: all experiments are conducted and evaluated against a single mid-range GPU budget, representing realistic mid-tier enterprise edge hardware.
 - Database proxies: the Chinook relational database serves as the primary enterprise-database proxy; the Spider dataset and TPC-H decision-support benchmark provide additional, more complex schema structures.
 - Query-complexity taxonomy: every natural-language/SQL pair used in evaluation is classified as simple, single-join, multi-join, or aggregation-heavy, shared across all four components so results can be compared directly.
 
@@ -373,7 +373,7 @@ The table-level hybrid retrieval approach (semantic anchor selection plus foreig
 
 | Metric | Why Relevant | Target / Comparison |
 |---|---|---|
-| Token count per query | Directly measures context-window efficiency, the primary constraint on 8GB-VRAM hardware. | Minimise, relative to table-level baseline |
+| Token count per query | Directly measures context-window efficiency, the primary constraint on mid-range hardware. | Minimise, relative to table-level baseline |
 | Schema-linking precision/recall | Measures whether the correct tables/columns were retrieved against ground truth. | Maximise, ≥ hybrid baseline |
 | Downstream SQL execution accuracy | Measures end-task success — whether the generated SQL, given this context, executes correctly. | Outperform table-level-only baseline, especially on multi-join/aggregation buckets |
 
@@ -435,7 +435,7 @@ The unquantized, full-precision fine-tuned model serves as the accuracy ceiling 
 |---|---|---|
 | Syntax accuracy | Isolates whether the model still produces well-formed SQL after compression, independent of logical correctness. | No significant drop vs. full-precision baseline at 8-bit; measured degradation curve at 4-bit |
 | Logical (JOIN/aggregation) accuracy | Isolates numerical and multi-table reasoning correctness, the project's core failure mode of concern. | QAT or PTQ, whichever preserves accuracy longer across bit-rates |
-| VRAM footprint / inference latency | Confirms the compression method's practical deployability on the 8GB-VRAM target. | Both methods must fit within the shared hardware budget |
+| VRAM footprint / inference latency | Confirms the compression method's practical deployability on the mid-range hardware target. | Both methods must fit within the shared hardware budget |
 
 **5. Validation Strategy**
 Results are validated by plotting accuracy against bit-rate for both QAT and PTQ, per complexity bucket, to identify the specific inflection point at which each method degrades — a more rigorous validation than a single point-accuracy comparison, and consistent with accepted evaluation practice in the quantization literature reviewed above (which notes inconsistent accuracy trade-offs depending on method).
