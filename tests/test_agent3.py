@@ -126,7 +126,7 @@ def test_no_evaluation_question_leaks_into_training(splits):
 # ---------------------------------------------------------------- non-functional: evidence recorded in results/
 def _recorded_runs():
     out = []
-    for p in sorted(RESULTS.glob("*.json")):
+    for p in sorted(RESULTS.rglob("*.json")):  # also finds files inside the lora/, hydra/ ... subfolders
         data = json.loads(p.read_text(encoding="utf-8"))
         if isinstance(data, dict):
             out.append((p.name, data))

@@ -1,0 +1,20 @@
+A = hydra_oracle   B = lora   datasets: spider, chinook   paired questions: 134
+
+=== exec (execution accuracy) ===
+bucket          n    hydra_oracle           lora   diff A-B [95% CI]       only A / only B  McNemar p
+simple         31            0.71           0.77   -0.06 [-0.16, +0.00]   0 / 2            0.500
+single-join    31            0.65           0.74   -0.10 [-0.23, +0.03]   1 / 4            0.375
+multi-join     32            0.16           0.16   +0.00 [-0.16, +0.16]   3 / 3            1.000
+aggregation    34            0.56           0.59   -0.03 [-0.12, +0.06]   1 / 2            1.000
+ALL           128            0.52           0.56   -0.05 [-0.11, +0.02]   5 / 11           0.210
+
+=== exact (normalised exact match) ===
+bucket          n    hydra_oracle           lora   diff A-B [95% CI]       only A / only B  McNemar p
+simple         33            0.67           0.67   +0.00 [-0.12, +0.12]   2 / 2            1.000
+single-join    34            0.41           0.32   +0.09 [-0.06, +0.24]   5 / 2            0.453
+multi-join     33            0.03           0.00   +0.03 [+0.00, +0.09]   1 / 0            1.000
+aggregation    34            0.47           0.47   +0.00 [+0.00, +0.00]   0 / 0            1.000
+ALL           134            0.40           0.37   +0.03 [-0.01, +0.08]   8 / 4            0.388
+
+Note: 5 buckets are tested per metric, so a single p just under 0.05 is weak evidence;
+state effect sizes with their CIs rather than relying on p-values alone.
