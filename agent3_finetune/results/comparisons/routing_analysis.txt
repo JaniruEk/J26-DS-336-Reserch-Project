@@ -1,0 +1,51 @@
+Questions: 128 (pooled Spider + Chinook, execution accuracy). Per bucket: simple 31, single-join 31, multi-join 32, aggregation 34
+
+1. COST MATRIX: accuracy lost when a question of the row type is answered by the column head (own head = 0)
+question type       simple head single-join head  multi-join head aggregation head   own-head acc
+simple                        -             +65p             +61p             +39p           0.71
+single-join                +48p                -             +23p             +26p           0.65
+multi-join                 +12p             +12p                -              +9p           0.16
+aggregation                +21p             +26p             +26p                -           0.56
+('p' = percentage points, positive = lost). The more own-head accuracy a type has, the more it can lose.
+
+2. LIVE CLASSIFIER: routing accuracy 0.59 (75/128). Confusion matrix (rows = true type, columns = head chosen):
+                      simple   single-join    multi-join   aggregation
+simple                    22             4             1             4
+single-join               16            12             2             1
+multi-join                 9            11            10             2
+aggregation                2             1             0            31
+Cost of each confusion in the measured run (questions x accuracy lost, as points of overall accuracy):
+   single-join -> simple head: 16 questions, about 6.0 points of overall accuracy
+   simple -> single-join head: 4 questions, about 2.0 points of overall accuracy
+   simple -> aggregation head: 4 questions, about 1.2 points of overall accuracy
+   multi-join -> single-join head: 11 questions, about 1.1 points of overall accuracy
+   multi-join -> simple head: 9 questions, about 0.9 points of overall accuracy
+   simple -> multi-join head: 1 questions, about 0.5 points of overall accuracy
+   (fix the largest ones first: that tells the classifier's owner what to improve)
+
+3. OFFLINE CHECK: live-classifier accuracy measured 50/128 = 0.391; rebuilt from the fixed-head files 50/128 = 0.391; questions that differ: 0
+   (equal or nearly equal means that any routing policy can be simulated offline from the four fixed-head files)
+
+4. EXPECTED ACCURACY vs ROUTING ACCURACY r (wrong routes spread evenly over the 3 wrong heads)
+   true-label HydraLoRA 0.516 | plain LoRA 0.562 | all-wrong routing 0.211
+        r   expected accuracy     vs LoRA
+      25%               0.287      -27.5p
+      30%               0.302      -26.0p
+      35%               0.318      -24.5p
+      40%               0.333      -23.0p
+      45%               0.348      -21.4p
+      50%               0.363      -19.9p
+      55%               0.379      -18.4p
+      59%               0.389      -17.3p  <- measured live classifier
+      60%               0.394      -16.9p
+      65%               0.409      -15.4p
+      70%               0.424      -13.8p
+      75%               0.439      -12.3p
+      80%               0.455      -10.8p
+      85%               0.470       -9.3p
+      90%               0.485       -7.7p
+      95%               0.500       -6.2p
+     100%               0.516       -4.7p
+   Rule of thumb: about 3.0 accuracy points lost for every 10 points of routing accuracy lost.
+   No break-even: even perfect routing (0.516) stays below plain LoRA (0.562).
+   Caveat: real confusions are not spread evenly (see section 2), and each cell rests on about 31 questions.
