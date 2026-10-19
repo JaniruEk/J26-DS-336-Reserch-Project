@@ -1,0 +1,20 @@
+{
+  "_comment": "Shared fine-tuning configuration for LoRA, HydraLoRA and the parameter-matched control. Version-controlled: change it only with a commit message that says why. alpha = alpha_over_rank * rank, so the LoRA scaling stays the same at every rank.",
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rank": 16,
+  "alpha_over_rank": 2.0,
+  "dropout": 0.05,
+  "lr": 0.0002,
+  "epochs": 3,
+  "warmup_steps": 20,
+  "weight_decay": 0.0,
+  "max_grad_norm": 1.0,
+  "batch": 2,
+  "accum": 8,
+  "max_len": 1024,
+  "multijoin_repeat": 2,
+  "seed": 42,
+  "vram_cap_gb": 8.0,
+  "save_every": 200,
+  "log_every": 20
+}

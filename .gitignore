@@ -16,6 +16,8 @@ data/
 
 .env
 
+venv/
+
 # Spider dataset (also covered by data/ above)
 data/spider_data/
 
