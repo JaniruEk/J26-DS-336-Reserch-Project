@@ -31,6 +31,7 @@ def main():
     ap.add_argument("--hydra-preds", default="")
     ap.add_argument("--base-preds", default="")
     ap.add_argument("--n", type=int, default=20)
+    ap.add_argument("--stride", type=int, default=1, help="take every STRIDE-th question (spreads the check over buckets)")
     a = ap.parse_args()
 
     from agent3_finetune.demo.engine import Engine
@@ -49,9 +50,11 @@ def main():
     total = {m: 0 for m in saved}
     secs = {m: [] for m in saved}
     shown = 0
-    for i, it in enumerate(items[:a.n]):
+    picked = list(range(0, len(items), max(1, a.stride)))[:a.n]  # e.g. --stride 6 spreads over all buckets
+    for k, i in enumerate(picked):
+        it = items[i]
         # the schema text is stored in eval_inputs.json, so the database files are not needed here
-                prompt = eng.template.format(ddl=it["ddl"], question=it["question"])
+        prompt = eng.template.format(ddl=it["ddl"], question=it["question"])
         for m in saved:
             ref = saved[m][i]["pred"]
             if not ref.strip():
@@ -64,7 +67,7 @@ def main():
             if not ok and shown < 5:
                 shown += 1
                 print(f"\n[{m}] item {i} differs\n  now  : {clean_sql(raw)}\n  saved: {clean_sql(ref)}")
-        print(f"{i + 1}/{min(a.n, len(items))}", flush=True)
+        print(f"{k + 1}/{len(picked)}", flush=True)
     print("\n=== RESULT ===")
     for m in saved:
         avg = sum(secs[m]) / len(secs[m]) if secs[m] else 0
