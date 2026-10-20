@@ -1,0 +1,27 @@
+Pre-registered policies (POLICY_PREREGISTRATION.md). Questions: 128. Classifier check: its top class equals the saved live label for 128/128 questions
+
+EXECUTION ACCURACY (overall and per bucket) and cost (heads run per question)
+system                                                 overall       simple  single-join   multi-join  aggregation   cost
+plain LoRA (single pass)                        0.562 (72/128) 0.77 (24/31) 0.74 (23/31)  0.16 (5/32) 0.59 (20/34)     1x
+HydraLoRA, live classifier                      0.391 (50/128) 0.55 (17/31) 0.35 (11/31)  0.12 (4/32) 0.53 (18/34)     1x
+HydraLoRA, true label (not deployable)          0.516 (66/128) 0.71 (22/31) 0.65 (20/31)  0.16 (5/32) 0.56 (19/34)     1x
+best fixed head: aggregation                    0.336 (43/128) 0.32 (10/31) 0.39 (12/31)  0.06 (2/32) 0.56 (19/34)     1x
+P1 fallback (tau 0.5, aggregation)              0.391 (50/128) 0.55 (17/31) 0.42 (13/31)  0.06 (2/32) 0.53 (18/34)  1.00x
+P2 retry (second head)                          0.492 (63/128) 0.61 (19/31) 0.65 (20/31)  0.16 (5/32) 0.56 (19/34)  1.46x
+P3 vote (4 heads)                               0.539 (69/128) 0.65 (20/31) 0.74 (23/31)  0.19 (6/32) 0.59 (20/34)  4.00x
+ceiling: any head correct (not deployable)      0.594 (76/128) 0.81 (25/31) 0.77 (24/31)  0.22 (7/32) 0.59 (20/34)     1x
+
+PAIRED COMPARISONS, overall execution accuracy (difference A - B, 95% bootstrap CI, A only / B only, exact McNemar p)
+Evidence threshold for the three policies: p < 0.017 (0.05 / 3). Everything is reported either way.
+  P1 vs HydraLoRA, live classifier   +0.000 [-0.055, +0.055]   6 / 6   p = 1.000
+  P1 vs plain LoRA (single pass)     -0.172 [-0.242, -0.102]   3 / 25   p = 0.000
+  P2 vs HydraLoRA, live classifier   +0.102 [+0.055, +0.156]   13 / 0   p = 0.000
+  P2 vs plain LoRA (single pass)     -0.070 [-0.133, +0.000]   6 / 15   p = 0.078
+  P3 vs HydraLoRA, live classifier   +0.148 [+0.078, +0.219]   21 / 2   p = 0.000
+  P3 vs plain LoRA (single pass)     -0.023 [-0.094, +0.047]   9 / 12   p = 0.664
+
+READING GUIDE
+  Highest-scoring policy: P3. It does NOT beat single-pass plain LoRA (69 vs 72 of 128).
+  Decision rule 2: a policy may be called better than LoRA only if its paired CI against LoRA excludes 0 AND it beats an
+  equal-cost LoRA baseline (P2 costs up to 2x, P3 costs 4x). If no policy beats single-pass LoRA, no extra run is needed.
+  The ceiling row is the most any choice among the four heads could reach.
