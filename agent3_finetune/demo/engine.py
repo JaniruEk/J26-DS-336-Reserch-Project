@@ -114,8 +114,11 @@ class Engine:
         self.router.set(torch.tensor([head], device=self.device))
         t0 = time.time()
         with torch.no_grad():
+            # stop at the first ';': clean_sql cuts there anyway, so the SQL is unchanged but the chatty
+            # base model no longer runs on to the token limit
             out = self.model.generate(**enc, max_new_tokens=self.max_new_tokens, do_sample=False,
-                                      pad_token_id=self.tok.pad_token_id)
+                                      pad_token_id=self.tok.pad_token_id,
+                                      stop_strings=[";"], tokenizer=self.tok)
         text = self.tok.decode(out[0][n:], skip_special_tokens=True)
         return text, round(time.time() - t0, 2)
 
