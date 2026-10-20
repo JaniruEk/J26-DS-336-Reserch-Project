@@ -32,8 +32,10 @@ ollama pull phi3                     # stand-in SQL generator until Agent 3's mo
 
 ## Run
 
+**Starting the app, sharing it with the team and plugging your agent in: see [RUNNING_THE_APP.md](RUNNING_THE_APP.md).**
+
 ```bash
-python -m pytest tests                                    # 37 tests
+python -m pytest tests
 python -m agent1_retrieval "Which customers are from Canada?" --json
 uvicorn harness.app:app                                   # http://localhost:8000      Agent 1 Retrieval Explorer
                                                           # http://localhost:8000/chat team chatbot (needs Ollama)
