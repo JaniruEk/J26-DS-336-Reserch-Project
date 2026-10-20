@@ -1,0 +1,129 @@
+"""Demo (Agent 3): panel demo app. Same question, three models side by side.
+
+Start on Colab (GPU), from the project root, after mounting Drive:
+  !pip install -q gradio
+  !python -m agent3_finetune.demo.app \
+      --lora /content/drive/MyDrive/agent3/runs/lora_r16_seed42/adapter \
+      --hydra /content/drive/MyDrive/agent3/runs/hydra_r16_seed42/adapter \
+      --db-dir /content/drive/MyDrive/agent3/demo_dbs --share
+It prints a public link ("Running on public URL: https://....gradio.live"): open that link in the browser.
+
+UNTESTED screen code: the logic in pipeline.py / sql_runner.py / engine.py is tested, this file is not (Gradio could
+not be installed where it was written). Run it on Colab first and tell me what you see.
+"""
+import argparse
+
+from agent3_finetune.demo.pipeline import AUTO, LABELS, MANUAL, MODES, list_databases, run_all
+
+TITLES = {"base": "Before fine-tuning (base model)", "lora": "After fine-tuning (LoRA)",
+          "hydra": "After fine-tuning (HydraLoRA)"}
+
+BENCHMARK = """### My benchmark numbers
+Execution accuracy on 128 questions (Spider dev + Chinook). One seed, placeholder base model
+(Qwen2.5-1.5B-Instruct), about 31 questions per bucket.
+
+| Question type | Base | LoRA | HydraLoRA (true label) |
+|---|---|---|---|
+| simple | 0.55 | 0.77 | 0.71 |
+| single-join | 0.29 | **0.74** | 0.65 |
+| multi-join | 0.25 | 0.16 | 0.16 |
+| aggregation | 0.56 | 0.59 | 0.56 |
+| **overall** | **0.41** | **0.56** | **0.52** |
+
+HydraLoRA with the **live classifier** (what you get in Auto mode): **0.39**. The classifier is right only
+about 59% of the time.
+
+**What this shows**
+- Fine-tuning clearly helps single-join questions (0.29 to 0.74).
+- No detectable gain on multi-join or aggregation: multi-join is still hard.
+- HydraLoRA did **not** beat plain LoRA. Each head is best on its own question type, but a wrong head costs a lot:
+  switch the label to a wrong one and watch the HydraLoRA answer change.
+
+There is no automatic right/wrong mark here: a new question has no gold answer, so we judge the results together.
+"""
+
+
+def build_ui(engine, classifier, dbs):
+    import gradio as gr
+    import pandas as pd
+
+    def to_frame(m):
+        if not m["columns"]:
+            return pd.DataFrame()
+        return pd.DataFrame(m["rows"], columns=m["columns"])
+
+    def respond(question, db_name, label_mode, manual_label):
+        res = run_all(engine, classifier, dbs, question, db_name, label_mode, manual_label)
+        if "error" in res:
+            blank = []
+            for _ in MODES:
+                blank += ["", pd.DataFrame(), ""]
+            return [f"**{res['error']}**", ""] + blank
+        out = [f"**You asked** ({res['db']}): {res['question']}",
+               f"{res['label_note']}  \nHydraLoRA routed to the **{res['routed_head']}** head."]
+        for m in MODES:
+            r = res["modes"][m]
+            secs = f" ({r['seconds']} s to write the SQL)" if r["seconds"] is not None else ""
+            head = f" Head used: **{r['head']}**." if r["head"] else ""
+            out += [f"**{r['status']}**{secs}{head}", to_frame(r), r["sql"]]
+        return out
+
+    with gr.Blocks(title="Agent 3 demo: LoRA vs HydraLoRA") as demo:
+        gr.Markdown("## Agent 3 demo: the same question, three models\n"
+                    "Type any question about the chosen database. The SQL is run **read-only**, one SELECT only, "
+                    "5-second limit, at most 20 rows.")
+        with gr.Row():
+            with gr.Column(scale=3):
+                q_md = gr.Markdown("")
+                label_md = gr.Markdown("")
+                outs = []
+                with gr.Row():
+                    for m in MODES:
+                        with gr.Column():
+                            gr.Markdown(f"### {TITLES[m]}")
+                            status = gr.Markdown("")
+                            table = gr.Dataframe(interactive=False)
+                            with gr.Accordion("Show SQL", open=False):
+                                sql = gr.Textbox(show_label=False, interactive=False, lines=4)
+                            outs += [status, table, sql]
+            with gr.Column(scale=1):
+                gr.Markdown(BENCHMARK)
+        question = gr.Textbox(label="Your question", placeholder="For example: How many singers are there?")
+        with gr.Row():
+            db = gr.Dropdown(choices=list(dbs), value=next(iter(dbs), None), label="Database")
+            mode = gr.Radio([AUTO, MANUAL], value=AUTO if classifier is not None and classifier.available else MANUAL,
+                            label="Complexity label")
+            manual = gr.Dropdown(list(LABELS), value="simple", label="Manual label (used only in Manual mode)")
+        go = gr.Button("Ask", variant="primary")
+        inputs = [question, db, mode, manual]
+        outputs = [q_md, label_md] + outs
+        go.click(respond, inputs, outputs)
+        question.submit(respond, inputs, outputs)
+    return demo
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--lora", required=True)
+    ap.add_argument("--hydra", required=True)
+    ap.add_argument("--db-dir", required=True, help="folder with the SQLite files to offer (searched recursively)")
+    ap.add_argument("--classifier", default="", help="path to complexity_nl.joblib (default: agent1_retrieval folder)")
+    ap.add_argument("--share", action="store_true", help="make a public Gradio link (needed on Colab)")
+    a = ap.parse_args()
+
+    from agent3_finetune.demo.classifier import LiveClassifier
+    from agent3_finetune.demo.engine import Engine
+
+    dbs = list_databases(a.db_dir)
+    if not dbs:
+        raise SystemExit(f"no SQLite files found under {a.db_dir}")
+    print("databases:", ", ".join(dbs))
+    classifier = LiveClassifier(a.classifier or None)
+    print("live classifier:", "ready" if classifier.available else f"NOT available ({classifier.error}) -> Manual mode")
+    engine = Engine(a.lora, a.hydra)
+    print("model ready on", engine.gpu)
+    build_ui(engine, classifier, dbs).queue().launch(share=a.share)
+
+
+if __name__ == "__main__":
+    main()
