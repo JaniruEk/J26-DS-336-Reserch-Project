@@ -14,6 +14,30 @@ Until Agents 2–4 are plugged in, the chat uses stand-ins: **phi3 via Ollama** 
 
 ---
 
+## Quick setup with Agent 4's model (NVIDIA GPU, no Ollama)
+
+For a machine with an NVIDIA GPU, using Karunanayake's quantized Qwen as the SQL model. Ollama is not needed. You need Python 3.11, Git, and an NVIDIA driver recent enough for CUDA 12.4 (`nvidia-smi` shows "CUDA Version: 12.4" or higher).
+
+```powershell
+git clone https://github.com/JaniruEk/J26-DS-336-Reserch-Project.git
+cd J26-DS-336-Reserch-Project
+python -m venv .venv; .\.venv\Scripts\Activate.ps1     # optional: keeps these packages separate from your own
+pip install -r requirements.txt
+pip install -r requirements-gpu.txt                    # torch with CUDA, transformers, bitsandbytes (about 3 GB)
+python -m spacy download en_core_web_md
+python scripts/get_chinook.py                          # data/chinook.db; the other databases in section 1 are optional
+python -c "import torch; print(torch.cuda.is_available())"   # must print True
+
+$env:J26_GENERATOR = "adaptive_qwen"
+python -m uvicorn harness.app:app --port 8765
+```
+
+Open http://localhost:8765/chat. The first start downloads Qwen2.5-1.5B-Instruct (about 3 GB) and builds the mixed INT4/INT8 model (about 2 minutes, printed in the terminal); the first question waits for it. The chat page says "SQL is written by ..." with the model's name; if it says "phi3 via Ollama (adaptive_qwen unavailable: ...)", see Troubleshooting. The layer plan comes from `results/qwen/qwen_precision_allocation.csv`, so a new allocation from your experiments is used after a restart.
+
+If `Activate.ps1` is blocked: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once. Next time, only the last two commands are needed (after activating the venv, if you made one).
+
+---
+
 ## 1. One-time setup
 
 You need **Python 3.11**, **Git** and **Ollama** (https://ollama.com). Docker is only needed for the optional PostgreSQL databases.
@@ -65,7 +89,7 @@ Set this before starting the app. The chat page shows which model is answering.
 |---|---|---|
 | *(unset)* or `ollama:phi3` | phi3 through Ollama (default) | Ollama |
 | `ollama:<any model>` | any Ollama model, e.g. `ollama:qwen2.5-coder:1.5b-instruct` | `ollama pull <model>` |
-| `adaptive_qwen` | Karunanayake's (Agent 4) adaptive mixed-precision Qwen2.5-1.5B: sensitive layers 8-bit, the rest 4-bit, from `results/qwen/` | An NVIDIA GPU, and once: `pip install torch --index-url https://download.pytorch.org/whl/cu124` then `pip install transformers accelerate bitsandbytes pandas` |
+| `adaptive_qwen` | Karunanayake's (Agent 4) adaptive mixed-precision Qwen2.5-1.5B: sensitive layers 8-bit, the rest 4-bit, from `results/qwen/` | An NVIDIA GPU, and once: `pip install -r requirements-gpu.txt` |
 
 ```powershell
 $env:J26_GENERATOR = "adaptive_qwen"
@@ -139,7 +163,7 @@ python -m agent1_retrieval "Which customers are from Canada?" --json
 | Only chinook appears | The other databases aren't downloaded: run the scripts in section 1 |
 | Adding a database gives 403 | From another machine: set `J26_ADMIN_TOKEN` on the server and type it in the "Admin token" box |
 | `git fetch` fails with "cannot lock ref ... .lock: File exists" | Branch names that differ only in capital letters clash on Windows. Close GitHub Desktop and VS Code's Git, delete the named `.lock` file under `.git\refs`, and fetch again |
-| Chat shows "phi3 via Ollama (adaptive_qwen unavailable: ...)" | `adaptive_qwen` could not start; the reason is in brackets. Usually no NVIDIA GPU, or torch was installed without CUDA (reinstall with the `--index-url` line above) |
+| Chat shows "phi3 via Ollama (adaptive_qwen unavailable: ...)" | `adaptive_qwen` could not start; the reason is in brackets. Usually no NVIDIA GPU, or a CPU-only torch: `pip uninstall torch` then `pip install -r requirements-gpu.txt`. Check with `python -c "import torch; print(torch.cuda.is_available())"` (must print `True`) |
 
 ---
 

@@ -1,0 +1,9 @@
+# Optional: run Agent 4's adaptive INT4/INT8 Qwen model in the app (J26_GENERATOR=adaptive_qwen). NVIDIA GPU only.
+# Install after requirements.txt:  pip install -r requirements-gpu.txt
+# Versions are the ones tested with the app (Windows 11, Python 3.11, CUDA 12.4 wheels).
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0+cu124
+transformers==5.20.2
+accelerate==1.15.0
+bitsandbytes==0.50.2
+pandas==2.3.3

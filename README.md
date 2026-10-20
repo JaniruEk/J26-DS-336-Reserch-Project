@@ -35,9 +35,10 @@ ollama pull phi3                     # stand-in SQL generator until Agent 3's mo
 Optional, to use Agent 4's quantized model in the app (NVIDIA GPU only):
 
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/cu124
-pip install transformers accelerate bitsandbytes pandas
+pip install -r requirements-gpu.txt
 ```
+
+Step-by-step for a GPU machine (no Ollama needed): [RUNNING_THE_APP.md, "Quick setup with Agent 4's model"](RUNNING_THE_APP.md#quick-setup-with-agent-4s-model-nvidia-gpu-no-ollama).
 
 ## Run
 
