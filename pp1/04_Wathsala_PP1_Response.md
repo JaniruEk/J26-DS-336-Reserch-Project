@@ -3,7 +3,20 @@
 Component: **Agent 2 — Knowledge distillation for a small SQL base model (distilled vs native student)** | Project J26-DS-336 | Panel DS-P03
 Answers the proposal-presentation comments for Progress Presentation 1. Rewritten 19 Oct 2026 from the `Agent2/` notebooks on `main` (PRs #8, #15; branch `Tharushi`); the earlier draft is in git history. **[MEASURED]** = from the notebooks' printed outputs; **[TO RUN]** = not done yet.
 
-**Status in one line:** the distillation pipeline works end to end on a pilot task (question classification). The SQL-oriented distillation and the two base checkpoints Agent 3 needs are not built yet. Agent 2 is on the team's critical path, so say this plainly and show the plan and dates.
+**Status in one line:** a distilled **Qwen2.5-1.5B** student now runs as stage 1 of the team app (the question gate). The SQL-oriented distillation and the two base checkpoints Agent 3 needs are not built yet; Agent 2 is on the team's critical path, so say this plainly and show the plan and dates.
+
+**Update, 21 Oct 2026: 1.5B multitask results [MEASURED]** (`MultiTask_Research/native_vs_kd_statistical_results.csv`; Qwen2.5-7B teacher, LoRA r8 students, label-scoring evaluation)
+
+| Task | Test items | Native 1.5B | Distilled 1.5B | Wins / losses | McNemar p |
+|---|---|---|---|---|---|
+| Query classification (database vs general) | 1,200 | .988 | .994 | 11 / 4 | .12 (n.s.) |
+| Prompt-injection detection (safe vs malicious) | 116 | .836 | **.948** | 16 / 3 | **.004** |
+
+- **The finding to lead with:** distillation helped significantly where the task is hard (injection detection, +11 points) and made no measurable difference where the task is easy (query classification, both near the ceiling).
+- **In the team app:** the distilled student runs the question gate, shown as "real" with its probability. On the team's 224 evaluation questions it declined none.
+- **Say it before the panel finds it:** free-text generation produced invalid answers on 60 of 116 injection items (.44); the .948 comes from scoring the two labels. The app uses only query classification until her exact training prompt is shared, because a reconstructed prompt reproduces Task 1 (.997) but not Task 2 (.81).
+
+The sections below are the earlier pilot (0.5B students, query classification only) and the plan to the SQL study.
 
 ---
 

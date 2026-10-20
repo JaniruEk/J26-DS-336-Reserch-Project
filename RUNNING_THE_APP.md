@@ -12,7 +12,7 @@ What you get:
 
 Both the chat and the Explorer offer example questions for each database (from `harness/examples.js`); click one to run it.
 
-Until Agents 2–4 are plugged in, some stages are stand-ins, and both pages mark them so: Agent 1's word check is the question gate, the SQL is written by the model chosen with `J26_GENERATOR` (Karunanayake's quantized Qwen, or phi3 through Ollama), and a read-only runner executes it.
+Some stages are still stand-ins, and both pages mark them so: the SQL is written by the model chosen with `J26_GENERATOR` (Karunanayake's quantized Qwen, or phi3 through Ollama) until Thathsarani's fine-tuned model is connected, and a read-only runner executes it. The question gate is real when Wathsala's model is available (`J26_GATE`, see "The question gate"); otherwise Agent 1's word check stands in.
 
 **The short version, once set up:** `.\scripts\start_app.ps1` (details in section 2).
 
@@ -76,6 +76,7 @@ From the repository folder:
 The script does the checks that usually go wrong, then starts the app and prints the three addresses:
 - **Port:** if port 8765 is in use, it says which process holds it and stops (or, with `-Restart`, stops that old copy first).
 - **SQL model:** Karunanayake's quantized Qwen if this machine has an NVIDIA GPU with the GPU packages installed, otherwise phi3 through Ollama (with a warning if Ollama isn't running). Choose yourself with `-Generator ollama:phi3` or `-Generator adaptive_qwen`.
+- **Question gate:** Wathsala's distilled Qwen2.5-1.5B student if `MultiTask_Research/` is in the project folder and the GPU packages are installed, otherwise Agent 1's word check alone. Choose with `-Gate kd_multitask` or `-Gate word_match`.
 - **PostgreSQL copies** of Chinook and Northwind: added only if Docker Desktop is running and the `j26-postgres` container exists (see `scripts/load_postgres.py`). Start Docker Desktop first if you want them; the rest works without it.
 
 Open http://localhost:8765/chat. Stop the app with **Ctrl + C** in that terminal. Closing the terminal stops it too, so keep it open during a demo.
@@ -100,6 +101,19 @@ Ask one warm-up question per database before a demo: the first one loads the mod
 **Add your own database:** on the chat page, open "Add a database" and drop a SQLite file there, or paste a PostgreSQL link. Use a read-only database login. Tick "don't read data values" for databases with personal data.
 
 ---
+
+### The question gate (`J26_GATE`)
+
+Stage 1 decides whether a question is about data before any SQL is written. A question goes ahead only if **both** checks agree:
+
+| Value | Stage 1 runs | Needs |
+|---|---|---|
+| *(unset)* or `word_match` | Agent 1's word check alone: a content word of the question names a table or column | nothing |
+| `kd_multitask` | Wathsala's distilled Qwen2.5-1.5B student (her `MultiTask_Research/student_1_5b_kd_multitask/final_adapter`) **and** Agent 1's word check | Her `MultiTask_Research/` folder in the project, an NVIDIA GPU, and the GPU packages (`requirements-gpu.txt`, includes `peft`) |
+
+Her model files are not in git (about 1.5 GB): copy her `MultiTask_Research/` folder into the project folder. It loads in the background at startup, alongside Agent 4's model; both fit together on one mid-range GPU, and it adds about 0.2 s per question. The chat and the Explorer show her model's probability for each question. If her model can't load, the app falls back to the word check and says so in the log.
+
+Only her query-classification task is used. Her prompt-injection task needs her exact training prompt, which is not in the repository yet.
 
 ### Choose the SQL model (`J26_GENERATOR`)
 
@@ -194,6 +208,7 @@ All settings are environment variables, read when the app starts. Set them in th
 | Setting | What it does | Example |
 |---|---|---|
 | `J26_GENERATOR` | Which model writes the SQL (see "Choose the SQL model") | `adaptive_qwen` |
+| `J26_GATE` | Which model decides whether a question is about data (see "The question gate") | `kd_multitask` |
 | `J26_DATABASES` | Extra databases, as JSON `{"name": "SQLite path or PostgreSQL URL"}`. Keeps passwords out of the code; use a read-only login | `{"bank": "postgresql+psycopg://ro_user:pw@dbhost/bank"}` |
 | `J26_NO_VALUE_LINKING` | Databases whose data values Agent 1 must never read (personal data), comma-separated | `bank,hr` |
 | `J26_GLOSSARIES` | Per-database data dictionary file, `{"Table.Column": "meaning"}`, shown to the model | `{"bank": "bank_glossary.json"}` |

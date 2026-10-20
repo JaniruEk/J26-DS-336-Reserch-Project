@@ -14,7 +14,7 @@ question ─► Agent 1 Retrieval ─► Agent 3 Generation ─► Agent 4 Execu
 | Agent | Owner | Status in this repo |
 |---|---|---|
 | 1 Schema retrieval and column-level pruning | J.K.B. Ekanayake (IT23199262) | `agent1_retrieval/`: working, evaluated (Phases 1–8) |
-| 2 Foundation model (distillation) | W.A.T. Wathsala (IT23282704) | `Agent2/`: distillation notebooks (Qwen2.5-7B teacher, 0.5B students for PP1) |
+| 2 Foundation model (distillation) | W.A.T. Wathsala (IT23282704) | `Agent2/`: distillation notebooks; `MultiTask_Research/`: distilled Qwen2.5-1.5B multitask student, now the app's question gate (`harness/gates.py`; model files are shared outside git) |
 | 3 Fine-tuned generation (LoRA vs HydraLoRA) | K.G.Y.V. Thathsarani (IT23404250) | `agent3_finetune/`: LoRA vs HydraLoRA on Qwen2.5-1.5B-Instruct, preliminary results |
 | 4 Quantized execution (adaptive mixed-precision INT4/INT8) | K.M.I.N. Karunanayake (IT23179912) | `src/`, `scripts/qwen_*`, `results/qwen/`: adaptive INT4/INT8 Qwen2.5-1.5B-Instruct, usable in the app |
 | Harness (shared) | team | `harness/`: FastAPI sequencing, handoff logging, bounded retry, chat, Pipeline Explorer, dashboard |
@@ -82,6 +82,7 @@ Warm retrieval latency is about 80–120 ms on average, against a 500 ms target.
 | `agent1_retrieval/` | schema reflection, retrieval modes, pruning, linking, complexity classifier, evaluation, statistics |
 | `harness/` | FastAPI orchestration, chatbot (`/chat`), Pipeline Explorer (`/`), dashboard (`/dashboard`), SQL model switch (`generators.py`) |
 | `Agent2/` | Agent 2 distillation notebooks |
+| `MultiTask_Research/` | Agent 2's 1.5B multitask results (CSV, in git) and model folders (not in git: copy her folder in) |
 | `agent3_finetune/` | Agent 3 dataset, LoRA / HydraLoRA training, evaluation, results, progress log |
 | `src/`, `scripts/qwen_*`, `results/qwen/` | Agent 4 quantization code, layer sensitivity and precision allocation results |
 | `eval/` | labelled question/SQL pairs (Chinook, TPC-H, Spider, Northwind, value-coded, hard multi-join) |

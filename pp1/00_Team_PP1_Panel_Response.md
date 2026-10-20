@@ -54,7 +54,7 @@ The honest concession: an organisation that already runs large GPU clusters can 
 | Component | What is new (one line) | Why it matters for a small model (measured) | Status, 19 Oct |
 |---|---|---|---|
 | Agent 1 (Ekanayake) | Complexity-adaptive, data-minimised schema context: the schema's width is set from the question's predicted complexity, and only the needed columns are shown. Retrieval itself is a crowded field and is not claimed | A wide schema distracts a small model: phi3 scores .35 on simple questions with 3 tables, .71 with the right one | Built and running; two significant gains (value hints p = .016, classifier p = .029) |
-| Agent 2 (Wathsala) | Distillation as the base-model choice for SQL: distilled vs native student of the same size, identical fine-tuning, plus a gold-answer control (C0) | Only a small model can ship; the 7B teacher is used once, offline, never deployed | Pipeline validated on a pilot classifier; SQL distillation and the checkpoints for Agent 3 not built yet (critical path; fallback: released Qwen base) |
+| Agent 2 (Wathsala) | Distillation as the base-model choice for SQL: distilled vs native student of the same size, identical fine-tuning, plus a gold-answer control (C0) | Only a small model can ship; the 7B teacher is used once, offline, never deployed | Distilled 1.5B multitask student delivered and **running as the app's question gate**: query classification native .988 vs distilled .994 (11 wins / 4 losses, p = .12, n.s.); prompt-injection detection native .836 vs distilled **.948** (16 / 3, **p = .004**). The SQL base model for Agent 3 is not built yet (critical path; fallback: released Qwen base) |
 | Agent 3 (Thathsarani) | HydraLoRA heads keyed to SQL query complexity, routed by an auditable label, vs one shared LoRA adapter | One adapter helped single-join (.29 → .68) but not multi-join: a small model's capacity goes where the data is | LoRA .55 vs base .41 (p = .012); HydraLoRA .52 with correct labels (n.s. vs LoRA), .39 with the live classifier |
 | Agent 4 (Karunanayake) | SQL-task-sensitive mixed precision: INT8 for the layers SQL depends on, INT4 for the rest, against generic and random layer choices with the same memory (scope changed from QAT vs PTQ) | SQL fails on one wrong character: uniform 4-bit lost 8 of 100 questions, mostly to garbled table names | Preliminary on Phi-3 (100 questions, one database); layer ranking still noise; moving to Qwen2.5-1.5B |
 
@@ -155,7 +155,7 @@ The lecture's list of common PP1 failures includes "front end not covered, done 
 - `/` Retrieval Explorer, and `/dashboard` (saved answers as live charts, with a CSV link for Power BI or Excel).
 - Adding a database on the chat page: drop a SQLite file or paste a PostgreSQL link (read-only).
 
-Agents 3 and 4 plug in through `create_app(generate=..., execute=...)`; their badges then switch from stand-in to real automatically. Agent 2's gate becomes real once its classifier is exported.
+Agents 3 and 4 plug in through `create_app(generate=..., execute=...)`; their badges then switch from stand-in to real automatically. Agent 2's gate is real since 21 Oct: her distilled Qwen2.5-1.5B student (`J26_GATE=kd_multitask`), shown with its probability on every answer.
 
 **Screen layout:**
 - Chat area: question box, database selector, the generated SQL, the result table, and a plain-language error message when something fails.
