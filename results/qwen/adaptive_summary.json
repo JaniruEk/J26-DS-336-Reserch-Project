@@ -1,0 +1,8 @@
+{
+    "model": "Adaptive Mixed INT4/INT8",
+    "total_questions": 25,
+    "exact_match_percent": 12.0,
+    "execution_accuracy_percent": 64.0,
+    "average_latency_seconds": 4.3422,
+    "peak_vram_mb": 1288.44
+}
