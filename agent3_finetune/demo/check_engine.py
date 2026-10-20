@@ -50,7 +50,8 @@ def main():
     secs = {m: [] for m in saved}
     shown = 0
     for i, it in enumerate(items[:a.n]):
-        prompt = eng.prompt(it["db"], it["question"])
+        # the schema text is stored in eval_inputs.json, so the database files are not needed here
+        prompt = eng.template.format(ddl=it["ddl"], question=it["question"])
         for m in saved:
             ref = saved[m][i]["pred"]
             if not ref.strip():
