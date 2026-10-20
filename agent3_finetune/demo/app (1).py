@@ -43,7 +43,7 @@ There is no automatic right/wrong mark here: a new question has no gold answer, 
 """
 
 
-def build_ui(engine, classifier, dbs):
+def build_ui(engine, classifier, dbs, cached=None):
     import gradio as gr
     import pandas as pd
 
@@ -53,7 +53,10 @@ def build_ui(engine, classifier, dbs):
         return pd.DataFrame(m["rows"], columns=m["columns"])
 
     def respond(question, db_name, label_mode, manual_label):
-        res = run_all(engine, classifier, dbs, question, db_name, label_mode, manual_label)
+        return render(run_all(engine, classifier, dbs, question, db_name, label_mode, manual_label))
+
+    def render(res):
+        """Turn one result dict (live or saved) into the values for the screen."""
         if "error" in res:
             blank = []
             for _ in MODES:
@@ -69,9 +72,15 @@ def build_ui(engine, classifier, dbs):
         return out
 
     with gr.Blocks(title="Agent 3 demo: LoRA vs HydraLoRA") as demo:
-        gr.Markdown("## Agent 3 demo: the same question, three models\n"
-                    "Type any question about the chosen database. The SQL is run **read-only**, one SELECT only, "
-                    "5-second limit, at most 20 rows.")
+        if cached is None:
+            gr.Markdown("## Agent 3 demo: the same question, three models\n"
+                        "Type any question about the chosen database. The SQL is run **read-only**, one SELECT only, "
+                        "5-second limit, at most 20 rows.")
+        else:
+            meta = cached.get("meta", {})
+            gr.Markdown("## Agent 3 demo: the same question, three models (SAVED ANSWERS)\n"
+                        f"**These are saved answers, not a live run.** Recorded {meta.get('recorded_at', '?')} on "
+                        f"{meta.get('gpu', '?')} from the live system. Pick an example below.")
         with gr.Row():
             with gr.Column(scale=3):
                 q_md = gr.Markdown("")
@@ -86,30 +95,47 @@ def build_ui(engine, classifier, dbs):
                             with gr.Accordion("Show SQL", open=False):
                                 sql = gr.Textbox(show_label=False, interactive=False, lines=4)
                             outs += [status, table, sql]
-            with gr.Column(scale=1):
+            with gr.Column(scale=2):
                 gr.Markdown(BENCHMARK)
-        question = gr.Textbox(label="Your question", placeholder="For example: How many singers are there?")
-        with gr.Row():
-            db = gr.Dropdown(choices=list(dbs), value=next(iter(dbs), None), label="Database")
-            mode = gr.Radio([AUTO, MANUAL], value=AUTO if classifier is not None and classifier.available else MANUAL,
-                            label="Complexity label")
-            manual = gr.Dropdown(list(LABELS), value="simple", label="Manual label (used only in Manual mode)")
-        go = gr.Button("Ask", variant="primary")
-        inputs = [question, db, mode, manual]
         outputs = [q_md, label_md] + outs
-        go.click(respond, inputs, outputs)
-        question.submit(respond, inputs, outputs)
+        if cached is None:
+            question = gr.Textbox(label="Your question", placeholder="For example: How many singers are there?")
+            with gr.Row():
+                db = gr.Dropdown(choices=list(dbs), value=next(iter(dbs), None), label="Database")
+                mode = gr.Radio([AUTO, MANUAL],
+                                value=AUTO if classifier is not None and classifier.available else MANUAL,
+                                label="Complexity label")
+                manual = gr.Dropdown(list(LABELS), value="simple", label="Manual label (used only in Manual mode)")
+            go = gr.Button("Ask", variant="primary")
+            inputs = [question, db, mode, manual]
+            go.click(respond, inputs, outputs)
+            question.submit(respond, inputs, outputs)
+        else:
+            titles = [e["title"] for e in cached["examples"]]
+            by_title = {e["title"]: e["result"] for e in cached["examples"]}
+            pick = gr.Dropdown(titles, value=titles[0], label="Saved example")
+            go = gr.Button("Show saved answer", variant="primary")
+            go.click(lambda t: render(by_title[t]), [pick], outputs)
+            pick.change(lambda t: render(by_title[t]), [pick], outputs)
     return demo
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--lora", required=True)
-    ap.add_argument("--hydra", required=True)
-    ap.add_argument("--db-dir", required=True, help="folder with the SQLite files to offer (searched recursively)")
+    ap.add_argument("--lora", default="")
+    ap.add_argument("--hydra", default="")
+    ap.add_argument("--db-dir", default="", help="folder with the SQLite files to offer (searched recursively)")
     ap.add_argument("--classifier", default="", help="path to complexity_nl.joblib (default: agent1_retrieval folder)")
+    ap.add_argument("--cached", default="", help="show SAVED answers from this examples.json: no GPU, no model")
     ap.add_argument("--share", action="store_true", help="make a public Gradio link (needed on Colab)")
     a = ap.parse_args()
+
+    if a.cached:  # last-resort mode: runs on the laptop with only gradio installed
+        from agent3_finetune.demo.cache import load_cache
+        build_ui(None, None, {}, cached=load_cache(a.cached)).queue().launch(share=a.share)
+        return
+    if not (a.lora and a.hydra and a.db_dir):
+        raise SystemExit("live mode needs --lora, --hydra and --db-dir (or use --cached <examples.json>)")
 
     from agent3_finetune.demo.classifier import LiveClassifier
     from agent3_finetune.demo.engine import Engine
