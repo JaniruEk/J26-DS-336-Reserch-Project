@@ -1,0 +1,1157 @@
+question_id,db_id,question,gold_sql,layer,generated_sql,EM,EX
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,baseline,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,baseline,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",baseline,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",baseline,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",baseline,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",baseline,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",baseline,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age DESC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",baseline,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,baseline,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,baseline,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",baseline,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY singer.Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",baseline,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),baseline,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),baseline,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",baseline,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",baseline,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",baseline,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",baseline,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",baseline,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",baseline,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,baseline,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',baseline,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,baseline,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,baseline,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,baseline,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,0,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,0,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",0,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",0,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",0,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",0,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",0,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age DESC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",0,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,0,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,0,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",0,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID
+JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",0,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),0,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),0,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) ;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",0,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",0,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",0,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",0,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",0,"SELECT T1.Name AS Stadium_Name, T1.Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",0,"SELECT T1.Name AS Stadium_Name, T1.Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,0,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',0,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,0,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,0,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,0,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,1,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,1,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",1,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",1,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",1,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",1,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",1,"SELECT T2.Name, T3.Song_release_year FROM singer AS T1 JOIN concert AS T2 ON T1.Singer_ID = T2.concert_ID JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",1,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,1,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,1,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",1,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY singer.Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",1,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),1,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),1,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",1,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",1,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",1,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",1,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity 
+FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",1,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",1,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,1,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',1,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,1,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,1,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,1,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,2,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,2,SELECT COUNT(*) FROM singer;,1,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",2,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",2,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",2,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",2,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",2,"SELECT T2.Name AS Singer_Name, T1.Song_release_year 
+FROM singer AS T1 
+JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID 
+JOIN concert AS T4 ON T4.concert_ID = T3.concert_ID 
+JOIN stadium AS T5 ON T5.Stadium_ID = T4.Stadium_ID 
+WHERE T1.Age = (SELECT MIN(Age) FROM singer) 
+ORDER BY T1.Age ASC LIMIT",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",2,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,2,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,2,"SELECT DISTINCT Country 
+FROM singer 
+WHERE Age > 20;",1,1
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",2,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY singer.Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",2,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),2,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN singer_in_concert AS T4 ON T1.Singer_ID = T4.Singer_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),2,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",2,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",2,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",2,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",2,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",2,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",2,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,2,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',2,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,2,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,2,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,2,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,3,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,3,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",3,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",3,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",3,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",3,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",3,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age DESC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",3,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert_in_singer AS T4 ON T3.concert_ID = T4.concert_ID JOIN song AS T2 ON T4.song_ID = T2.Song_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,3,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,3,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",3,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",3,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),3,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),3,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert AS T4 ON T1.Singer_ID = T4.concert_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",3,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",3,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",3,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",3,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",3,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",3,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,3,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',3,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,3,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,3,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,3,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,4,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,4,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",4,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",4,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",4,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",4,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",4,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age DESC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",4,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,4,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,4,"SELECT DISTINCT T1.Country 
+FROM singer AS T1 
+JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID 
+WHERE T1.Age > 20;",0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",4,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN concert ON singer.Singer_ID = concert.Singer_ID
+JOIN concert_in_stadium ON concert.concert_ID = concert_in_stadium.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",4,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),4,"SELECT T2.Song_Name 
+FROM singer AS T1 
+JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID 
+JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID 
+JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID 
+WHERE T1.Age > (SELECT AVG(Age) FROM singer) 
+ORDER BY T1.Name;",0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),4,"SELECT T2.Song_Name 
+FROM singer AS T1 
+JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID 
+JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID 
+JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID 
+WHERE T1.Age > (SELECT AVG(Age) FROM singer);",0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",4,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",4,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",4,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",4,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",4,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Accumulated FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Accumulated DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",4,"SELECT T1.Name AS Stadium_Name, T1.Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,4,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',4,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,4,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,4,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,4,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,5,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,5,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",5,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",5,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",5,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age FROM singer WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",5,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",5,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",5,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,5,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,5,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",5,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY singer.Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",5,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),5,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),5,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",5,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",5,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",5,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",5,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",5,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Amount FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Amount DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",5,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,5,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',5,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,5,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,5,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,5,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,6,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,6,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",6,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",6,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",6,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",6,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",6,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age ASC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",6,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age;",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,6,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,6,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",6,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN concert ON singer.Singer_ID = concert.Singer_ID
+JOIN concert_stadium ON concert.concert_ID = concert_stadium.concert_ID
+JOIN stadium ON concert_stadium.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",6,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),6,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),6,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",6,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",6,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",6,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",6,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",6,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Amount 
+    FROM stadium 
+    GROUP BY Stadium_ID 
+    ORDER BY Avg_Amount DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",6,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Amount 
+    FROM stadium 
+    GROUP BY Stadium_ID 
+    ORDER BY Avg_Amount DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,6,"SELECT singer.Name FROM singer 
+WHERE singer.Age > 30;",0,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',6,"SELECT singer.Name FROM singer 
+JOIN concert ON singer.Singer_ID = concert.Singer_ID 
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID 
+WHERE stadium.Location LIKE '%United States%';",0,0
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,6,SELECT T3.concert_Name FROM concert AS T1 JOIN singer_in_concert AS T2 ON T1.concert_ID = T2.concert_ID JOIN singer AS T3 ON T2.Singer_ID = T3.Singer_ID WHERE T1.Year = 2014;,0,0
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,6,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,6,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,7,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,7,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",7,"SELECT Name, Country, Age FROM singer ORDER BY Age;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",7,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",7,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",7,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",7,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN `stadium` AS T4 ON T3.Stadium_ID = T4.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age ASC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",7,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN singer_in_concert AS T4 ON T1.Singer_ID = T4.Singer_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,7,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,7,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",7,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY singer.Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",7,"SELECT Country, COUNT(*) AS Number_of_Singers FROM singer GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),7,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),7,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",7,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",7,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",7,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",7,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",7,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",7,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,7,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',7,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,7,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,7,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,7,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,8,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,8,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",8,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",8,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",8,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",8,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",8,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert AS T4 ON T1.Singer_ID = T4.concert_ID WHERE T4.Year = (SELECT MIN(Year) FROM concert) ORDER BY T1.Age LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",8,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,8,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,8,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",8,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN concert ON singer.Singer_ID = concert.Singer_ID
+JOIN concert_in_stadium ON concert.concert_ID = concert_in_stadium.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",8,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),8,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),8,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) ORDER BY T1.Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",8,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",8,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",8,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",8,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",8,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, MAX(Average) AS Max_Avg FROM stadium GROUP BY Stadium_ID
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID WHERE T1.Average = T2.Max_Avg;",0,0
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",8,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Average FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Average DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,8,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',8,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,8,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,8,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,8,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,9,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,9,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",9,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",9,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",9,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",9,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",9,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",9,"SELECT Singer_Name, Song_Release_Year FROM singer WHERE Singer_ID = (
+    SELECT Singer_ID FROM concert AS C JOIN singer_in_concert AS SC ON C.concert_ID = SC.concert_ID 
+    ORDER BY Age ASC LIMIT 1
+);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,9,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,9,SELECT DISTINCT Country FROM singer WHERE Age > 20;,1,1
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",9,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",9,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),9,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),9,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) ;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",9,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",9,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",9,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",9,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",9,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Avg FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Avg DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",9,"SELECT Name, Capacity FROM stadium WHERE Capacity = (SELECT MAX(Capacity) FROM stadium);",0,0
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,9,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',9,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,9,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,9,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,9,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,10,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,10,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",10,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",10,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",10,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",10,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",10,"SELECT T2.Name AS Singer_Name, T1.Song_release_year 
+FROM concert AS T1 
+JOIN singer_in_concert AS T3 ON T1.concert_ID = T3.concert_ID 
+JOIN singer AS T2 ON T3.Singer_ID = T2.Singer_ID 
+WHERE T2.Age = (SELECT MIN(Age) FROM singer);",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",10,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,10,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,10,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",10,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN concert ON singer.Singer_ID = concert.Singer_ID
+JOIN concert_in_stadium ON concert.concert_ID = concert_in_stadium.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",10,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),10,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),10,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) ;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",10,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",10,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",10,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",10,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",10,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Amount FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Amount DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",10,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Amount FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Amount DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,10,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',10,"SELECT singer.Name 
+FROM singer 
+JOIN concert ON singer.Singer_ID = concert.Singer_ID 
+JOIN concert_in_stadium ON concert.concert_ID = concert_in_stadium.concert_ID 
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID 
+WHERE singer.Country = 'United States';",0,0
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,10,SELECT T3.concert_Name FROM concert AS T1 INNER JOIN singer_in_concert AS T2 ON T1.concert_ID = T2.concert_ID INNER JOIN singer AS T3 ON T2.Singer_ID = T3.Singer_ID WHERE T1.Year = 2014;,0,0
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,10,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,10,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,11,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,11,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",11,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",11,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",11,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",11,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",11,"SELECT T2.Name AS Singer_Name, T1.Song_release_year 
+FROM concert AS T1 
+JOIN singer_in_concert AS T3 ON T1.concert_ID = T3.concert_ID 
+JOIN singer AS T2 ON T3.Singer_ID = T2.Singer_ID 
+WHERE T2.Age = (SELECT MIN(Age) FROM singer);",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",11,"SELECT T2.Name, T2.Song_release_year FROM concert AS T1 JOIN singer_in_concert AS T3 ON T1.concert_ID = T3.concert_ID JOIN singer AS T2 ON T3.Singer_ID = T2.Singer_ID WHERE T2.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,11,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,11,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",11,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID
+JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",11,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),11,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert AS T4 ON T3.Stadium_ID = T4.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),11,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert AS T4 ON T3.Stadium_ID = T4.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",11,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",11,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",11,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",11,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",11,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",11,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,11,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',11,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,11,SELECT DISTINCT T1.concert_Name FROM concert AS T1 JOIN singer_in_concert AS T2 ON T1.concert_ID = T2.concert_ID WHERE T1.Year = 2014;,0,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,11,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,11,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,12,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,12,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",12,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",12,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",12,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",12,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",12,"SELECT T1.Name AS Singer_Name, T2.Song_release_year 
+FROM singer AS T1 
+JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID 
+JOIN concert_in_singer AS T4 ON T3.concert_ID = T4.concert_ID 
+JOIN singer_in_concert AS T5 ON T4.singer_id = T5.singer_id 
+JOIN concert AS T6 ON T5.concert_id = T6.concert",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",12,"SELECT T1.Name AS Singer_Name, T2.Song_release_year 
+FROM singer AS T1 
+JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID 
+JOIN concert_in_singer AS T4 ON T3.concert_ID = T4.concert_ID 
+JOIN singer_in_concert AS T5 ON T4.singer_id = T5.singer_id 
+JOIN concert_song AS T6 ON T5.concert_id = T6.con",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,12,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,12,SELECT DISTINCT Country FROM singer WHERE Age > 20;,1,1
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",12,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",12,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),12,SELECT T1.Song_Name FROM singer AS T1 JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer);,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),12,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert_in_singer AS T4 ON T3.concert_ID = T4.concert_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer);,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",12,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",12,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",12,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",12,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",12,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",12,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,12,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',12,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,12,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,12,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,12,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,13,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,13,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",13,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",13,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",13,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",13,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",13,"SELECT T2.Name AS Singer_Name, T1.Song_release_year 
+FROM singer AS T1 
+JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID 
+JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID 
+JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID 
+WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",13,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,13,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,13,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",13,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",13,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),13,SELECT T1.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T1.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),13,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) ;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",13,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",13,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",13,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",13,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",13,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Avgs FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Avgs DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",13,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Available FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Available DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,13,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',13,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,13,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,13,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,13,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,14,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,14,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",14,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",14,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",14,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",14,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",14,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN singer_in_concert AS T4 ON T1.Singer_ID = T4.Singer_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",14,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,14,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,14,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",14,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN concert ON singer.Singer_ID = concert.concert_ID
+JOIN concert_in_singer ON concert.concert_ID = concert_in_singer.concert_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",14,"SELECT Country, COUNT(*) AS Number_of_Singers FROM singer GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),14,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),14,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",14,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",14,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",14,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",14,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",14,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Available FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Available DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",14,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Available FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Available DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,14,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',14,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,14,SELECT concert.concert_Name FROM concert JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID WHERE concert.Year = 2014;,0,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,14,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,14,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,15,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,15,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",15,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",15,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",15,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",15,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",15,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",15,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,15,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN concert AS T2 ON T1.Singer_ID = T2.concert_ID WHERE T1.Age > 20;,0,1
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,15,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN concert AS T2 ON T1.Singer_ID = T2.concert_ID WHERE T1.Age > 20;,0,1
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",15,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY singer.Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",15,"SELECT Country, COUNT(*) AS Number_of_Singers FROM singer GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),15,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) ORDER BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),15,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer);,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",15,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",15,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",15,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",15,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",15,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, MAX(Average) AS Max_Average FROM stadium GROUP BY Stadium_ID
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,0
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",15,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, MAX(Average) AS Max_Average FROM stadium GROUP BY Stadium_ID
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,0
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,15,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',15,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,15,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,15,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,15,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,16,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,16,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",16,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",16,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",16,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",16,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",16,"SELECT T2.Name, T1.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age ASC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",16,"SELECT Singer.Name, Singer.Song_release_year FROM singer 
+JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID 
+JOIN concert ON concert.concert_ID = singer_in_concert.concert_ID 
+JOIN stadium ON stadium.Stadium_ID = concert.Stadium_ID 
+WHERE Singer.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,16,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,16,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",16,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID
+JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",16,"SELECT Country, COUNT(*) FROM singer GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),16,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),16,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",16,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",16,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",16,"SELECT MAX(Capacity), AVG(Average) FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",16,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",16,"SELECT T1.Name, T1.Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, MAX(Average) AS Max_Avg FROM stadium GROUP BY Stadium_ID
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID WHERE T1.Average = T2.Max_Avg;",0,0
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",16,"SELECT Name, Capacity FROM stadium WHERE Capacity = (SELECT MAX(Capacity) FROM stadium);",0,0
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,16,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',16,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,16,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,16,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,16,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,17,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,17,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",17,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",17,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",17,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",17,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",17,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert_in_singer AS T4 ON T3.concert_ID = T4.concert_ID JOIN singer_in_concert AS T5 ON T4.singer_ID = T5.Singer_ID WHERE T5.Age = (SELECT MIN(Age) FROM singer) ORDER BY T2.Song_release_year ASC LIMIT",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",17,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert_singer AS T4 ON T3.concert_ID = T4.concert_ID JOIN singer_in_concert AS T5 ON T4.Singer_ID = T5.Singer_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,17,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,17,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",17,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY singer.Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",17,"SELECT Country, COUNT(*) AS NumberOfSingers FROM singer GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),17,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),17,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert_in_singer AS T4 ON T3.concert_ID = T4.concert_ID JOIN singer_in_concert AS T5 ON T4.Singer_ID = T5.Singer_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer);,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",17,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",17,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",17,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",17,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",17,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Amount FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Amount DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",17,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Amount FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Amount DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,17,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',17,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,17,SELECT T3.concert_Name FROM concert AS T1 JOIN singer_in_concert AS T2 ON T1.concert_ID = T2.concert_ID JOIN singer AS T3 ON T2.Singer_ID = T3.Singer_ID WHERE T1.Year = 2014;,0,0
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,17,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,17,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,18,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,18,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",18,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",18,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",18,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",18,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",18,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age ASC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",18,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,18,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,18,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",18,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID
+JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",18,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),18,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T2 ON T3.concert_ID = T2.concert_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),18,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T2 ON T3.concert_ID = T2.concert_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer);,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",18,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",18,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",18,"SELECT MAX(Capacity) AS max_capacity, AVG(Average) AS avg_average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",18,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",18,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Average FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Average DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",18,"SELECT Name, Capacity FROM stadium WHERE Capacity = (SELECT MAX(Capacity) FROM stadium);",0,0
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,18,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',18,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,18,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,18,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,18,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,19,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,19,SELECT COUNT(*) FROM singer;,1,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",19,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",19,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",19,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",19,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",19,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age DESC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",19,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN concert AS T5 ON T4.concert_ID = T5.concert_ID JOIN stadium AS T6 ON T5.Stadium_ID = T6.Stadium_ID WHERE T1.Age = (SELECT MIN(Age",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,19,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,19,"SELECT DISTINCT singer.Country 
+FROM singer 
+WHERE singer.Age > 20;",0,1
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",19,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+LEFT JOIN concert ON singer.Singer_ID = concert.Singer_ID
+JOIN concert_in_stadium ON concert.concert_ID = concert_in_stadium.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",19,"SELECT Country, COUNT(*) as Number_of_Singers FROM singer GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),19,"SELECT T2.Song_Name FROM singer AS T1 
+JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID 
+JOIN (SELECT concert_ID, AVG(Age) as Avg_Age FROM singer GROUP BY concert_ID) AS T4 
+ON T3.concert_ID = T4.concert_ID 
+WHERE T1.Age > T4.Avg_Age;",0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),19,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",19,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",19,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",19,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",19,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",19,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",19,"SELECT T1.Name AS Stadium_Name, T1.Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,19,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',19,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,19,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,19,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,19,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,20,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,20,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",20,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",20,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",20,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",20,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",20,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert AS T4 ON T1.Singer_ID = T4.concert_ID WHERE T4.Year = (SELECT MIN(Year) FROM concert) ORDER BY T1.Age LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",20,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,20,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,20,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",20,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN concert ON singer.Singer_ID = concert.Singer_ID
+JOIN concert_in_stadium ON concert.concert_ID = concert_in_stadium.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",20,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),20,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert AS T4 ON T1.Singer_ID = T4.concert_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),20,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",20,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",20,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",20,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",20,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",20,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Accumulated FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Accumulated DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",20,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Accumulated FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Accumulated DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,20,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',20,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,20,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,20,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,20,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,21,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,21,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",21,"SELECT Name, Country, Age FROM singer ORDER BY Age;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",21,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",21,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",21,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",21,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age DESC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",21,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,21,SELECT DISTINCT singer.Country FROM singer INNER JOIN concert ON singer.Singer_ID = concert.Singer_ID WHERE singer.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,21,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",21,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",21,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),21,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN stadium AS T0 ON T3.Stadium_ID = T0.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),21,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN stadium AS T0 ON T3.Stadium_ID = T0.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",21,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",21,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",21,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",21,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",21,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",21,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,21,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',21,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,21,SELECT DISTINCT T1.concert_Name FROM concert AS T1 JOIN stadium AS T2 ON T1.Stadium_ID = T2.Stadium_ID WHERE T1.Year = 2014;,0,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,21,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,21,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,22,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,22,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",22,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",22,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",22,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",22,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",22,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T0 ON T3.concert_ID = T0.concert_ID JOIN stadium AS T4 ON T0.Stadium_ID = T4.Stadium_ID WHERE T4.Lowest <= (SELECT MIN(Age) FROM singer) ORDER BY T2.Age LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",22,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T0 ON T3.concert_ID = T0.concert_ID JOIN stadium AS T4 ON T0.Stadium_ID = T4.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,22,"SELECT DISTINCT singer.Country 
+FROM singer 
+WHERE singer.Age > 20;",0,1
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,22,"SELECT DISTINCT singer.Country 
+FROM singer 
+WHERE singer.Age > 20;",0,1
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",22,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN singer_in_concert ON singer.Singer_ID = singer_in_concert.Singer_ID
+JOIN concert ON singer_in_concert.concert_ID = concert.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",22,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),22,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T0 ON T3.concert_ID = T0.concert_ID JOIN stadium AS T4 ON T0.Stadium_ID = T4.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),22,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",22,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",22,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",22,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",22,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity 
+FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",22,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Acc FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Acc DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",22,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Accumulated FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Accumulated DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,22,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',22,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,22,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,22,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,22,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,23,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,23,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",23,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",23,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",23,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",23,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",23,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age DESC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",23,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,23,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,23,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",23,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN concert ON singer.Singer_ID = concert.Singer_ID
+JOIN concert_in_stadium ON concert.concert_ID = concert_in_stadium.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",23,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),23,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN stadium AS T4 ON T3.Stadium_ID = T4.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),23,SELECT T2.Song_Name FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN stadium AS T4 ON T3.Stadium_ID = T4.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",23,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",23,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",23,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",23,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",23,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",23,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity 
+FROM stadium AS T1 
+WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,23,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',23,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,23,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,23,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,23,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,24,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,24,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",24,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",24,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",24,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",24,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",24,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID JOIN concert_in_singer AS T4 ON T3.concert_ID = T4.concert_ID JOIN singer_in_concert AS T5 ON T4.singer_ID = T5.Singer_ID WHERE T5.Age = (SELECT MIN(Age) FROM singer) ORDER BY T2.Song_release_year ASC LIMIT",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",24,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,24,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,24,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",24,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN concert ON singer.Singer_ID = concert.Singer_ID
+JOIN concert_in_stadium ON concert.concert_ID = concert_in_stadium.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",24,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),24,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),24,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",24,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",24,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",24,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",24,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",24,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",24,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,24,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',24,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,24,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,24,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,24,SELECT AVG(Capacity) AS Average_Capacity FROM stadium;,0,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,25,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,25,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",25,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",25,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",25,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age FROM singer WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",25,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age
+FROM singer
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",25,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN concert AS T3 ON T1.Singer_ID = T3.concert_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer) ORDER BY T1.Age DESC LIMIT 1;",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",25,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,25,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,25,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",25,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY singer.Country;",0,1
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",25,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),25,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),25,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",25,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",25,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",25,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",25,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",25,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 INNER JOIN (
+    SELECT Stadium_ID, AVG(Average) AS Avg_Availability FROM stadium GROUP BY Stadium_ID ORDER BY Avg_Availability DESC LIMIT 1
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID;",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",25,"SELECT T1.Name AS Stadium_Name, T1.Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,25,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',25,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,25,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,25,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,25,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,26,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,26,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",26,"SELECT Name, Country, Age FROM singer ORDER BY Age ASC;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",26,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",26,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",26,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",26,"SELECT T2.Name, T2.Song_release_year FROM concert AS T1 
+JOIN singer_in_concert AS T3 ON T1.concert_ID = T3.concert_ID 
+JOIN singer AS T2 ON T3.Singer_ID = T2.Singer_ID 
+WHERE T2.Age = (SELECT MIN(Age) FROM singer);",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",26,"SELECT T2.Name, T2.Song_release_year FROM concert AS T1 JOIN singer_in_concert AS T3 ON T1.concert_ID = T3.concert_ID JOIN singer AS T2 ON T3.Singer_ID = T2.Singer_ID WHERE T2.Age = (SELECT MIN(Age) FROM singer);",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,26,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,26,SELECT DISTINCT T1.Country FROM singer AS T1 INNER JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",26,"SELECT singer.Country, COUNT(singer.Singer_ID) AS Number_of_Singers
+FROM singer
+JOIN concert ON singer.Singer_ID = concert.Singer_ID
+JOIN concert_in_stadium ON concert.concert_ID = concert_in_stadium.concert_ID
+JOIN stadium ON concert.Stadium_ID = stadium.Stadium_ID
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",26,"SELECT Country, COUNT(*) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),26,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),26,SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN stadium AS T5 ON T4.Stadium_ID = T5.Stadium_ID WHERE T1.Age > (SELECT AVG(Age) FROM singer) GROUP BY T2.Song_Name;,0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",26,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",26,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",26,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",26,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",26,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",26,"SELECT T1.Name AS Stadium_Name, T1.Capacity AS Stadium_Capacity FROM stadium AS T1 WHERE T1.Average = (SELECT MAX(Average) FROM stadium);",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,26,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',26,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,26,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,26,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,26,SELECT AVG(Capacity) FROM stadium;,1,1
+1,concert_singer,How many singers do we have?,SELECT count(*) FROM singer,27,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+2,concert_singer,What is the total number of singers?,SELECT count(*) FROM singer,27,SELECT COUNT(DISTINCT Singer_ID) FROM singer;,0,1
+3,concert_singer,"Show name, country, age for all singers ordered by age from the oldest to the youngest.","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",27,"SELECT Name, Country, Age FROM singer ORDER BY Age;",0,0
+4,concert_singer," What are the names, countries, and ages for every singer in descending order of age?","SELECT name ,  country ,  age FROM singer ORDER BY age DESC",27,"SELECT Name, Country, Age FROM singer ORDER BY Age DESC;",0,1
+5,concert_singer," What is the average, minimum, and maximum age of all singers from France?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",27,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+6,concert_singer,"What is the average, minimum, and maximum age for all French singers?","SELECT avg(age) ,  min(age) ,  max(age) FROM singer WHERE country  =  'France'",27,"SELECT AVG(Age) AS Average_Age, MIN(Age) AS Minimum_Age, MAX(Age) AS Maximum_Age 
+FROM singer 
+WHERE Country = 'France';",0,1
+7,concert_singer,Show the name and the release year of the song by the youngest singer.,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",27,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN (SELECT Singer_ID, MIN(Age) as MinAge FROM singer GROUP BY Singer_ID) AS T5 ON T1.Singer_ID = T5.Singer_ID WHERE T5.MinAge = (SELECT MIN",0,0
+8,concert_singer,What are the names and release years for all the songs of the youngest singer?,"SELECT song_name ,  song_release_year FROM singer ORDER BY age LIMIT 1",27,"SELECT T2.Name, T2.Song_release_year FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN (SELECT concert_ID, MIN(Age) as MinAge FROM singer GROUP BY concert_ID) AS T5 ON T4.concert_ID = T5.concert_ID WHERE T1.Age = T5.MinAge",0,0
+9,concert_singer,What are all distinct countries where singers above age 20 are from?,SELECT DISTINCT country FROM singer WHERE age  >  20,27,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+10,concert_singer,What are  the different countries with singers above age 20?,SELECT DISTINCT country FROM singer WHERE age  >  20,27,SELECT DISTINCT T1.Country FROM singer AS T1 JOIN singer_in_concert AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T1.Age > 20;,0,0
+11,concert_singer,Show all countries and the number of singers in each country.,"SELECT country ,  count(*) FROM singer GROUP BY country",27,"SELECT singer.Country, COUNT(DISTINCT singer.Singer_ID) AS Number_of_Singers
+FROM singer
+LEFT JOIN concert ON singer.Singer_ID = concert.Singer_ID
+JOIN (SELECT DISTINCT Stadium_ID FROM concert) AS cte ON cte.Stadium_ID = concert.Stadium_ID
+WHERE cte.Stadium_ID IS NOT NULL
+GROUP BY singer.Country;",0,0
+12,concert_singer,How many singers are from each country?,"SELECT country ,  count(*) FROM singer GROUP BY country",27,"SELECT Country, COUNT(DISTINCT Singer_ID) AS Number_of_Singers
+FROM singer
+GROUP BY Country;",0,1
+13,concert_singer,List all song names by singers above the average age.,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),27,"SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN (SELECT concert_ID, AVG(Age) as AvgAge FROM singer WHERE is_male = 0 GROUP BY concert_ID) AS T5 ON T4.concert_ID = T5.concert_ID WHERE T1.Age > T5.A",0,0
+14,concert_singer,What are all the song names by singers who are older than average?,SELECT song_name FROM singer WHERE age  >  (SELECT avg(age) FROM singer),27,"SELECT T2.Song_Name FROM singer AS T1 JOIN singer_in_concert AS T3 ON T1.Singer_ID = T3.Singer_ID JOIN concert AS T4 ON T3.concert_ID = T4.concert_ID JOIN (SELECT concert_ID, AVG(Age) as Avg_Age FROM singer WHERE Is_male = 0 GROUP BY concert_ID) AS T5 ON T4.concert_ID = T5.concert_ID WHERE T1.Age > T5",0,0
+15,concert_singer,Show location and name for all stadiums with a capacity between 5000 and 10000.,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",27,"SELECT Location, Name FROM stadium WHERE Capacity BETWEEN 5000 AND 10000;",0,1
+16,concert_singer,What are the locations and names of all stadium with capacity between 5000 and 10000?,"SELECT LOCATION ,  name FROM stadium WHERE capacity BETWEEN 5000 AND 10000",27,"SELECT DISTINCT T1.Location, T1.Name FROM stadium AS T1 JOIN concert AS T2 ON T1.Stadium_ID = T2.Stadium_ID WHERE T1.Capacity BETWEEN 5000 AND 10000;",0,1
+17,concert_singer, What is the maximum capacity and the average of all stadiums ?,"SELECT MAX(capacity), AVG(capacity) FROM stadium",27,"SELECT MAX(Capacity) AS Max_Capacity, AVG(Average) AS Avg_Average FROM stadium;",0,0
+18,concert_singer,What is the average and maximum capacities for all stadiums ?,"select avg(capacity) ,  max(capacity) from stadium",27,"SELECT AVG(Capacity) AS Average_Capacity, MAX(Capacity) AS Maximum_Capacity FROM stadium;",0,1
+19,concert_singer,What is the name and capacity for the stadium with highest average attendance,"SELECT name , capacity FROM stadium ORDER BY average DESC LIMIT 1",27,"SELECT T1.Name, T1.Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, MAX(Average) as Max_Avg 
+    FROM stadium 
+    GROUP BY Stadium_ID
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID WHERE T1.Average = T2.Max_Avg;",0,0
+20,concert_singer,What is the name and capacity for the stadium with the highest average attendance?,"SELECT name ,  capacity FROM stadium ORDER BY average DESC LIMIT 1",27,"SELECT T1.Name, T1.Capacity FROM stadium AS T1 JOIN (
+    SELECT Stadium_ID, AVG(Average) as Avg_Avg 
+    FROM stadium 
+    GROUP BY Stadium_ID
+) AS T2 ON T1.Stadium_ID = T2.Stadium_ID WHERE T1.Average = (SELECT MAX(Avg_Avg) FROM (SELECT Stadium_ID, AVG(Average) as Avg_Avg FROM stadium GROUP BY Stadium_ID))",0,1
+21,concert_singer,Show the names of all singers who are older than 30.,SELECT name FROM singer WHERE age > 30,27,SELECT Name FROM singer WHERE Age > 30;,1,1
+22,concert_singer,List the names of all singers from the United States.,SELECT name FROM singer WHERE country = 'United States',27,SELECT Name FROM singer WHERE Country = 'United States';,1,1
+23,concert_singer,Show all concert names held in the year 2014.,SELECT concert_Name FROM concert WHERE Year = 2014,27,SELECT concert_Name FROM concert WHERE Year = 2014;,1,1
+24,concert_singer,How many concerts are recorded in the database?,SELECT COUNT(*) FROM concert,27,SELECT COUNT(*) FROM concert;,1,1
+25,concert_singer,What is the average capacity of all stadiums?,SELECT AVG(capacity) FROM stadium,27,SELECT AVG(Capacity) FROM stadium;,1,1

@@ -1,0 +1,9 @@
+{
+    "question": "How many singers are there?",
+    "generated_sql": "SELECT COUNT(*) FROM singer;",
+    "latency_seconds": 7.8239,
+    "model_gpu_allocated_mb": 2369.4,
+    "conversion_peak_vram_mb": 2369.4,
+    "inference_peak_vram_mb": 2439.68,
+    "conversion_time_seconds": 85.76
+}
