@@ -1,16 +1,20 @@
 # Running the app
 
-How to start the team's application (chat, Retrieval Explorer, dashboard) on your own machine, share it with the team, and plug your own agent in. Commands are for **Windows PowerShell**; run them from the repository folder. On macOS or Linux the commands are the same except settings: write `export J26_GENERATOR=adaptive_qwen` instead of `$env:J26_GENERATOR = "adaptive_qwen"`. All settings are listed in [section 7](#7-settings-reference).
+How to start the team's application (chat, Pipeline Explorer, dashboard) on your own machine, share it with the team, and plug your own agent in. Commands are for **Windows PowerShell**; run them from the repository folder. On macOS or Linux the commands are the same except settings: write `export J26_GENERATOR=adaptive_qwen` instead of `$env:J26_GENERATOR = "adaptive_qwen"`. All settings are listed in [section 7](#7-settings-reference).
 
 What you get:
 
 | Page | Address | What it shows |
 |---|---|---|
 | Chat | http://localhost:8765/chat | Ask a question; the answer shows the four-agent pipeline and each agent's input and output |
-| Retrieval Explorer | http://localhost:8765/ | Agent 1 alone: all four retrieval modes, kept and pruned columns |
+| Pipeline Explorer | http://localhost:8765/ | One question, a tab per agent: Agent 1's four retrieval modes and pruning, the gate's decision, the SQL written per attempt (and per retrieval mode), execution attempts and Agent 4's layer-by-layer precision map |
 | Dashboard | http://localhost:8765/dashboard | Answers saved from the chat, re-run live as charts |
 
-Until Agents 2–4 are plugged in, the chat uses stand-ins: **phi3 via Ollama** writes the SQL and a read-only runner executes it. The chat marks those stages "stand-in".
+Both the chat and the Explorer offer example questions for each database (from `harness/examples.js`); click one to run it.
+
+Until Agents 2–4 are plugged in, some stages are stand-ins, and both pages mark them so: Agent 1's word check is the question gate, the SQL is written by the model chosen with `J26_GENERATOR` (Karunanayake's quantized Qwen, or phi3 through Ollama), and a read-only runner executes it.
+
+**The short version, once set up:** `.\scripts\start_app.ps1` (details in section 2).
 
 ---
 
@@ -28,13 +32,12 @@ python -m spacy download en_core_web_md
 python scripts/get_chinook.py                          # data/chinook.db; the other databases in section 1 are optional
 python -c "import torch; print(torch.cuda.is_available())"   # must print True
 
-$env:J26_GENERATOR = "adaptive_qwen"
-python -m uvicorn harness.app:app --port 8765
+.\scripts\start_app.ps1                               # picks Agent 4's model by itself when the line above prints True
 ```
 
 Open http://localhost:8765/chat. The first start downloads Qwen2.5-1.5B-Instruct (about 3 GB) and builds the mixed INT4/INT8 model (about 2 minutes, printed in the terminal); the first question waits for it. The chat page says "SQL is written by ..." with the model's name; if it says "phi3 via Ollama (adaptive_qwen unavailable: ...)", see Troubleshooting. The layer plan comes from `results/qwen/qwen_precision_allocation.csv`, so a new allocation from your experiments is used after a restart.
 
-If `Activate.ps1` is blocked: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once. Next time, only the last two commands are needed (after activating the venv, if you made one).
+If `Activate.ps1` or `start_app.ps1` is blocked: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once. Next time, only `.\scripts\start_app.ps1` is needed (after activating the venv, if you made one).
 
 ---
 
@@ -63,17 +66,34 @@ Optional:
 
 ## 2. Start it
 
-1. Make sure Ollama is running. It usually starts with Windows. If not, run `ollama serve` in a second terminal and leave it open. "Address already in use" means it is already running.
-2. Optional: the PostgreSQL copies of Chinook and Northwind (needs the `j26-postgres` container; see `scripts/load_postgres.py`):
+From the repository folder:
+
+```powershell
+.\scripts\start_app.ps1             # this machine only
+.\scripts\start_app.ps1 -Restart    # an old copy is still holding the port: stop it first
+```
+
+The script does the checks that usually go wrong, then starts the app and prints the three addresses:
+- **Port:** if port 8765 is in use, it says which process holds it and stops (or, with `-Restart`, stops that old copy first).
+- **SQL model:** Karunanayake's quantized Qwen if this machine has an NVIDIA GPU with the GPU packages installed, otherwise phi3 through Ollama (with a warning if Ollama isn't running). Choose yourself with `-Generator ollama:phi3` or `-Generator adaptive_qwen`.
+- **PostgreSQL copies** of Chinook and Northwind: added only if Docker Desktop is running and the `j26-postgres` container exists (see `scripts/load_postgres.py`). Start Docker Desktop first if you want them; the rest works without it.
+
+Open http://localhost:8765/chat. Stop the app with **Ctrl + C** in that terminal. Closing the terminal stops it too, so keep it open during a demo.
+
+<details><summary>Without the script (macOS / Linux, or to set things by hand)</summary>
+
+1. If you use Ollama: make sure it is running (`ollama serve`; "address already in use" means it already is).
+2. Optional, PostgreSQL: start Docker Desktop, then
    ```powershell
    docker start j26-postgres
    $env:J26_DATABASES = '{"chinook_postgres": "postgresql+psycopg://ro_user:ro_pass@127.0.0.1:55432/chinook", "northwind_postgres": "postgresql+psycopg://ro_user:ro_pass@127.0.0.1:55432/northwind"}'
    ```
-3. Start the app:
+3. Choose the SQL model (next section), then start the app:
    ```powershell
+   $env:J26_GENERATOR = "adaptive_qwen"     # or leave unset for phi3 through Ollama
    python -m uvicorn harness.app:app --port 8765
    ```
-4. Open http://localhost:8765/chat. Stop the app with **Ctrl + C**.
+</details>
 
 Ask one warm-up question per database before a demo: the first one loads the models and takes a few seconds.
 
@@ -103,13 +123,12 @@ python -m uvicorn harness.app:app --port 8765
 ## 3. Share it with the team (same Wi-Fi or university network)
 
 ```powershell
-$env:J26_ADMIN_TOKEN = "pick-a-secret"
-$env:J26_ALLOWED_HOSTS = (Get-NetIPAddress -AddressFamily IPv4 | ? { $_.IPAddress -notlike '127.*' } | Select -First 1).IPAddress
-$env:J26_ALLOWED_HOSTS          # prints the IP to share
-python -m uvicorn harness.app:app --host 0.0.0.0 --port 8765
+.\scripts\start_app.ps1 -Share
 ```
 
-- Teammates open `http://<that IP>:8765/chat`. If the IP is wrong, `ipconfig` lists the others.
+It prints the address teammates open (`http://<your IP>:8765/chat`) and an admin token, generated for this run unless `J26_ADMIN_TOKEN` is already set.
+
+- If the printed IP is wrong, `ipconfig` lists the others. By hand: set `J26_ADMIN_TOKEN`, set `J26_ALLOWED_HOSTS` to your IP, and start uvicorn with `--host 0.0.0.0`.
 - Windows Firewall asks about Python: allow it on **Private networks** only.
 - Adding a database from another machine needs the admin token, typed into the "Admin token" box.
 - **Do not put it on the public internet.** Asking questions and the dashboard have no login yet.
@@ -156,9 +175,10 @@ python -m agent1_retrieval "Which customers are from Canada?" --json
 
 | Problem | Fix |
 |---|---|
-| "address already in use" on port 8765 | An old copy is running: `Get-NetTCPConnection -LocalPort 8765 -State Listen \| % { Stop-Process -Id $_.OwningProcess -Force }`, or use `--port 8000` |
+| "address already in use" / "Port 8765 is already in use" | An old copy is still running: `.\scripts\start_app.ps1 -Restart`, or use `-Port 8000` |
+| `start_app.ps1 cannot be loaded because running scripts is disabled` | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, or run `powershell -ExecutionPolicy Bypass -File .\scripts\start_app.ps1` |
 | Chat says the SQL generator is unavailable | Ollama isn't running (`ollama serve`) or phi3 isn't pulled (`ollama pull phi3`) |
-| `chinook_postgres` missing or "database unavailable" | `docker start j26-postgres`, and set `J26_DATABASES` in the same terminal before starting the app |
+| `chinook_postgres` missing or "database unavailable" | Start **Docker Desktop** and wait until it says it is running, then start the app again (the script adds them by itself) |
 | `Can't find model 'en_core_web_md'` | `python -m spacy download en_core_web_md` |
 | Only chinook appears | The other databases aren't downloaded: run the scripts in section 1 |
 | Adding a database gives 403 | From another machine: set `J26_ADMIN_TOKEN` on the server and type it in the "Admin token" box |

@@ -17,7 +17,7 @@ question ─► Agent 1 Retrieval ─► Agent 3 Generation ─► Agent 4 Execu
 | 2 Foundation model (distillation) | W.A.T. Wathsala (IT23282704) | `Agent2/`: distillation notebooks (Qwen2.5-7B teacher, 0.5B students for PP1) |
 | 3 Fine-tuned generation (LoRA vs HydraLoRA) | K.G.Y.V. Thathsarani (IT23404250) | `agent3_finetune/`: LoRA vs HydraLoRA on Qwen2.5-1.5B-Instruct, preliminary results |
 | 4 Quantized execution (adaptive mixed-precision INT4/INT8) | K.M.I.N. Karunanayake (IT23179912) | `src/`, `scripts/qwen_*`, `results/qwen/`: adaptive INT4/INT8 Qwen2.5-1.5B-Instruct, usable in the app |
-| Harness (shared) | team | `harness/`: FastAPI sequencing, handoff logging, bounded retry, chat, Retrieval Explorer, dashboard |
+| Harness (shared) | team | `harness/`: FastAPI sequencing, handoff logging, bounded retry, chat, Pipeline Explorer, dashboard |
 
 The team's base model is **Qwen2.5-1.5B-Instruct**. Until Agent 3's fine-tuned model is plugged in, the app writes SQL with a stand-in: phi3 via Ollama by default, or Agent 4's quantized Qwen (`J26_GENERATOR=adaptive_qwen`, needs an NVIDIA GPU).
 
@@ -47,8 +47,9 @@ Step-by-step for a GPU machine (no Ollama needed): [RUNNING_THE_APP.md, "Quick s
 ```bash
 python -m pytest tests
 python -m agent1_retrieval "Which customers are from Canada?" --json
-python -m uvicorn harness.app:app --port 8765             # http://localhost:8765/chat       team chatbot
-                                                          # http://localhost:8765/           Agent 1 Retrieval Explorer
+.\scripts\start_app.ps1                                   # Windows: start the app with checks (port, SQL model, PostgreSQL); -Restart, -Share
+python -m uvicorn harness.app:app --port 8765             # or by hand. http://localhost:8765/chat team chatbot
+                                                          # http://localhost:8765/           Pipeline Explorer (a tab per agent)
                                                           # http://localhost:8765/dashboard  saved answers as charts
 python -m agent1_retrieval.evaluate --pairs eval/chinook_pairs.json eval/tpch_pairs.json eval/spider_pairs.json --recommended
 python -m agent1_retrieval.evaluate --pairs eval/chinook_pairs.json eval/spider_pairs.json --recommended --exec phi3
@@ -79,7 +80,7 @@ Warm retrieval latency is about 80–120 ms on average, against a 500 ms target.
 | Path | Contents |
 |---|---|
 | `agent1_retrieval/` | schema reflection, retrieval modes, pruning, linking, complexity classifier, evaluation, statistics |
-| `harness/` | FastAPI orchestration, chatbot (`/chat`), Retrieval Explorer (`/`), dashboard (`/dashboard`), SQL model switch (`generators.py`) |
+| `harness/` | FastAPI orchestration, chatbot (`/chat`), Pipeline Explorer (`/`), dashboard (`/dashboard`), SQL model switch (`generators.py`) |
 | `Agent2/` | Agent 2 distillation notebooks |
 | `agent3_finetune/` | Agent 3 dataset, LoRA / HydraLoRA training, evaluation, results, progress log |
 | `src/`, `scripts/qwen_*`, `results/qwen/` | Agent 4 quantization code, layer sensitivity and precision allocation results |
