@@ -1,0 +1,282 @@
+[
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "Find the number of dog pets that are raised by female students (with sex F).",
+  "sql": "SELECT count(*) FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T2.petid  =  T3.petid WHERE T1.sex  =  'F' AND T3.pettype  =  'dog'",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/pets_1/pets_1.sqlite",
+  "question": "How many dog pets are raised by female students?",
+  "sql": "SELECT count(*) FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T2.petid  =  T3.petid WHERE T1.sex  =  'F' AND T3.pettype  =  'dog'",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "How many car makers are there in each continents? List the continent name and the count.",
+  "sql": "SELECT T1.Continent ,  count(*) FROM CONTINENTS AS T1 JOIN COUNTRIES AS T2 ON T1.ContId  =  T2.continent JOIN car_makers AS T3 ON T2.CountryId  =  T3.Country GROUP BY T1.Continent;",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What is the name of each continent and how many car makers are there in each one?",
+  "sql": "SELECT T1.Continent ,  count(*) FROM CONTINENTS AS T1 JOIN COUNTRIES AS T2 ON T1.ContId  =  T2.continent JOIN car_makers AS T3 ON T2.CountryId  =  T3.Country GROUP BY T1.Continent;",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "How many car models are produced in the usa?",
+  "sql": "SELECT count(*) FROM MODEL_LIST AS T1 JOIN CAR_MAKERS AS T2 ON T1.Maker  =  T2.Id JOIN COUNTRIES AS T3 ON T2.Country  =  T3.CountryId WHERE T3.CountryName  =  'usa';",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What is the count of the car models produced in the United States?",
+  "sql": "SELECT count(*) FROM MODEL_LIST AS T1 JOIN CAR_MAKERS AS T2 ON T1.Maker  =  T2.Id JOIN COUNTRIES AS T3 ON T2.Country  =  T3.CountryId WHERE T3.CountryName  =  'usa';",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "Which countries in europe have at least 3 car manufacturers?",
+  "sql": "SELECT T1.CountryName FROM COUNTRIES AS T1 JOIN CONTINENTS AS T2 ON T1.Continent  =  T2.ContId JOIN CAR_MAKERS AS T3 ON T1.CountryId  =  T3.Country WHERE T2.Continent  =  'europe' GROUP BY T1.CountryName HAVING count(*)  >=  3;",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/car_1/car_1.sqlite",
+  "question": "What are the names of all European countries with at least 3 manufacturers?",
+  "sql": "SELECT T1.CountryName FROM COUNTRIES AS T1 JOIN CONTINENTS AS T2 ON T1.Continent  =  T2.ContId JOIN CAR_MAKERS AS T3 ON T1.CountryId  =  T3.Country WHERE T2.Continent  =  'europe' GROUP BY T1.CountryName HAVING count(*)  >=  3;",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/flight_2/flight_2.sqlite",
+  "question": "How many flights depart from City 'Aberdeen' and have destination City 'Ashley'?",
+  "sql": "SELECT count(*) FROM FLIGHTS AS T1 JOIN AIRPORTS AS T2 ON T1.DestAirport  =  T2.AirportCode JOIN AIRPORTS AS T3 ON T1.SourceAirport  =  T3.AirportCode WHERE T2.City  =  \"Ashley\" AND T3.City  =  \"Aberdeen\"",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/flight_2/flight_2.sqlite",
+  "question": "How many flights fly from Aberdeen to Ashley?",
+  "sql": "SELECT count(*) FROM FLIGHTS AS T1 JOIN AIRPORTS AS T2 ON T1.DestAirport  =  T2.AirportCode JOIN AIRPORTS AS T3 ON T1.SourceAirport  =  T3.AirportCode WHERE T2.City  =  \"Ashley\" AND T3.City  =  \"Aberdeen\"",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/flight_2/flight_2.sqlite",
+  "question": "How many United Airlines flights go to City 'Aberdeen'?",
+  "sql": "SELECT count(*) FROM FLIGHTS AS T1 JOIN AIRPORTS AS T2 ON T1.DestAirport  =  T2.AirportCode JOIN AIRLINES AS T3 ON T3.uid  =  T1.Airline WHERE T2.City  =  \"Aberdeen\" AND T3.Airline  =  \"United Airlines\"",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/flight_2/flight_2.sqlite",
+  "question": "Count the number of United Airlines flights that arrive in Aberdeen.",
+  "sql": "SELECT count(*) FROM FLIGHTS AS T1 JOIN AIRPORTS AS T2 ON T1.DestAirport  =  T2.AirportCode JOIN AIRLINES AS T3 ON T3.uid  =  T1.Airline WHERE T2.City  =  \"Aberdeen\" AND T3.Airline  =  \"United Airlines\"",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/battle_death/battle_death.sqlite",
+  "question": "What are the ids and names of the battles that led to more than 10 people killed in total.",
+  "sql": "SELECT T1.id ,  T1.name FROM battle AS T1 JOIN ship AS T2 ON T1.id  =  T2.lost_in_battle JOIN death AS T3 ON T2.id  =  T3.caused_by_ship_id GROUP BY T1.id HAVING sum(T3.killed)  >  10",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "Which owner has paid for the most treatments on his or her dogs? List the owner id and last name.",
+  "sql": "SELECT T1.owner_id ,  T1.last_name FROM Owners AS T1 JOIN Dogs AS T2 ON T1.owner_id  =  T2.owner_id JOIN Treatments AS T3 ON T2.dog_id  =  T3.dog_id GROUP BY T1.owner_id ORDER BY count(*) DESC LIMIT 1",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "Tell me the owner id and last name of the owner who spent the most on treatments of his or her dogs.",
+  "sql": "SELECT T1.owner_id ,  T1.last_name FROM Owners AS T1 JOIN Dogs AS T2 ON T1.owner_id  =  T2.owner_id JOIN Treatments AS T3 ON T2.dog_id  =  T3.dog_id GROUP BY T1.owner_id ORDER BY count(*) DESC LIMIT 1",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "Which owner has paid the largest amount of money in total for their dogs? Show the owner id and zip code.",
+  "sql": "SELECT T1.owner_id ,  T1.zip_code FROM Owners AS T1 JOIN Dogs AS T2 ON T1.owner_id  =  T2.owner_id JOIN Treatments AS T3 ON T2.dog_id  =  T3.dog_id GROUP BY T1.owner_id ORDER BY sum(T3.cost_of_treatment) DESC LIMIT 1",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/spider/dog_kennels/dog_kennels.sqlite",
+  "question": "Find the owner id and zip code of the owner who spent the most money in total for his or her dogs.",
+  "sql": "SELECT T1.owner_id ,  T1.zip_code FROM Owners AS T1 JOIN Dogs AS T2 ON T1.owner_id  =  T2.owner_id JOIN Treatments AS T3 ON T2.dog_id  =  T3.dog_id GROUP BY T1.owner_id ORDER BY sum(T3.cost_of_treatment) DESC LIMIT 1",
+  "source": "spider_dev",
+  "joins": 2
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "For each genre, return the genre name and the total quantity of its tracks sold on invoice lines.",
+  "sql": "SELECT g.Name, SUM(il.Quantity) FROM Genre g JOIN Track t ON t.GenreId = g.GenreId JOIN InvoiceLine il ON il.TrackId = t.TrackId GROUP BY g.Name",
+  "source": "hand",
+  "joins": 2
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "Return each artist's name and the number of tracks the artist has.",
+  "sql": "SELECT ar.Name, COUNT(*) FROM Artist ar JOIN Album al ON al.ArtistId = ar.ArtistId JOIN Track t ON t.AlbumId = al.AlbumId GROUP BY ar.Name",
+  "source": "hand",
+  "joins": 2
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "For each support employee, return the employee's first name, last name and the total invoice amount of the customers they support.",
+  "sql": "SELECT e.FirstName, e.LastName, SUM(i.Total) FROM Employee e JOIN Customer c ON c.SupportRepId = e.EmployeeId JOIN Invoice i ON i.CustomerId = c.CustomerId GROUP BY e.EmployeeId",
+  "source": "hand",
+  "joins": 2
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "For each customer country, return the country and the number of distinct genres its customers bought.",
+  "sql": "SELECT c.Country, COUNT(DISTINCT t.GenreId) FROM Customer c JOIN Invoice i ON i.CustomerId = c.CustomerId JOIN InvoiceLine il ON il.InvoiceId = i.InvoiceId JOIN Track t ON t.TrackId = il.TrackId GROUP BY c.Country",
+  "source": "hand",
+  "joins": 3
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "Return the 5 artists with the highest sales revenue: the artist name and the revenue, computed as the sum of invoice line unit price times quantity.",
+  "sql": "SELECT ar.Name, SUM(il.UnitPrice * il.Quantity) AS revenue FROM Artist ar JOIN Album al ON al.ArtistId = ar.ArtistId JOIN Track t ON t.AlbumId = al.AlbumId JOIN InvoiceLine il ON il.TrackId = t.TrackId GROUP BY ar.Name ORDER BY revenue DESC LIMIT 5",
+  "source": "hand",
+  "joins": 3
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "Which customers bought Rock tracks? Return each customer's first name, last name and the total quantity of Rock tracks they bought.",
+  "sql": "SELECT c.FirstName, c.LastName, SUM(il.Quantity) FROM Customer c JOIN Invoice i ON i.CustomerId = c.CustomerId JOIN InvoiceLine il ON il.InvoiceId = i.InvoiceId JOIN Track t ON t.TrackId = il.TrackId JOIN Genre g ON g.GenreId = t.GenreId WHERE g.Name = 'Rock' GROUP BY c.CustomerId",
+  "source": "hand",
+  "joins": 4
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "Return the playlist id, playlist name and number of distinct artists for playlists containing tracks by more than 10 different artists.",
+  "sql": "SELECT p.PlaylistId, p.Name, COUNT(DISTINCT al.ArtistId) FROM Playlist p JOIN PlaylistTrack pt ON pt.PlaylistId = p.PlaylistId JOIN Track t ON t.TrackId = pt.TrackId JOIN Album al ON al.AlbumId = t.AlbumId GROUP BY p.PlaylistId HAVING COUNT(DISTINCT al.ArtistId) > 10",
+  "source": "hand",
+  "joins": 3
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "For each media type, return the media type name and the total revenue from its invoice lines (unit price times quantity).",
+  "sql": "SELECT m.Name, SUM(il.UnitPrice * il.Quantity) FROM MediaType m JOIN Track t ON t.MediaTypeId = m.MediaTypeId JOIN InvoiceLine il ON il.TrackId = t.TrackId GROUP BY m.Name",
+  "source": "hand",
+  "joins": 2
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "For albums by the artist AC/DC, return each album title and the album's total track length in milliseconds.",
+  "sql": "SELECT al.Title, SUM(t.Milliseconds) FROM Album al JOIN Artist ar ON ar.ArtistId = al.ArtistId JOIN Track t ON t.AlbumId = al.AlbumId WHERE ar.Name = 'AC/DC' GROUP BY al.Title",
+  "source": "hand",
+  "joins": 2
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "For each support employee, return the employee's first name, last name and the number of distinct tracks sold to the customers they support.",
+  "sql": "SELECT e.FirstName, e.LastName, COUNT(DISTINCT il.TrackId) FROM Employee e JOIN Customer c ON c.SupportRepId = e.EmployeeId JOIN Invoice i ON i.CustomerId = c.CustomerId JOIN InvoiceLine il ON il.InvoiceId = i.InvoiceId GROUP BY e.EmployeeId",
+  "source": "hand",
+  "joins": 3
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "Return the names of genres whose tracks appear on more than 100 invoice lines, with the number of those invoice lines.",
+  "sql": "SELECT g.Name, COUNT(*) FROM Genre g JOIN Track t ON t.GenreId = g.GenreId JOIN InvoiceLine il ON il.TrackId = t.TrackId GROUP BY g.Name HAVING COUNT(*) > 100",
+  "source": "hand",
+  "joins": 2
+ },
+ {
+  "db": "data/chinook.db",
+  "question": "Which customers bought tracks by Iron Maiden? Return each customer's first name, last name and the total quantity of Iron Maiden tracks they bought.",
+  "sql": "SELECT c.FirstName, c.LastName, SUM(il.Quantity) FROM Customer c JOIN Invoice i ON i.CustomerId = c.CustomerId JOIN InvoiceLine il ON il.InvoiceId = i.InvoiceId JOIN Track t ON t.TrackId = il.TrackId JOIN Album al ON al.AlbumId = t.AlbumId JOIN Artist ar ON ar.ArtistId = al.ArtistId WHERE ar.Name = 'Iron Maiden' GROUP BY c.CustomerId",
+  "source": "hand",
+  "joins": 5
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "For each product category, return the category name and the total quantity of its products ordered.",
+  "sql": "SELECT c.CategoryName, SUM(od.Quantity) FROM Categories c JOIN Products p ON p.CategoryID = c.CategoryID JOIN \"Order Details\" od ON od.ProductID = p.ProductID GROUP BY c.CategoryName",
+  "source": "hand",
+  "joins": 2
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "For each employee, return the first name, last name and the total sales value of their orders, computed as order line unit price times quantity (ignore discounts).",
+  "sql": "SELECT e.FirstName, e.LastName, SUM(od.UnitPrice * od.Quantity) FROM Employees e JOIN Orders o ON o.EmployeeID = e.EmployeeID JOIN \"Order Details\" od ON od.OrderID = o.OrderID GROUP BY e.EmployeeID",
+  "source": "hand",
+  "joins": 2
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "For each customer country, return the country and the number of distinct products ordered by customers in that country.",
+  "sql": "SELECT cu.Country, COUNT(DISTINCT od.ProductID) FROM Customers cu JOIN Orders o ON o.CustomerID = cu.CustomerID JOIN \"Order Details\" od ON od.OrderID = o.OrderID GROUP BY cu.Country",
+  "source": "hand",
+  "joins": 2
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "For each supplier country, return the country and the total quantity of that country's suppliers' products ordered.",
+  "sql": "SELECT s.Country, SUM(od.Quantity) FROM Suppliers s JOIN Products p ON p.SupplierID = s.SupplierID JOIN \"Order Details\" od ON od.ProductID = p.ProductID GROUP BY s.Country",
+  "source": "hand",
+  "joins": 2
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "For each product category, return the category name and the number of distinct customers who ordered products in that category.",
+  "sql": "SELECT c.CategoryName, COUNT(DISTINCT o.CustomerID) FROM Categories c JOIN Products p ON p.CategoryID = c.CategoryID JOIN \"Order Details\" od ON od.ProductID = p.ProductID JOIN Orders o ON o.OrderID = od.OrderID GROUP BY c.CategoryName",
+  "source": "hand",
+  "joins": 3
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "For each region, return the region description and the number of distinct employees assigned to territories in that region.",
+  "sql": "SELECT r.RegionDescription, COUNT(DISTINCT et.EmployeeID) FROM Regions r JOIN Territories t ON t.RegionID = r.RegionID JOIN EmployeeTerritories et ON et.TerritoryID = t.TerritoryID GROUP BY r.RegionDescription",
+  "source": "hand",
+  "joins": 2
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "For each employee, return the first name, last name and the number of distinct product categories they have sold.",
+  "sql": "SELECT e.FirstName, e.LastName, COUNT(DISTINCT p.CategoryID) FROM Employees e JOIN Orders o ON o.EmployeeID = e.EmployeeID JOIN \"Order Details\" od ON od.OrderID = o.OrderID JOIN Products p ON p.ProductID = od.ProductID GROUP BY e.EmployeeID",
+  "source": "hand",
+  "joins": 3
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "Return the company names of customers who ordered products from all 8 categories, with the number of categories they ordered from.",
+  "sql": "SELECT cu.CompanyName, COUNT(DISTINCT p.CategoryID) FROM Customers cu JOIN Orders o ON o.CustomerID = cu.CustomerID JOIN \"Order Details\" od ON od.OrderID = o.OrderID JOIN Products p ON p.ProductID = od.ProductID GROUP BY cu.CustomerID HAVING COUNT(DISTINCT p.CategoryID) = 8",
+  "source": "hand",
+  "joins": 3
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "For each supplier, return the supplier's company name and the number of distinct customers who ordered that supplier's products.",
+  "sql": "SELECT s.CompanyName, COUNT(DISTINCT o.CustomerID) FROM Suppliers s JOIN Products p ON p.SupplierID = s.SupplierID JOIN \"Order Details\" od ON od.ProductID = p.ProductID JOIN Orders o ON o.OrderID = od.OrderID GROUP BY s.SupplierID",
+  "source": "hand",
+  "joins": 3
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "For each region, return the region description and the number of distinct orders taken by employees assigned to territories in that region.",
+  "sql": "SELECT r.RegionDescription, COUNT(DISTINCT o.OrderID) FROM Regions r JOIN Territories t ON t.RegionID = r.RegionID JOIN EmployeeTerritories et ON et.TerritoryID = t.TerritoryID JOIN Orders o ON o.EmployeeID = et.EmployeeID GROUP BY r.RegionDescription",
+  "source": "hand",
+  "joins": 3
+ },
+ {
+  "db": "data/northwind.db",
+  "question": "For the Beverages category, return each customer country and the total quantity of beverage products ordered by customers in that country.",
+  "sql": "SELECT cu.Country, SUM(od.Quantity) FROM Categories c JOIN Products p ON p.CategoryID = c.CategoryID JOIN \"Order Details\" od ON od.ProductID = p.ProductID JOIN Orders o ON o.OrderID = od.OrderID JOIN Customers cu ON cu.CustomerID = o.CustomerID WHERE c.CategoryName = 'Beverages' GROUP BY cu.Country",
+  "source": "hand",
+  "joins": 4
+ }
+]
