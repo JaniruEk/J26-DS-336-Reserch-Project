@@ -1,0 +1,71 @@
+{
+  "name": "hydra_r16_seed42",
+  "version": "v1",
+  "role": "runner-up",
+  "created_utc": "2026-10-20T03:24:16+00:00",
+  "method": "hydra",
+  "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rank": 16,
+  "alpha": 32.0,
+  "n_heads": 4,
+  "heads": [
+    "simple",
+    "single-join",
+    "multi-join",
+    "aggregation"
+  ],
+  "targets": [
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj",
+    "gate_proj",
+    "up_proj",
+    "down_proj"
+  ],
+  "default_head": "single-join",
+  "routing_requirement": "needs a complexity label per query: the true label is not available in deployment, so Agent 1's live classifier must supply it (a wrong head costs accuracy; see the project results)",
+  "seed": 42,
+  "trainable_params": 49430528,
+  "train_seconds_total": 7109,
+  "train_peak_vram_gb": 7.28,
+  "validation_loss": 0.253,
+  "evaluation": {
+    "metric": "execution accuracy",
+    "questions": "pooled Spider dev + Chinook",
+    "n_scored": 128,
+    "overall": "66/128",
+    "by_bucket": {
+      "simple": "22/31",
+      "single-join": "20/31",
+      "multi-join": "5/32",
+      "aggregation": "19/34"
+    }
+  },
+  "git_commit": "a0c63e847bcf97ecfcee5fdee750db42aec72db5",
+  "files": {
+    "adapter_meta.json": {
+      "bytes": 379
+    },
+    "adapters.pt": {
+      "bytes": 197849405
+    },
+    "compare_hydra_oracle_vs_lora.txt": {
+      "bytes": 1490
+    },
+    "config_used.json": {
+      "bytes": 647
+    },
+    "evaluation_scored.json": {
+      "bytes": 100085
+    },
+    "policies.txt": {
+      "bytes": 2460
+    },
+    "run_info.json": {
+      "bytes": 686
+    }
+  },
+  "adapters_pt_sha256": "3acd31d1e1f00c0124d38ffbe160b40147f5b340d8835edf9490e3e80b280d80",
+  "note": "Runner-up. Needs a complexity label per query; with the live classifier accuracy is 0.391 against 0.516 with the true label."
+}

@@ -1,0 +1,65 @@
+{
+  "name": "lora_r16_seed42",
+  "version": "v1",
+  "role": "winner",
+  "created_utc": "2026-10-20T03:23:59+00:00",
+  "method": "lora",
+  "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rank": 16,
+  "alpha": 32.0,
+  "n_heads": 1,
+  "heads": [
+    "simple",
+    "single-join",
+    "multi-join",
+    "aggregation"
+  ],
+  "targets": [
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj",
+    "gate_proj",
+    "up_proj",
+    "down_proj"
+  ],
+  "default_head": "single-join",
+  "routing_requirement": "none (single adapter)",
+  "seed": 42,
+  "trainable_params": 18464768,
+  "train_seconds_total": 7402,
+  "train_peak_vram_gb": 6.82,
+  "validation_loss": 0.2944,
+  "evaluation": {
+    "metric": "execution accuracy",
+    "questions": "pooled Spider dev + Chinook",
+    "n_scored": 128,
+    "overall": "72/128",
+    "by_bucket": {
+      "simple": "24/31",
+      "single-join": "23/31",
+      "multi-join": "5/32",
+      "aggregation": "20/34"
+    }
+  },
+  "git_commit": "a0c63e847bcf97ecfcee5fdee750db42aec72db5",
+  "files": {
+    "adapter_meta.json": {
+      "bytes": 378
+    },
+    "adapters.pt": {
+      "bytes": 73986173
+    },
+    "config_used.json": {
+      "bytes": 646
+    },
+    "evaluation_scored.json": {
+      "bytes": 97697
+    },
+    "run_info.json": {
+      "bytes": 686
+    }
+  },
+  "adapters_pt_sha256": "4f8d7ef7c67a9447983a484ef238186ddde36b186fcdb6e1c0d9bdf7fa3da9ba",
+  "note": "Preliminary winner: one seed, placeholder base model."
+}
