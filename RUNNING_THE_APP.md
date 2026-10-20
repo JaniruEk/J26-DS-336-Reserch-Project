@@ -1,6 +1,6 @@
 # Running the app
 
-How to start the team's application (chat, Retrieval Explorer, dashboard) on your own machine, share it with the team, and plug your own agent in. Commands are for **Windows PowerShell**; run them from the repository folder.
+How to start the team's application (chat, Retrieval Explorer, dashboard) on your own machine, share it with the team, and plug your own agent in. Commands are for **Windows PowerShell**; run them from the repository folder. On macOS or Linux the commands are the same except settings: write `export J26_GENERATOR=adaptive_qwen` instead of `$env:J26_GENERATOR = "adaptive_qwen"`. All settings are listed in [section 7](#7-settings-reference).
 
 What you get:
 
@@ -54,6 +54,25 @@ Optional:
 Ask one warm-up question per database before a demo: the first one loads the models and takes a few seconds.
 
 **Add your own database:** on the chat page, open "Add a database" and drop a SQLite file there, or paste a PostgreSQL link. Use a read-only database login. Tick "don't read data values" for databases with personal data.
+
+---
+
+### Choose the SQL model (`J26_GENERATOR`)
+
+Set this before starting the app. The chat page shows which model is answering.
+
+| Value | Model | Needs |
+|---|---|---|
+| *(unset)* or `ollama:phi3` | phi3 through Ollama (default) | Ollama |
+| `ollama:<any model>` | any Ollama model, e.g. `ollama:qwen2.5-coder:1.5b-instruct` | `ollama pull <model>` |
+| `adaptive_qwen` | Karunanayake's (Agent 4) adaptive mixed-precision Qwen2.5-1.5B: sensitive layers 8-bit, the rest 4-bit, from `results/qwen/` | An NVIDIA GPU, and once: `pip install torch --index-url https://download.pytorch.org/whl/cu124` then `pip install transformers accelerate bitsandbytes pandas` |
+
+```powershell
+$env:J26_GENERATOR = "adaptive_qwen"
+python -m uvicorn harness.app:app --port 8765
+```
+
+`adaptive_qwen` downloads Qwen2.5-1.5B (about 3 GB) the first time and builds the model at startup (about 2 minutes; the first question waits for it). After that, answers take a few seconds. It is the base model quantized, **not fine-tuned for SQL** yet, so expect wrong answers on joins. Without an NVIDIA GPU or those libraries, the app says so in its log and falls back to phi3.
 
 ---
 
@@ -120,3 +139,21 @@ python -m agent1_retrieval "Which customers are from Canada?" --json
 | Only chinook appears | The other databases aren't downloaded: run the scripts in section 1 |
 | Adding a database gives 403 | From another machine: set `J26_ADMIN_TOKEN` on the server and type it in the "Admin token" box |
 | `git fetch` fails with "cannot lock ref ... .lock: File exists" | Branch names that differ only in capital letters clash on Windows. Close GitHub Desktop and VS Code's Git, delete the named `.lock` file under `.git\refs`, and fetch again |
+| Chat shows "phi3 via Ollama (adaptive_qwen unavailable: ...)" | `adaptive_qwen` could not start; the reason is in brackets. Usually no NVIDIA GPU, or torch was installed without CUDA (reinstall with the `--index-url` line above) |
+
+---
+
+## 7. Settings reference
+
+All settings are environment variables, read when the app starts. Set them in the same terminal before `python -m uvicorn ...`. None are needed for a local demo.
+
+| Setting | What it does | Example |
+|---|---|---|
+| `J26_GENERATOR` | Which model writes the SQL (see "Choose the SQL model") | `adaptive_qwen` |
+| `J26_DATABASES` | Extra databases, as JSON `{"name": "SQLite path or PostgreSQL URL"}`. Keeps passwords out of the code; use a read-only login | `{"bank": "postgresql+psycopg://ro_user:pw@dbhost/bank"}` |
+| `J26_NO_VALUE_LINKING` | Databases whose data values Agent 1 must never read (personal data), comma-separated | `bank,hr` |
+| `J26_GLOSSARIES` | Per-database data dictionary file, `{"Table.Column": "meaning"}`, shown to the model | `{"bank": "bank_glossary.json"}` |
+| `J26_ADMIN_TOKEN` | Needed to add databases from another machine or behind a proxy; typed into the "Admin token" box | any secret |
+| `J26_ALLOWED_HOSTS` | Addresses the app is reached by, besides localhost (comma-separated) | `192.168.1.20` |
+| `J26_DB_HOSTS` | If set, the only database servers that may be added at runtime | `dbhost.internal` |
+| `SUPERSET_URL`, `SUPERSET_USER`, `SUPERSET_PASSWORD`, `SUPERSET_DATABASES` | Optional "push to Superset" for saved answers. All required together; use a low-privilege account | `SUPERSET_DATABASES={"chinook": 1}` |

@@ -96,12 +96,20 @@ def test_generator_down_gives_503_not_500(db, tmp_path):
     assert r.status_code == 503 and "Ollama" in r.json()["detail"]
 
 
-def test_chat_page_and_health(db, tmp_path):
-    c, _ = client(db, tmp_path, None)
+def test_chat_page_and_health(db, tmp_path, monkeypatch):
+    c, _ = client(db, tmp_path, lambda q, ddl, **kw: "SELECT 1")
     assert "Local SQL Assistant" in c.get("/chat").text
     h = c.get("/health").json()
     assert h["dbs"] == ["t"] and h["schema_only"] == []
-    assert h["stand_ins"] == ["gate", "execute"]  # test generator injected; executor and gate are still placeholders
+    assert h["stand_ins"] == ["gate", "execute"]  # a real generator injected; executor and gate are still placeholders
+    monkeypatch.delenv("J26_GENERATOR", raising=False)
+    h = client(db, tmp_path, None)[0].get("/health").json()  # default: phi3 via Ollama, a stand-in
+    assert h["stand_ins"] == ["gate", "generate", "execute"] and h["generator"] == "phi3 via Ollama"
+    monkeypatch.setenv("J26_GENERATOR", "ollama:qwen2.5-coder:1.5b-instruct")
+    assert client(db, tmp_path, None)[0].get("/health").json()["generator"] == "qwen2.5-coder:1.5b-instruct via Ollama"
+    monkeypatch.setenv("J26_GENERATOR", "nonsense")
+    with pytest.raises(ValueError):
+        client(db, tmp_path, None)
 
 
 def test_runaway_query_is_aborted(db):

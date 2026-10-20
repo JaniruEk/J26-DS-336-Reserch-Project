@@ -14,10 +14,12 @@ question ─► Agent 1 Retrieval ─► Agent 3 Generation ─► Agent 4 Execu
 | Agent | Owner | Status in this repo |
 |---|---|---|
 | 1 Schema retrieval and column-level pruning | J.K.B. Ekanayake (IT23199262) | `agent1_retrieval/`: working, evaluated (Phases 1–8) |
-| 2 Foundation model (distillation) | W.A.T. Wathsala (IT23282704) | see team branches |
-| 3 Fine-tuned generation (LoRA vs HydraLoRA) | K.G.Y.V. Thathsarani (IT23404250) | see team branches |
-| 4 Quantized execution (adaptive mixed-precision INT4/INT8) | K.M.I.N. Karunanayake (IT23179912) | see team branches |
-| Harness (shared) | team | `harness/`: FastAPI sequencing, handoff logging, bounded retry, explorer and chat UI |
+| 2 Foundation model (distillation) | W.A.T. Wathsala (IT23282704) | `Agent2/`: distillation notebooks (Qwen2.5-7B teacher, 0.5B students for PP1) |
+| 3 Fine-tuned generation (LoRA vs HydraLoRA) | K.G.Y.V. Thathsarani (IT23404250) | `agent3_finetune/`: LoRA vs HydraLoRA on Qwen2.5-1.5B-Instruct, preliminary results |
+| 4 Quantized execution (adaptive mixed-precision INT4/INT8) | K.M.I.N. Karunanayake (IT23179912) | `src/`, `scripts/qwen_*`, `results/qwen/`: adaptive INT4/INT8 Qwen2.5-1.5B-Instruct, usable in the app |
+| Harness (shared) | team | `harness/`: FastAPI sequencing, handoff logging, bounded retry, chat, Retrieval Explorer, dashboard |
+
+The team's base model is **Qwen2.5-1.5B-Instruct**. Until Agent 3's fine-tuned model is plugged in, the app writes SQL with a stand-in: phi3 via Ollama by default, or Agent 4's quantized Qwen (`J26_GENERATOR=adaptive_qwen`, needs an NVIDIA GPU).
 
 ## Setup
 
@@ -30,15 +32,23 @@ python scripts/get_spider.py         # 20 Spider dev DBs + eval/spider_pairs.jso
 ollama pull phi3                     # stand-in SQL generator until Agent 3's model is ready
 ```
 
+Optional, to use Agent 4's quantized model in the app (NVIDIA GPU only):
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cu124
+pip install transformers accelerate bitsandbytes pandas
+```
+
 ## Run
 
-**Starting the app, sharing it with the team and plugging your agent in: see [RUNNING_THE_APP.md](RUNNING_THE_APP.md).**
+**Hosting the app, choosing the SQL model, sharing it on the team network, all settings, and plugging your agent in: see [RUNNING_THE_APP.md](RUNNING_THE_APP.md).**
 
 ```bash
 python -m pytest tests
 python -m agent1_retrieval "Which customers are from Canada?" --json
-uvicorn harness.app:app                                   # http://localhost:8000      Agent 1 Retrieval Explorer
-                                                          # http://localhost:8000/chat team chatbot (needs Ollama)
+python -m uvicorn harness.app:app --port 8765             # http://localhost:8765/chat       team chatbot
+                                                          # http://localhost:8765/           Agent 1 Retrieval Explorer
+                                                          # http://localhost:8765/dashboard  saved answers as charts
 python -m agent1_retrieval.evaluate --pairs eval/chinook_pairs.json eval/tpch_pairs.json eval/spider_pairs.json --recommended
 python -m agent1_retrieval.evaluate --pairs eval/chinook_pairs.json eval/spider_pairs.json --recommended --exec phi3
 ```
@@ -68,11 +78,16 @@ Warm retrieval latency is about 80–120 ms on average, against a 500 ms target.
 | Path | Contents |
 |---|---|
 | `agent1_retrieval/` | schema reflection, retrieval modes, pruning, linking, complexity classifier, evaluation, statistics |
-| `harness/` | FastAPI orchestration, Retrieval Explorer (`/`), chatbot (`/chat`) |
-| `eval/` | labelled question/SQL pairs (Chinook, TPC-H, Spider) |
+| `harness/` | FastAPI orchestration, chatbot (`/chat`), Retrieval Explorer (`/`), dashboard (`/dashboard`), SQL model switch (`generators.py`) |
+| `Agent2/` | Agent 2 distillation notebooks |
+| `agent3_finetune/` | Agent 3 dataset, LoRA / HydraLoRA training, evaluation, results, progress log |
+| `src/`, `scripts/qwen_*`, `results/qwen/` | Agent 4 quantization code, layer sensitivity and precision allocation results |
+| `eval/` | labelled question/SQL pairs (Chinook, TPC-H, Spider, Northwind, value-coded, hard multi-join) |
 | `scripts/` | data download, TPC-H generator, complexity classifier training, parameter sweeps |
 | `reports/` | measured results |
 | `pp1/` | PP1 panel responses and flow diagrams |
+| `handoff/` | requests to teammates for model files to plug into the app |
+| `RUNNING_THE_APP.md` | how to host and use the app |
 | `*_J26-DS-336.md` | scope, proposals, execution plan, market research |
 
 `data/` is git-ignored; the scripts above recreate it.

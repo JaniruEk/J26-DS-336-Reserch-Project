@@ -5,79 +5,287 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Local SQL Assistant</title>
 <style>
-  :root { color-scheme: light dark; --fg:#111; --muted:#666; --line:#ccc; --bg:#fff; --me:#eef3ff; --bot:#f6f6f6; --ok:#e8f5e9; --bad:#fdecea; }
-  @media (prefers-color-scheme: dark) { :root { --fg:#eee; --muted:#999; --line:#444; --bg:#161616; --me:#1e2a44; --bot:#222; --ok:#1d3320; --bad:#3a1c1a; } }
-  body { font: 15px/1.45 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 900px; margin: 0 auto; padding: 16px; }
-  h1 { font-size: 20px; margin: 0 0 4px; } .muted { color: var(--muted); font-size: 13px; }
-  #log { margin: 16px 0 96px; }
-  .msg { padding: 10px 12px; border-radius: 8px; margin: 10px 0; overflow-x: auto; }
-  .me { background: var(--me); margin-left: 15%; } .bot { background: var(--bot); margin-right: 5%; }
-  .err { background: var(--bad); padding: 6px 8px; border-radius: 4px; }
-  form { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg); border-top: 1px solid var(--line); padding: 12px 16px; }
-  form div { max-width: 900px; margin: 0 auto; display: flex; gap: 8px; }
-  input { flex: 1; padding: 8px; font: inherit; } select, button { padding: 8px 12px; font: inherit; }
-  table { border-collapse: collapse; margin: 6px 0; font-size: 13px; }
-  th, td { border: 1px solid var(--line); padding: 3px 6px; text-align: left; vertical-align: top; }
-  pre { white-space: pre-wrap; margin: 4px 0; font-size: 13px; }
-  details { margin-top: 8px; } summary { cursor: pointer; color: var(--muted); }
-  .agent { border-left: 3px solid var(--line); padding: 4px 10px; margin: 8px 0; }
-  .agent h3 { font-size: 14px; margin: 0 0 4px; }
-  .ok { background: var(--ok); } .bad { background: var(--bad); }
-  .strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
-  .stage { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 13px; }
-  .stage b { display: block; font-size: 13px; } .stage .who { color: var(--muted); font-size: 12px; }
-  .badge { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 9px; border: 1px solid var(--line); margin: 2px 0; }
-  .io { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 4px 12px; }
+  /* System fonts only: the product promise is that nothing leaves this machine, so no web-font requests either. */
+  :root {
+    color-scheme: light dark;
+    --paper: #F5F7FA; --surface: #FFFFFF; --ink: #18222D; --slate: #5A6573; --line: #DCE1E8; --soft: #EEF2F6;
+    --teal: #0E7C86; --teal-ink: #FFFFFF; --teal-wash: #E3F2F3;
+    --amber: #A86A12; --amber-wash: #FBF1E1; --red: #B4342D; --red-wash: #FBE9E7; --green: #2C7A4B;
+    --code-bg: #18222D; --code-ink: #E3E9F0;
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+    --mono: "Cascadia Code", "Cascadia Mono", Consolas, "SF Mono", monospace;
+    --r-sm: 6px; --r-md: 10px; --r-lg: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0F151C; --surface: #17202A; --ink: #E6EBF1; --slate: #96A1AE; --line: #2A3542; --soft: #1D2833;
+      --teal: #3BB3BD; --teal-ink: #0B1A1C; --teal-wash: #12302F; --amber: #E0A54A; --amber-wash: #2E2414;
+      --red: #F07A70; --red-wash: #3A1F1C; --green: #5FCB8C; --code-bg: #0B1016; --code-ink: #D7E0EA;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--paper); }
+  body { margin: 0; font: 15px/1.5 var(--sans); color: var(--ink); background: var(--paper); }
+  a { color: var(--teal); }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .muted { color: var(--slate); }
+
+  /* Header */
+  header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--paper) 88%, transparent);
+           backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 960px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .brand { margin-right: auto; flex: 1 1 280px; min-width: 0; }
+  .brand h1 { font-size: 18px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+  .brand p { margin: 0; font-size: 13px; color: var(--slate); }
+  nav { display: flex; gap: 4px; }
+  nav a, .ghost { padding: 7px 12px; border-radius: var(--r-sm); text-decoration: none; color: var(--ink); font-size: 14px;
+                  border: 1px solid transparent; background: none; cursor: pointer; }
+  nav a:hover, .ghost:hover { background: var(--soft); }
+  .ghost.outlined { border-color: var(--line); }
+  select#db { padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); flex: 0 1 230px; min-width: 150px; }
+
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 180px; }
+
+  /* Empty state with example questions */
+  #intro h2 { font-size: clamp(26px, 4vw, 34px); font-weight: 650; letter-spacing: -.02em; line-height: 1.15; margin: 8px 0 6px; max-width: 30ch; overflow-wrap: anywhere; }
+  #intro > p { color: var(--slate); margin: 0 0 22px; max-width: 62ch; }
+  .groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 24px; }
+  .group h3 { font-size: 13px; font-weight: 600; color: var(--slate); margin: 0 0 8px; }
+  .chips { display: flex; flex-direction: column; gap: 6px; }
+  .chip { text-align: left; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface);
+          cursor: pointer; font-size: 14px; line-height: 1.35; }
+  .chip:hover { border-color: var(--teal); background: var(--teal-wash); }
+  .group.guard .chip { border-style: dashed; }
+  .note { font-size: 14px; padding: 10px 12px; border-radius: var(--r-md); background: var(--soft); max-width: 70ch; }
+
+  /* Conversation */
+  #log { display: flex; flex-direction: column; gap: 14px; }
+  .q { align-self: flex-end; max-width: 80%; background: var(--ink); color: var(--paper); padding: 9px 14px;
+       border-radius: var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg); }
+  .q small { display: block; opacity: .7; font-size: 12px; }
+  .a { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; min-width: 0; }
+  .a .status { font-weight: 600; margin: 0 0 10px; }
+  .err { background: var(--red-wash); color: var(--red); padding: 10px 12px; border-radius: var(--r-md); margin: 0 0 12px; }
+  .tablewrap { overflow: auto; max-height: 360px; border: 1px solid var(--line); border-radius: var(--r-md); }
+  table.result { border-collapse: collapse; width: 100%; font-size: 14px; }
+  table.result th { position: sticky; top: 0; background: var(--soft); text-align: left; font-weight: 600; }
+  table.result th, table.result td { padding: 6px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.result td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .count { font-size: 13px; color: var(--slate); margin: 6px 2px 0; }
+  .sql { position: relative; margin: 14px 0 0; }
+  .sql pre { margin: 0; background: var(--code-bg); color: var(--code-ink); font: 13px/1.55 var(--mono); padding: 12px 14px;
+             border-radius: var(--r-md); white-space: pre-wrap; overflow-x: auto; }
+  .sql .copy { position: absolute; top: 8px; right: 8px; font-size: 12px; padding: 3px 9px; border-radius: var(--r-sm);
+               border: 1px solid #ffffff33; background: #ffffff14; color: var(--code-ink); cursor: pointer; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 12px 0 0; font-size: 14px; }
+  .primary { background: var(--teal); color: var(--teal-ink); border: 0; border-radius: var(--r-sm); padding: 8px 14px; cursor: pointer; font-weight: 600; }
+  .primary:disabled { opacity: .5; cursor: default; }
+
+  /* The route: the question's journey through the four agents */
+  .route { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 18px 0 4px; position: relative; }
+  .route::before { content: ""; position: absolute; left: 12.5%; right: 12.5%; top: 9px; height: 2px; background: var(--line); }
+  .stop { position: relative; text-align: center; padding: 0 6px; min-width: 0; }
+  .dot { display: block; width: 20px; height: 20px; border-radius: 50%; margin: 0 auto 8px; position: relative; z-index: 1;
+         background: var(--surface); border: 3px solid var(--line); }
+  .stop.real .dot { background: var(--teal); border-color: var(--teal); }
+  .stop.stand-in .dot { border-color: var(--amber); }
+  .stop.halt .dot { background: var(--red); border-color: var(--red); }
+  .stop.idle { opacity: .45; }
+  .stop b { display: block; font-size: 14px; }
+  .stop .who { font-size: 12px; color: var(--slate); }
+  .tag { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; margin: 4px 0 2px; }
+  .real .tag { background: var(--teal-wash); color: var(--teal); }
+  .stand-in .tag, .halt .tag { background: var(--amber-wash); color: var(--amber); }
+  .stop .what { font-size: 12.5px; color: var(--slate); overflow-wrap: anywhere; }
+  .stop .what strong { color: var(--ink); font-weight: 600; }
+  /* While waiting, a pulse travels along the route: the one moving thing on the page, answering the user's question. */
+  .travel .dot { animation: lit 1.6s infinite; }
+  .travel .stop:nth-child(2) .dot { animation-delay: .4s; } .travel .stop:nth-child(3) .dot { animation-delay: .8s; }
+  .travel .stop:nth-child(4) .dot { animation-delay: 1.2s; }
+  @keyframes lit { 0%, 60%, 100% { border-color: var(--line); background: var(--surface); } 20% { border-color: var(--teal); background: var(--teal); } }
+  @media (prefers-reduced-motion: reduce) { .travel .dot { animation: none; } }
+  @media (max-width: 620px) {
+    .route { grid-template-columns: 1fr; gap: 12px; }
+    .route::before { left: 9px; right: auto; top: 10px; bottom: 10px; width: 2px; height: auto; }
+    .stop { display: grid; grid-template-columns: 20px 1fr; column-gap: 12px; text-align: left; padding: 0; }
+    .dot { margin: 0; grid-row: span 4; }
+  }
+
+  /* Pipeline trace (inputs and outputs per agent) */
+  details.trace { margin-top: 10px; }
+  details summary { cursor: pointer; color: var(--slate); font-size: 14px; padding: 4px 0; }
+  .agent { border-left: 3px solid var(--line); padding: 6px 0 6px 14px; margin: 12px 0; }
+  .agent h4 { font-size: 14px; margin: 0 0 6px; }
+  .agent h4 span { font-weight: 400; color: var(--slate); }
+  .io { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 16px; }
   .io > div { min-width: 0; overflow-x: auto; }
-  .iolab { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin: 6px 0 2px; }
-  .drop { display: block; border: 2px dashed var(--line); border-radius: 8px; padding: 18px; text-align: center; cursor: pointer; margin: 4px 0 8px; }
-  .drop.over { border-color: var(--fg); background: var(--me); }
-  #dburl { width: 100%; box-sizing: border-box; margin: 4px 0; } #add { margin-top: 8px; }
-  .badge.real { background: var(--ok); } .badge.stand-in { background: var(--bad); }
+  .iolab { font-size: 12.5px; font-weight: 600; color: var(--slate); margin: 8px 0 4px; }
+  .kv { border-collapse: collapse; font-size: 13px; }
+  .kv th, .kv td { border: 1px solid var(--line); padding: 3px 8px; text-align: left; vertical-align: top; }
+  .kv th { background: var(--soft); font-weight: 600; }
+  .agent pre { font: 12.5px/1.5 var(--mono); white-space: pre-wrap; margin: 4px 0; }
+  .okline { color: var(--green); } .badline { color: var(--red); }
+
+  /* Composer */
+  form#f { position: fixed; z-index: 4; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, var(--paper) 70%, transparent); padding: 22px 16px 16px; }
+  .composer { max-width: 960px; margin: 0 auto; }
+  .box { display: flex; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 6px;
+         box-shadow: 0 6px 24px color-mix(in srgb, var(--ink) 10%, transparent); }
+  .box:focus-within { border-color: var(--teal); }
+  #q { flex: 1; border: 0; background: none; padding: 9px 10px; min-width: 0; }
+  #q:focus-visible { outline: none; }
+  #more { margin: 0 0 8px; }
+  #more summary { font-size: 13px; }
+  #more .chips { flex-direction: row; flex-wrap: wrap; max-height: 150px; overflow: auto; padding: 6px 0 2px; }
+  #more .chip { font-size: 13px; padding: 6px 10px; }
+  .hint { font-size: 12.5px; color: var(--slate); margin: 6px 4px 0; }
+
+  /* Add-database dialog */
+  dialog { border: 1px solid var(--line); border-radius: var(--r-lg); padding: 0; width: min(560px, calc(100% - 32px)); background: var(--surface); color: var(--ink); }
+  dialog::backdrop { background: color-mix(in srgb, var(--ink) 45%, transparent); }
+  .dlg { padding: 20px; display: grid; gap: 12px; }
+  .dlg h2 { margin: 0; font-size: 18px; }
+  .dlg label { display: grid; gap: 4px; font-size: 14px; }
+  .dlg input[type=text], .dlg input[type=password], .dlg input:not([type]) { padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper); }
+  .dlg .check { display: flex; gap: 8px; align-items: center; }
+  .drop { display: block; border: 2px dashed var(--line); border-radius: var(--r-md); padding: 22px; text-align: center; cursor: pointer; }
+  .drop.over, body.dragging .drop { border-color: var(--teal); background: var(--teal-wash); }
+  .dlg .row { display: flex; gap: 8px; justify-content: flex-end; }
+  #dropzone { display: none; position: fixed; inset: 0; z-index: 20; background: color-mix(in srgb, var(--teal) 18%, transparent);
+              border: 3px dashed var(--teal); place-items: center; font-size: 20px; font-weight: 600; color: var(--ink); pointer-events: none; }
+  body.dragging #dropzone { display: grid; }
 </style>
 </head>
 <body>
-<h1>Local SQL Assistant</h1>
-<div class="muted"><a href="dashboard">Dashboard of saved answers</a> · <a href="./">Retrieval explorer</a></div>
-<div class="muted">Ask the database a question in plain English. Everything runs on this machine.
-  Each answer shows the four-agent pipeline; stages marked <i>stand-in</i> run a placeholder until that member's model is plugged in.</div>
-<details id="add" open><summary><b>Add a database</b></summary>
-  <div class="agent">
-    <label id="drop" class="drop">
-      <b>Drop a SQLite database file here</b> (.db, .sqlite) <span class="muted">or click to choose one</span>
-      <input type="file" id="dbfile" accept=".db,.sqlite,.sqlite3" hidden>
-    </label>
-    <h3>Or paste a PostgreSQL link</h3>
-    <input id="dburl" placeholder="postgresql+psycopg://readonly_user:password@host:5432/dbname  (press Enter)" autocomplete="off">
-    <label>Name <input id="dbname" placeholder="filled in for you" maxlength="40"></label>
-    <span class="muted">letters, digits, _</span>
-    <label>Admin token <input id="dbtoken" type="password" placeholder="only from another machine" autocomplete="off"></label>
-    <label><input type="checkbox" id="novalues"> don't read data values (personal data)</label>
-    <button type="button" id="connect">Connect</button>
-    <div class="muted">Use a read-only database login. Connections are kept in memory only and are forgotten when the server restarts; uploaded files are kept.</div>
-    <div id="addmsg"></div>
+<header><div class="bar">
+  <div class="brand">
+    <h1>Local SQL Assistant</h1>
+    <p>Ask your database in plain English. It runs on this machine; nothing leaves it.</p>
   </div>
-</details>
-<div id="log"></div>
+  <select id="db" aria-label="Database"></select>
+  <nav>
+    <a href="./">Explorer</a>
+    <a href="dashboard">Dashboard</a>
+    <button type="button" class="ghost outlined" id="openadd">Add database</button>
+  </nav>
+</div></header>
 
-<form id="f"><div>
-  <input id="q" placeholder="e.g. Which 5 customers spent the most in total?" autofocus autocomplete="off">
-  <select id="db"></select>
-  <button id="go">Ask</button>
+<main>
+  <section id="intro">
+    <h2 id="introtitle">Ask a question about your data</h2>
+    <p>Pick a question to see the whole pipeline at work, or type your own below. Each answer shows the SQL, the result,
+       and the route the question took through the four agents.</p>
+    <div id="examples" class="groups"></div>
+  </section>
+  <div id="log" aria-live="polite"></div>
+</main>
+
+<form id="f"><div class="composer">
+  <details id="more" hidden><summary>Example questions for this database</summary><div class="chips" id="morechips"></div></details>
+  <div class="box">
+    <input id="q" placeholder="Ask about the selected database" autofocus autocomplete="off" maxlength="500" aria-label="Your question">
+    <button id="go" class="primary">Ask</button>
+  </div>
+  <p class="hint" id="genhint"></p>
 </div></form>
+
+<dialog id="adddlg"><form method="dialog" class="dlg" id="addform">
+  <h2>Add a database</h2>
+  <label id="drop" class="drop">
+    <b>Drop a SQLite file here</b> or click to choose one (.db, .sqlite)
+    <input type="file" id="dbfile" accept=".db,.sqlite,.sqlite3" hidden>
+  </label>
+  <label>Or paste a PostgreSQL link
+    <input id="dburl" placeholder="postgresql+psycopg://readonly_user:password@host:5432/dbname" autocomplete="off">
+  </label>
+  <label>Name <input id="dbname" placeholder="Filled in for you: letters, digits and _" maxlength="40"></label>
+  <label>Admin token <input id="dbtoken" type="password" placeholder="Only needed from another machine" autocomplete="off"></label>
+  <label class="check"><input type="checkbox" id="novalues"> Don't read data values (the database holds personal data)</label>
+  <p class="muted" style="margin:0;font-size:13px">Use a read-only database login. Links are kept in memory and forgotten when the server restarts; uploaded files are kept.</p>
+  <div id="addmsg"></div>
+  <div class="row">
+    <button value="close" class="ghost outlined">Close</button>
+    <button type="button" id="connect" class="primary">Connect link</button>
+  </div>
+</form></dialog>
+<div id="dropzone">Drop the SQLite file to add it</div>
 
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ROW_LIMIT = 50;
 
-let SUPERSET = false, STAND_INS = ["gate", "generate", "execute"];
-const loadDbs = pick => fetch("health").then(r => r.json()).then(h => (SUPERSET = h.superset, STAND_INS = h.stand_ins, $("#db").innerHTML = h.dbs.map(d =>
-  `<option value="${esc(d)}"${d === pick ? " selected" : ""}>${esc(d)}${h.schema_only.includes(d) ? " (schema only, no rows)" : ""}</option>`).join("")));
+// Example questions per database, grouped by how hard they are for a small model. Spider ones come from the
+// evaluation sets (known answers); "Stretch" questions need 3+ joins and usually fail with today's models.
+const GUARD = ["What is the weather in Paris?", "Delete all customers"];
+const EXAMPLES = {
+  chinook: {"Quick look": ["How many tracks are there?", "List all genres."],
+            "Across tables": ["List all track names in the Rock genre.", "List every track with its album title and artist name."],
+            "Totals and rankings": ["What is the total invoice amount per billing country?", "Which 5 customers spent the most in total?"],
+            "Stretch": ["For each customer country, return the country and the number of distinct genres its customers bought."]},
+  northwind: {"Quick look": ["List the names of all shipping companies.", "Which products are discontinued?", "Which products are still being sold?"],
+              "Across tables": ["Which products are supplied by suppliers in Germany?"],
+              "Totals and rankings": ["How many orders did each employee take?", "What is the total freight cost per shipping company?"],
+              "Stretch": ["For each product category, return the category name and the total quantity of its products ordered."]},
+  "spider/car_1": {"Quick look": ["What is the number of cars with over 6 cylinders?"], "Across tables": ["Which model of the car has the minimum horsepower?"],
+                   "Totals and rankings": ["How many car makers are there in each continent? List the continent name and the count."]},
+  "spider/concert_singer": {"Quick look": ["How many singers are there?"], "Across tables": ["List all singer names in concerts in year 2014."],
+                            "Totals and rankings": ["Show the stadium name and capacity with most number of concerts in year 2014 or after."]},
+  "spider/course_teach": {"Quick look": ["List the names of teachers in ascending order of age."], "Across tables": ["Show names of teachers and the courses they are arranged to teach."]},
+  "spider/cre_Doc_Template_Mgt": {"Across tables": ["Show all paragraph texts for the document \"Customer reviews\"."],
+                                  "Totals and rankings": ["What are the different template type codes, and how many templates correspond to each?"]},
+  "spider/dog_kennels": {"Quick look": ["What is the average age of all the dogs?"], "Across tables": ["List each owner's first name, last name, and the size of their dog."],
+                         "Stretch": ["Which owner has paid for the most treatments on their dogs? List the owner id and last name."]},
+  "spider/employee_hire_evaluation": {"Totals and rankings": ["Find the number of employees hired in each shop; show the shop name as well."]},
+  "spider/flight_2": {"Quick look": ["Which airline has abbreviation 'UAL'?"], "Across tables": ["Give the flight numbers of flights leaving from Aberdeen."],
+                      "Stretch": ["How many flights depart from Aberdeen and go to Ashley?"]},
+  "spider/museum_visit": {"Quick look": ["Find the names of visitors whose membership level is higher than 4, ordered by level from high to low."]},
+  "spider/network_1": {"Quick look": ["Show the ID of the high schooler named Kyle."], "Across tables": ["Return the names of friends of the high school student Kyle."],
+                       "Totals and rankings": ["Return the grade that has the greatest number of high schoolers."]},
+  "spider/orchestra": {"Across tables": ["What are the names of conductors and the orchestras they have conducted?"]},
+  "spider/pets_1": {"Quick look": ["What type of pet is the youngest animal, and how much does it weigh?"], "Across tables": ["Find the last name of the student who has a cat that is age 3."],
+                    "Stretch": ["Find the number of dog pets raised by female students."]},
+  "spider/poker_player": {"Totals and rankings": ["Give average earnings of poker players who are taller than 200."], "Across tables": ["Return the money rank of the poker player with the greatest height."]},
+  "spider/real_estate_properties": {"Totals and rankings": ["How many properties are there of each property type?"], "Across tables": ["Show each property name with its property type description."]},
+  "spider/singer": {"Quick look": ["What is the name of the singer who is worth the most?"], "Across tables": ["Show titles of songs and names of singers."]},
+  "spider/student_transcripts_tracking": {"Quick look": ["How many courses are there?"], "Stretch": ["What are the first, middle and last names of everybody enrolled in a Bachelors program?"]},
+  "spider/tvshow": {"Quick look": ["What is the Package Option of TV Channel with series name \"Sky Radio\"?"], "Totals and rankings": ["Which country has the most TV channels? List the country and number."]},
+  "spider/voter_1": {"Quick look": ["How many contestants are there?"], "Totals and rankings": ["How many votes did each contestant get? Show the contestant name and the count."]},
+  "spider/world_1": {"Across tables": ["What are the regions that use English or Dutch?"], "Totals and rankings": ["How many continents speak Chinese?"],
+                     "Stretch": ["Return the names of cities in Asia whose official language is Chinese."]},
+  "spider/wta_1": {"Totals and rankings": ["How many players are from each country?"]},
+  "spider/battle_death": {"Stretch": ["What are the ids and names of the battles that led to more than 10 people killed in total?"]},
+};
+const ALIAS = {chinook_postgres: "chinook", northwind_postgres: "northwind"};
+const examplesFor = db => EXAMPLES[db] ?? EXAMPLES[ALIAS[db]] ?? {};
+
+let SUPERSET = false, STAND_INS = ["gate", "generate", "execute"], GENERATOR = "phi3 via Ollama", SCHEMA_ONLY = [];
+const chip = q => `<button type="button" class="chip" data-q="${esc(q)}">${esc(q)}</button>`;
+function renderExamples() {
+  const db = $("#db").value, groups = examplesFor(db), names = Object.keys(groups);
+  $("#introtitle").textContent = db ? `Ask a question about ${db}` : "Ask a question about your data";
+  const intro = (SCHEMA_ONLY.includes(db) ? `<p class="note">This database has tables but no rows, so every answer is empty. Use the Explorer to see what Agent 1 retrieves for it.</p>` : "") +
+    (names.length ? "" : `<p class="note">No prepared questions for this database. Ask about its tables in your own words.</p>`);
+  $("#examples").innerHTML = intro + names.map(g => `<div class="group"><h3>${esc(g)}</h3><div class="chips">${groups[g].map(chip).join("")}</div></div>`).join("") +
+    `<div class="group guard"><h3>Check the guardrails</h3><div class="chips">${GUARD.map(chip).join("")}</div></div>`;
+  $("#morechips").innerHTML = [...names.flatMap(g => groups[g]), ...GUARD].map(chip).join("");
+}
+document.addEventListener("click", e => {
+  const c = e.target.closest(".chip");
+  if (c) { $("#q").value = c.dataset.q; $("#more").open = false; $("#f").requestSubmit(); }
+});
+
+const loadDbs = pick => fetch("health").then(r => r.json()).then(h => {
+  SUPERSET = h.superset; STAND_INS = h.stand_ins; GENERATOR = h.generator || GENERATOR; SCHEMA_ONLY = h.schema_only;
+  $("#db").innerHTML = h.dbs.map(d => `<option value="${esc(d)}"${d === pick ? " selected" : ""}>${esc(d)}${h.schema_only.includes(d) ? " (no rows)" : ""}</option>`).join("");
+  $("#genhint").textContent = `SQL is written by ${GENERATOR}. Check the SQL before relying on an answer.`;
+  renderExamples();
+});
+$("#db").onchange = renderExamples;
 loadDbs();
 
 // Add a database while the app runs: upload a SQLite file, or connect a server by URL.
-// Suggested name: file name or the database part of the link, cleaned to letters/digits/_.
 // Database name from a link: the path after the host. Cut at the last '@' first so no part of user:password can leak into it.
 const dbPart = u => ((u.includes("@") ? u.slice(u.lastIndexOf("@") + 1) : u.split("//")[1] ?? "").match(/\/([^?]+)/) ?? [])[1] ?? "db";
 const suggest = s => s.replace(/[^A-Za-z0-9_]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "db";
@@ -88,7 +296,7 @@ async function addDb(req, fallback) {
   try {
     const res = await req(name), r = await res.json();
     if (!res.ok) { $("#addmsg").innerHTML = `<div class="err">${esc(Array.isArray(r.detail) ? "Fill in the name and the database." : r.detail)}</div>`; return; }
-    $("#addmsg").innerHTML = `Added <b>${esc(r.name)}</b>: ${r.tables} table(s)${r.schema_only ? ", schema only (no rows)" : ""}. It is now selected below.`;
+    $("#addmsg").innerHTML = `<div class="note">Added <b>${esc(r.name)}</b> with ${r.tables} table(s)${r.schema_only ? ", but no rows" : ""}. It is now the selected database.</div>`;
     $("#dburl").value = ""; $("#dbfile").value = ""; $("#dbname").value = "";
     loadDbs(r.name);
   } catch (err) {
@@ -100,12 +308,14 @@ async function addDb(req, fallback) {
 const adminHeader = () => ({"X-J26-Admin": $("#dbtoken").value || "local"});
 const upload = file => addDb(name => fetch(`dbs/upload?name=${encodeURIComponent(name)}`, {method: "POST", body: file, headers: adminHeader()}),
                              file.name.replace(/\.[^.]*$/, ""));
+const openAdd = () => { if (!$("#adddlg").open) $("#adddlg").showModal(); };
+$("#openadd").onclick = openAdd;
 $("#dbfile").onchange = () => $("#dbfile").files[0] && upload($("#dbfile").files[0]);
-// The whole page takes the drop: a file dropped just outside the box would otherwise make the browser open it and leave the chat.
-const drop = $("#drop");
-window.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
-window.ondragleave = e => { if (!e.relatedTarget) drop.classList.remove("over"); };
-window.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); e.dataTransfer.files[0] && upload(e.dataTransfer.files[0]); };
+// The whole page takes the drop: a file dropped anywhere opens the dialog and uploads, instead of the browser opening the file.
+window.ondragover = e => { e.preventDefault(); document.body.classList.add("dragging"); };
+window.ondragleave = e => { if (!e.relatedTarget) document.body.classList.remove("dragging"); };
+window.ondrop = e => { e.preventDefault(); document.body.classList.remove("dragging");
+                       if (e.dataTransfer.files[0]) { openAdd(); upload(e.dataTransfer.files[0]); } };
 const connect = () => $("#dburl").value.trim() ? addDb(name => fetch("dbs", {method: "POST", headers: {"Content-Type": "application/json", ...adminHeader()},
   body: JSON.stringify({name, url: $("#dburl").value.trim(), read_values: !$("#novalues").checked})}),
   (dbPart($("#dburl").value.trim())))
@@ -118,15 +328,14 @@ async function save(btn, trace) {
   btn.disabled = true;
   const box = btn.parentElement;
   try {
-    const res = await fetch("answers", {method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({trace})});
+    const res = await fetch("answers", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({trace})});
     const a = await res.json();
     if (!res.ok) { box.innerHTML = `<div class="err">${esc(a.detail)}</div>`; return; }
-    let html = `Saved as answer #${a.id} (${esc(a.chart)} chart), now on the <a href="dashboard" target="_blank">dashboard</a>. Data URL for other BI tools: <a href="${esc(a.csv)}" target="_blank">${esc(a.csv)}</a>`;
+    let html = `<span>Saved as a ${esc(a.chart)} chart on the <a href="dashboard" target="_blank">dashboard</a>. Data link for other BI tools: <a href="${esc(a.csv)}" target="_blank">${esc(a.csv)}</a></span>`;
     if (SUPERSET) {
       const s = await fetch(`answers/${a.id}/superset`, {method: "POST"});
       const j = await s.json();
-      html += s.ok ? ` · <a href="${esc(j.url)}" target="_blank">Open chart in Superset</a>` : `<div class="err">${esc(j.detail)}</div>`;
+      html += s.ok ? ` <a href="${esc(j.url)}" target="_blank">Open in Superset</a>` : `<div class="err">${esc(j.detail)}</div>`;
     }
     box.innerHTML = html;
   } catch (err) {
@@ -136,108 +345,104 @@ async function save(btn, trace) {
 
 function add(cls, html) {
   const d = document.createElement("div");
-  d.className = "msg " + cls; d.innerHTML = html;
-  $("#log").append(d); d.scrollIntoView({behavior: "smooth", block: "end"});
+  d.className = cls; d.innerHTML = html;
+  $("#log").append(d); d.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "end"});
+  $("#intro").hidden = true; $("#more").hidden = false;
   return d;
 }
 
 function rowsTable(rows, cols = []) {
-  if (!rows.length) return "<div>The query ran but returned no rows.</div>";
+  if (!rows.length) return `<p class="note">The query ran and returned no rows.</p>`;
   const shown = rows.slice(0, ROW_LIMIT);
-  return `<table>${cols.length ? `<tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr>` : ""}${shown.map(r => `<tr>${r.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table>` +
-    (rows.length > ROW_LIMIT ? `<div class="muted">Showing ${ROW_LIMIT} of ${rows.length} rows.</div>` : `<div class="muted">${rows.length} row(s).</div>`);
+  return `<div class="tablewrap"><table class="result">${cols.length ? `<tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr>` : ""}` +
+    shown.map(r => `<tr>${r.map(v => `<td${typeof v === "number" ? ' class="num"' : ""}>${esc(v)}</td>`).join("")}</tr>`).join("") + `</table></div>` +
+    `<p class="count">${rows.length > ROW_LIMIT ? `Showing ${ROW_LIMIT} of ${rows.length} rows` : `${rows.length} row${rows.length === 1 ? "" : "s"}`}</p>`;
 }
+const sqlBlock = sql => `<div class="sql"><pre>${esc(sql)}</pre><button type="button" class="copy">Copy</button></div>`;
+document.addEventListener("click", e => {
+  const b = e.target.closest(".copy");
+  if (b) navigator.clipboard?.writeText(b.previousElementSibling.textContent).then(() => { b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy", 1500); });
+});
 
-// One box per agent, in pipeline order. "stand-in" = placeholder until the owner's component is plugged in.
-function strip(r) {
+// The route: one stop per agent, in pipeline order. "stand-in" = placeholder until the owner's component is plugged in.
+const stop = (title, who, key, what, {halt = false, idle = false} = {}) => {
+  const real = !STAND_INS.includes(key);
+  return `<div class="stop ${halt ? "halt" : real ? "real" : "stand-in"}${idle ? " idle" : ""}"><span class="dot"></span>
+    <b>${title}</b><span class="who">${who}</span><br><span class="tag">${real ? "real" : "stand-in"}</span><div class="what">${what}</div></div>`;
+};
+const pendingRoute = () => `<div class="route travel" aria-label="Working">${["Question gate", "Schema retrieval", "SQL writing", "Execution"]
+  .map(t => `<div class="stop"><span class="dot"></span><b>${t}</b></div>`).join("")}</div>`;
+function route(r) {
   const c = r.context, n = r.steps.length, last = r.steps[n - 1];
   const sum = k => Math.round(r.steps.reduce((t, s) => t + s[k], 0));
-  const stage = (title, who, key, body) => {
-    const real = !STAND_INS.includes(key);
-    return `<div class="stage"><b>${title}</b><span class="who">${who}</span><br>
-      <span class="badge ${real ? "real" : "stand-in"}">${real ? "real" : "stand-in"}</span><div>${body}</div></div>`;
-  };
-  return `<div class="strip">` +
-    stage("1 · Question gate", "Agent 2 · Wathsala", "gate",
-      (c.matched ? "database question" : "<b>declined</b>: no word matches this schema") +
-      `<div class="muted">placeholder: Agent 1 word-match check; distilled classifier not wired in</div>`) +
-    stage("2 · Schema retrieval", "Agent 1 · Ekanayake", "retrieve",
-      `${Object.keys(c.tables).length} table(s) · ${c.tokens} tokens · ${c.latency_ms} ms<br>complexity <b>${esc(c.complexity)}</b>`) +
-    stage("3 · SQL generation", "Agent 3 · Thathsarani", "generate",
-      n ? `${n} attempt(s) · ${sum("generate_ms")} ms` + (STAND_INS.includes("generate")
-            ? `<div class="muted">placeholder: phi3 via Ollama, no HydraLoRA head</div>`
-            : `<br>head <b>${esc(c.complexity)}</b>`)
-        : `<span class="muted">not called</span>`) +
-    stage("4 · Execution", "Agent 4 · Karunanayake", "execute",
-      n ? (last.ok ? `${last.rows} row(s)` : `failed: ${esc(last.error)}`) + ` · ${sum("execute_ms")} ms` +
-            (STAND_INS.includes("execute") ? `<div class="muted">placeholder: read-only SQL, raw-error retry hint</div>` : "")
-        : `<span class="muted">not called</span>`) +
+  return `<div class="route">` +
+    stop("Question gate", "Agent 2, Wathsala", "gate", c.matched ? "Database question" : "<strong>Declined</strong>: no word matches this schema", {halt: !c.matched}) +
+    stop("Schema retrieval", "Agent 1, Ekanayake", "retrieve",
+      `<strong>${Object.keys(c.tables).length}</strong> tables, <strong>${c.tokens}</strong> tokens, ${Math.round(c.latency_ms)} ms<br>labelled ${esc(c.complexity)}`) +
+    stop("SQL writing", "Agent 3, Thathsarani", "generate",
+      n ? `${n} attempt${n === 1 ? "" : "s"}, ${(sum("generate_ms") / 1000).toFixed(1)} s<br>${esc(GENERATOR)}` : "Not reached", {idle: !n}) +
+    stop("Execution", "Agent 4, Karunanayake", "execute",
+      n ? (last.ok ? `<strong>${last.rows}</strong> rows, ${sum("execute_ms")} ms` : `Failed: ${esc(last.error)}`) : "Not reached",
+      {idle: !n, halt: n && !last.ok}) +
     `</div>`;
 }
 
 // Pipeline trace: for every agent, exactly what it received (input) and what it handed on (output).
 const io = (input, output) => `<div class="io"><div><div class="iolab">Input</div>${input}</div><div><div class="iolab">Output</div>${output}</div></div>`;
-const kv = o => `<table>${Object.entries(o).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${v}</td></tr>`).join("")}</table>`;
-const agentBox = (title, note, body) => `<div class="agent"><h3>${title}${note ? ` <span class="muted">— ${note}</span>` : ""}</h3>${body}</div>`;
-const stand = (key, text) => STAND_INS.includes(key) ? `placeholder: ${text}` : "";
+const kv = o => `<table class="kv">${Object.entries(o).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${v}</td></tr>`).join("")}</table>`;
+const agentBox = (title, note, body) => `<div class="agent"><h4>${title}${note ? ` <span>(${note})</span>` : ""}</h4>${body}</div>`;
+const stand = (key, text) => STAND_INS.includes(key) ? `stand-in: ${text}` : "";
 
 function trace(r, db) {
   const c = r.context, reasons = c.trace?.reasons ?? {}, roles = c.trace?.roles ?? {};
   const why = Object.entries(reasons).map(([t, cols]) => {
     const kept = Object.entries(cols).filter(([, w]) => w !== "pruned"), cut = Object.keys(cols).filter(k => cols[k] === "pruned");
-    return `<tr><th>${esc(t)}<div class="muted">${esc(roles[t] ?? "")}</div></th>
+    return `<tr><th>${esc(t)}<div class="muted">${esc((roles[t] ?? "").replace(/_/g, " "))}</div></th>
       <td>${kept.map(([k, w]) => `${esc(k)} <span class="muted">(${esc(w.replace(/_/g, " "))})</span>`).join(", ")}
       ${cut.length ? `<div class="muted">pruned: ${esc(cut.join(", "))}</div>` : ""}</td></tr>`;
   }).join("");
-
-  const gate = agentBox("Agent 2 · Question gate (Wathsala)", stand("gate", "Agent 1's word-match check"),
-    io(kv({question: esc(c.query)}),
-       kv({decision: c.matched ? "database question → continue" : "<b>declined</b> (no word matches this schema)"})));
-
-  const a1 = agentBox("Agent 1 · Schema retrieval and pruning (Ekanayake)", "",
+  const none = '<div class="muted">Not reached</div>';
+  const gate = agentBox("Agent 2, question gate (Wathsala)", stand("gate", "Agent 1's word-match check"),
+    io(kv({question: esc(c.query)}), kv({decision: c.matched ? "database question, continue" : "<b>declined</b> (no word matches this schema)"})));
+  const a1 = agentBox("Agent 1, schema retrieval and pruning (Ekanayake)", "",
     io(kv({question: esc(c.query), database: esc(db), mode: esc(c.mode)}),
        kv({complexity: `<b>${esc(c.complexity)}</b>`, anchor: esc(c.anchor ?? "none"), "schema size": `${c.tokens} tokens`, time: `${c.latency_ms} ms`}) +
-       `<div class="iolab">Tables and columns kept, with the reason</div><table>${why}</table>
-        <details><summary>Pruned schema handed to Agent 3 (ddl, ${c.tokens} tokens)</summary><pre>${esc(c.ddl)}</pre></details>
+       `<div class="iolab">Tables and columns kept, with the reason</div><table class="kv">${why}</table>
+        <details><summary>Pruned schema handed to Agent 3 (${c.tokens} tokens)</summary><pre>${esc(c.ddl)}</pre></details>
         <details><summary>Full handoff JSON</summary><pre>${esc(JSON.stringify(c, null, 2))}</pre></details>`));
-
-  const none = '<div class="muted">not called</div>';
-  const a3 = agentBox("Agent 3 · SQL generation (Thathsarani)", stand("generate", "phi3 via Ollama"),
-    r.steps.length ? r.steps.map(s => `<div class="iolab">Attempt ${s.attempt} · ${s.generate_ms} ms</div>` +
-      io(kv({question: esc(c.query), complexity: esc(c.complexity), schema: "pruned ddl from Agent 1",
+  const a3 = agentBox("Agent 3, SQL writing (Thathsarani)", stand("generate", GENERATOR),
+    r.steps.length ? r.steps.map(s => `<div class="iolab">Attempt ${s.attempt}, ${s.generate_ms} ms</div>` +
+      io(kv({question: esc(c.query), complexity: esc(c.complexity), schema: "pruned schema from Agent 1",
              "retry hint": s.hint ? `<pre>${esc(s.hint)}</pre>` : '<span class="muted">none (first attempt)</span>'}),
          `<pre>${esc(s.sql)}</pre>`)).join("") : none);
-
-  const a4 = agentBox("Agent 4 · Execution (Karunanayake)", stand("execute", "read-only SQL, raw error used as the retry hint"),
-    r.steps.length ? r.steps.map(s => `<div class="iolab">Attempt ${s.attempt} · ${s.execute_ms} ms</div>` +
+  const a4 = agentBox("Agent 4, execution (Karunanayake)", stand("execute", "read-only SQL, raw error used as the retry hint"),
+    r.steps.length ? r.steps.map(s => `<div class="iolab">Attempt ${s.attempt}, ${s.execute_ms} ms</div>` +
       io(kv({sql: `<pre>${esc(s.sql)}</pre>`, database: esc(db)}),
-         s.ok ? `<div class="ok">${s.rows} row(s)${r.columns ? ` · columns: ${esc(r.columns.join(", "))}` : ""}</div>`
-              : `<div class="bad">error: ${esc(s.error)}</div><div class="muted">${s.attempt < r.attempts ? "→ sent back to Agent 3 as the retry hint" : "final"}</div>`)).join("") : none);
-
-  return strip(r) + `<details><summary>Pipeline trace: inputs and outputs of each agent · ${r.attempts} attempt(s) · ${r.total_ms} ms total · trace ${esc(r.trace)}</summary>${gate}${a1}${a3}${a4}</details>`;
+         s.ok ? `<div class="okline">${s.rows} rows${r.columns ? `; columns ${esc(r.columns.join(", "))}` : ""}</div>`
+              : `<div class="badline">Error: ${esc(s.error)}</div><div class="muted">${s.attempt < r.attempts ? "Sent back to Agent 3 as the retry hint" : "Final"}</div>`)).join("") : none);
+  return route(r) + `<details class="trace"><summary>Inputs and outputs of each agent (${r.attempts} attempt${r.attempts === 1 ? "" : "s"}, ${(r.total_ms / 1000).toFixed(1)} s in total)</summary>${gate}${a1}${a3}${a4}</details>`;
 }
 
 $("#f").onsubmit = async e => {
   e.preventDefault();
   const q = $("#q").value, db = $("#db").value;
-  add("me", esc(q || "(empty)"));
+  add("q", `${esc(q.trim() || "(empty question)")}<small>${esc(db)}</small>`);
   $("#q").value = ""; $("#go").disabled = true;
-  const wait = add("bot", '<span class="muted">Thinking… (the local model can take a few seconds)</span>');
+  const wait = add("a", `<p class="status muted">Working on it. The local model can take a few seconds.</p>${pendingRoute()}`);
   try {
-    const res = await fetch("query", {method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({query: q, db})});
+    const res = await fetch("query", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({query: q, db})});
     const r = await res.json();
     if (!res.ok) {
-      const msg = Array.isArray(r.detail) ? "Please type a question (1–500 characters)." : r.detail;
+      const msg = Array.isArray(r.detail) ? "Type a question of 1 to 500 characters." : r.detail;
       wait.innerHTML = `<div class="err">${esc(msg)}</div>`;
     } else if (r.ok) {
-      wait.innerHTML = rowsTable(r.rows, r.columns) + `<details open><summary>SQL</summary><pre>${esc(r.sql)}</pre></details>` +
-        `<div class="muted"><button class="save">Save as chart</button> suggested chart: ${esc(r.chart)} · check the SQL before saving</div>` + trace(r, db);
+      wait.innerHTML = rowsTable(r.rows, r.columns) + sqlBlock(r.sql) +
+        `<div class="actions"><button type="button" class="primary save">Save as chart</button><span class="muted">Suggested chart: ${esc(r.chart)}. Check the SQL before saving.</span></div>` + trace(r, db);
       wait.querySelector(".save").onclick = e => save(e.target, r.trace);
     } else {
-      const msg = String(r.error).startsWith("Blocked") ? "Refused: this assistant is read-only and only answers questions; it never changes the data."
-        : r.attempts ? `I couldn't produce a working query after ${r.attempts} attempt(s). Last error: ${r.error}` : r.error;
-      wait.innerHTML = `<div class="err">${esc(msg)}</div>` + trace(r, db);
+      const msg = String(r.error).startsWith("Blocked") ? "Refused: this assistant is read-only. It answers questions and never changes the data."
+        : r.attempts ? `No working query after ${r.attempts} attempt${r.attempts === 1 ? "" : "s"}. Last error: ${r.error}` : r.error;
+      wait.innerHTML = `<div class="err">${esc(msg)}</div>` + (r.sql ? sqlBlock(r.sql) : "") + trace(r, db);
     }
   } catch (err) {
     wait.innerHTML = `<div class="err">Could not reach the server: ${esc(err.message)}</div>`;

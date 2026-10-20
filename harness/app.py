@@ -24,6 +24,7 @@ from agent1_retrieval.db import DBError, dialect, is_url, query, redact, tables_
 from agent1_retrieval.execution import ollama_generate
 from agent1_retrieval.schema import reflect
 
+from . import generators
 from .bi import AnswerStore, chart_hint, push_to_superset, superset_config, to_csv
 
 MAX_ATTEMPTS = 3
@@ -112,7 +113,7 @@ class NewDB(BaseModel):
     read_values: bool = True  # False: Agent 1 never reads data values from it (personal data)
 
 
-def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute=run_sql, log_path="data/handoff.log.jsonl",
+def create_app(dbs=None, generate=None, execute=run_sql, log_path="data/handoff.log.jsonl",
                agent1_config=LIVE, answers_path="data/answers.db", superset=superset_config, no_value_linking=None,
                glossaries=None, uploads_dir="data/uploads", admin_token=None, admin_hosts=None, db_hosts=None):
     """Adding databases at runtime (/dbs, /dbs/upload) is an admin action. admin_token (env J26_ADMIN_TOKEN): required
@@ -135,8 +136,12 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
     answers = AnswerStore(answers_path)
     answered = OrderedDict()  # trace -> (question, db name, sql) of successful /query answers: the only SQL /answers will save
     # pipeline stages still running a placeholder; the chat page badges them. Agent 2's question gate is not wired in yet.
+    # generate=None: the model named by J26_GENERATOR (harness/generators.py; default phi3 via Ollama)
+    generate = generate or generators.from_env()
+    generator = getattr(generate, "label", getattr(generate, "__name__", "custom generator"))
     stand_ins = ["gate"] + [name for name, is_default in (
-        ("generate", isinstance(generate, partial) and generate.func is ollama_generate), ("execute", execute is run_sql)) if is_default]
+        ("generate", getattr(generate, "stand_in", isinstance(generate, partial) and generate.func is ollama_generate)),
+        ("execute", execute is run_sql)) if is_default]
 
     def log(trace, stage, **fields):
         with open(log_path, "a", encoding="utf-8") as f:
@@ -171,7 +176,7 @@ def create_app(dbs=None, generate=partial(ollama_generate, cache=False), execute
     @app.get("/health")
     def health():
         return {"ok": True, "dbs": list(dbs), "schema_only": [n for n, p in dbs.items() if not safe_has_rows(p)], "max_attempts": MAX_ATTEMPTS,
-                "superset": superset() is not None, "stand_ins": stand_ins}
+                "superset": superset() is not None, "stand_ins": stand_ins, "generator": generator}
 
     @app.get("/dbs")
     def list_dbs():
