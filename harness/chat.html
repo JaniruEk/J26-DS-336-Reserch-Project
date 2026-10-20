@@ -322,6 +322,14 @@ document.addEventListener("click", e => {
   if (b) navigator.clipboard?.writeText(b.previousElementSibling.textContent).then(() => { b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy", 1500); });
 });
 
+// Gate stop text: Agent 2's model (probability) when connected; Agent 1's word check either way.
+function gateText(r) {
+  const c = r.context, g = r.gate || {};
+  if (g.p_database != null && !g.database) return `<strong>Declined</strong>: general question, P(database) ${g.p_database.toFixed(2)}`;
+  if (!c.matched) return "<strong>Declined</strong>: no word matches this schema";
+  return g.p_database != null ? `Database question, P ${g.p_database.toFixed(2)}` : "Database question";
+}
+
 // The route: one stop per agent, in pipeline order. "stand-in" = placeholder until the owner's component is plugged in.
 const stop = (title, who, key, what, {halt = false, idle = false} = {}) => {
   const real = !STAND_INS.includes(key);
@@ -334,7 +342,7 @@ function route(r) {
   const c = r.context, n = r.steps.length, last = r.steps[n - 1];
   const sum = k => Math.round(r.steps.reduce((t, s) => t + s[k], 0));
   return `<div class="route">` +
-    stop("Question gate", "Agent 2, Wathsala", "gate", c.matched ? "Database question" : "<strong>Declined</strong>: no word matches this schema", {halt: !c.matched}) +
+    stop("Question gate", "Agent 2, Wathsala", "gate", gateText(r), {halt: !c.matched || r.gate?.database === false}) +
     stop("Schema retrieval", "Agent 1, Ekanayake", "retrieve",
       `<strong>${Object.keys(c.tables).length}</strong> tables, <strong>${c.tokens}</strong> tokens, ${Math.round(c.latency_ms)} ms<br>labelled ${esc(c.complexity)}`) +
     stop("SQL writing", "Agent 3, Thathsarani", "generate",
@@ -360,8 +368,13 @@ function trace(r, db) {
       ${cut.length ? `<div class="muted">pruned: ${esc(cut.join(", "))}</div>` : ""}</td></tr>`;
   }).join("");
   const none = '<div class="muted">Not reached</div>';
+  const g = r.gate || {};
   const gate = agentBox("Agent 2, question gate (Wathsala)", stand("gate", "Agent 1's word-match check"),
-    io(kv({question: esc(c.query)}), kv({decision: c.matched ? "database question, continue" : "<b>declined</b> (no word matches this schema)"})));
+    io(kv({question: esc(c.query)}), kv({
+      "Agent 2's model": g.p_database == null ? '<span class="muted">not connected</span>'
+        : `${g.database ? "database question" : "<b>general question, declined</b>"} (P(database) = ${g.p_database.toFixed(2)})`,
+      "Agent 1's word check": c.matched ? "a question word names a table or column" : "<b>declined</b>: no word matches this schema",
+      ...(g.error ? {"note": esc(g.error)} : {})})));
   const a1 = agentBox("Agent 1, schema retrieval and pruning (Ekanayake)", "",
     io(kv({question: esc(c.query), database: esc(db), mode: esc(c.mode)}),
        kv({complexity: `<b>${esc(c.complexity)}</b>`, anchor: esc(c.anchor ?? "none"), "schema size": `${c.tokens} tokens`, time: `${c.latency_ms} ms`}) +

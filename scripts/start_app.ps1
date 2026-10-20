@@ -10,6 +10,7 @@
 #>
 param(
   [string]$Generator = "",   # adaptive_qwen | ollama:<model>; empty = adaptive_qwen if this PC has a working NVIDIA setup, else ollama:phi3
+  [string]$Gate = "",        # kd_multitask | word_match; empty = kd_multitask if Agent 2's files and the GPU packages are here
   [int]$Port = 8765,
   [switch]$Restart,
   [switch]$Share
@@ -42,6 +43,18 @@ if ($Generator -like "ollama:*") {
 } elseif ($Generator -eq "adaptive_qwen") {
   Write-Host "  Building Agent 4's mixed INT4/INT8 model takes about 2 minutes; the first question waits for it."
 }
+
+# 2b. Question gate: Agent 2's distilled student when her files and the GPU packages (incl. peft) are here
+if (-not $Gate) {
+  $Gate = "word_match"
+  if (Test-Path "MultiTask_Research/student_1_5b_kd_multitask/final_adapter/adapter_model.safetensors") {
+    python -c "import sys, torch, peft; sys.exit(0 if torch.cuda.is_available() else 1)" *> $null
+    if ($LASTEXITCODE -eq 0) { $Gate = "kd_multitask" }
+  }
+}
+$env:J26_GATE = $Gate
+if ($Gate -eq "kd_multitask") { Write-Host "Question gate: Agent 2's distilled Qwen2.5-1.5B student (plus Agent 1's word check)" }
+else { Write-Host "Question gate: Agent 1's word check (Agent 2's model needs MultiTask_Research/ and the GPU packages)" }
 
 # 3. PostgreSQL copies of Chinook and Northwind (optional: needs Docker Desktop running and the j26-postgres container)
 $pg = $false

@@ -1,0 +1,3 @@
+task,test_examples,invalid_predictions,accuracy_invalid_as_wrong
+TASK1_QUERY_CLASSIFICATION,1200,21,0.98
+TASK2_INJECTION_DETECTION,116,60,0.4396551724137931

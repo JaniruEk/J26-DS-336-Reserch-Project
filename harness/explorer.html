@@ -139,11 +139,11 @@
     <div id="a1"><p class="note">Ask a question above to see Agent 1's output.</p></div>
   </section>
   <section role="tabpanel" id="p2" aria-labelledby="t2" hidden>
-    <h2>Question gate and base model</h2>
-    <p class="lead">Decides whether the question is about the database before any SQL is written. Agent 2 also builds the distilled base model the SQL writer is fine-tuned from.</p>
+    <h2>Question gate</h2>
+    <p class="lead">Decides whether the question is about data before any SQL is written. Agent 2 distilled a Qwen2.5-7B teacher into a Qwen2.5-1.5B student for this; Agent 1's word check also has to find the question in this database's tables.</p>
     <div id="a2"><p class="note">Ask a question above to see the gate's decision.</p></div>
-    <h3>Base model</h3>
-    <p class="note warn">The distilled Qwen2.5-1.5B base model is not delivered yet (requested in <code>handoff/Request_Wathsala.md</code>). Until then the SQL writer starts from the released Qwen2.5-1.5B-Instruct or a stand-in model.</p>
+    <h3>Distilled vs native student</h3>
+    <div id="kd"><p class="note">Loading Agent 2's results…</p></div>
   </section>
   <section role="tabpanel" id="p3" aria-labelledby="t3" hidden>
     <h2>SQL writing</h2>
@@ -196,7 +196,7 @@ fetch("agents").then(r => r.json()).then(a => {
   const tag = (id, standIn) => { $(id).className = `tag ${standIn ? "stand-in" : "real"}`; $(id).textContent = standIn ? "stand-in" : "real"; };
   tag("#tag2", a.gate.stand_in); tag("#tag3", a.generate.stand_in); tag("#tag4", a.execute.stand_in);
   $("#gen3").innerHTML = `SQL is written by <b>${esc(a.generate.runs)}</b>${a.generate.stand_in ? ": a stand-in until Agent 3's LoRA or HydraLoRA model is connected." : "."}`;
-  renderQuant(a.quantization);
+  renderQuant(a.quantization); renderKD(a.gate.results);
 });
 
 async function post(path, body) {
@@ -231,11 +231,21 @@ function renderA1(res) {
 
 // ---------------- Agent 2
 function renderA2(r) {
-  const c = r.context;
+  const c = r.context, g = r.gate || {}, pass = g.database !== false && c.matched;
+  const model = g.p_database == null ? `<p class="note warn" style="margin:0">Not connected: Agent 1's word check decides alone.</p>`
+    : `<p class="note ${g.database ? "good" : "bad"}" style="margin:0">${g.database ? "Database question" : "General question: declined"} (P(database) = ${g.p_database.toFixed(3)})</p>`;
   $("#a2").innerHTML = `<div class="io"><div><div class="iolab">Input</div><p style="margin:0">${esc(c.query)}</p></div>
-    <div><div class="iolab">Decision</div>${c.matched ? `<p class="note good" style="margin:0">Database question: continue to the SQL writer.</p>`
-      : `<p class="note bad" style="margin:0">Declined: no word matches this database's tables or columns. No SQL is written.</p>`}</div></div>
-    ${AGENTS?.gate.stand_in ? `<p class="note warn">Stand-in: this decision comes from ${esc(AGENTS.gate.runs)}. Agent 2's question classifier replaces it once connected.</p>` : ""}`;
+    <div><div class="iolab">Agent 2's distilled model</div>${model}
+      <div class="iolab">Agent 1's word check</div><p class="note ${c.matched ? "good" : "bad"}" style="margin:0">${c.matched ? "A question word names a table or column" : "No word matches this database's tables or columns"}</p></div></div>
+    <p class="${pass ? "okline" : "badline"}">${pass ? "Passed: on to the SQL writer." : "Declined: no SQL is written."}</p>
+    ${g.error ? `<p class="note warn">${esc(g.error)}</p>` : ""}`;
+}
+function renderKD(rows) {
+  if (!rows) { $("#kd").innerHTML = `<p class="note">Agent 2's results file is not on this machine (MultiTask_Research/).</p>`; return; }
+  $("#kd").innerHTML = `<div class="tablewrap"><table class="t"><tr><th>Task</th><th class="num">Test items</th><th class="num">Native 1.5B</th><th class="num">Distilled 1.5B</th><th class="num">Wins / losses</th><th class="num">McNemar p</th></tr>` +
+    rows.map(x => `<tr${x.p < .05 ? ' class="best"' : ""}><td>${esc(x.task)}</td><td class="num">${x.n}</td><td class="num">${pct(x.native)}</td><td class="num">${pct(x.kd)}</td>` +
+      `<td class="num">${x.wins} / ${x.losses}</td><td class="num">${x.p.toFixed(3)}</td></tr>`).join("") + `</table></div>
+    <p class="muted" style="font-size:13px">From Agent 2's own results (MultiTask_Research/native_vs_kd_statistical_results.csv). The app uses only the query-classification task: the injection task needs her exact training prompt, which is not in the repository yet.</p>`;
 }
 
 // ---------------- Agent 3

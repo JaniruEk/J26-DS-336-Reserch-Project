@@ -24,7 +24,7 @@ from agent1_retrieval.db import DBError, dialect, is_url, query, redact, tables_
 from agent1_retrieval.execution import ollama_generate
 from agent1_retrieval.schema import reflect
 
-from . import generators
+from . import gates, generators
 from .bi import AnswerStore, chart_hint, push_to_superset, superset_config, to_csv
 
 MAX_ATTEMPTS = 3
@@ -142,7 +142,7 @@ class NewDB(BaseModel):
 
 def create_app(dbs=None, generate=None, execute=run_sql, log_path="data/handoff.log.jsonl",
                agent1_config=LIVE, answers_path="data/answers.db", superset=superset_config, no_value_linking=None,
-               glossaries=None, uploads_dir="data/uploads", admin_token=None, admin_hosts=None, db_hosts=None):
+               glossaries=None, uploads_dir="data/uploads", admin_token=None, admin_hosts=None, db_hosts=None, gate="env"):
     """Adding databases at runtime (/dbs, /dbs/upload) is an admin action. admin_token (env J26_ADMIN_TOKEN): required
     from other machines; unset = only direct (unproxied) requests from this machine may add databases, so any deployment
     behind a reverse proxy must set it. admin_hosts (env J26_ALLOWED_HOSTS):
@@ -168,11 +168,14 @@ def create_app(dbs=None, generate=None, execute=run_sql, log_path="data/handoff.
         if path not in row_cache:
             row_cache[path] = safe_has_rows(path)
         return row_cache[path]
-    # pipeline stages still running a placeholder; the chat page badges them. Agent 2's question gate is not wired in yet.
+    # pipeline stages still running a placeholder; the chat page badges them.
     # generate=None: the model named by J26_GENERATOR (harness/generators.py; default phi3 via Ollama)
     generate = generate or generators.from_env()
     generator = getattr(generate, "label", getattr(generate, "__name__", "custom generator"))
-    stand_ins = ["gate"] + [name for name, is_default in (
+    # gate="env": the question gate named by J26_GATE (harness/gates.py); None = Agent 1's word check alone
+    gate = gates.from_env() if gate == "env" else gate
+    gate_label = getattr(gate, "label", "Agent 1's word-match check") if gate else "Agent 1's word-match check"
+    stand_ins = (["gate"] if gate is None or getattr(gate, "stand_in", True) else []) + [name for name, is_default in (
         ("generate", getattr(generate, "stand_in", isinstance(generate, partial) and generate.func is ollama_generate)),
         ("execute", execute is run_sql)) if is_default]
 
@@ -222,7 +225,7 @@ def create_app(dbs=None, generate=None, execute=run_sql, log_path="data/handoff.
     def agents_info():
         """What each agent runs right now, for the Pipeline Explorer. Read-only; Agent 4's numbers come from her own
         result files (results/qwen/, written by scripts/qwen_*.py) when they exist."""
-        return {"gate": {"stand_in": "gate" in stand_ins, "runs": "Agent 1's word-match check" if "gate" in stand_ins else "Agent 2's classifier"},
+        return {"gate": {"stand_in": "gate" in stand_ins, "runs": gate_label, "results": gates.results()},
                 "retrieval": {"config": {k: v for k, v in agent1_config.items()}},
                 "generate": {"stand_in": "generate" in stand_ins, "runs": generator},
                 "execute": {"stand_in": "execute" in stand_ins,
@@ -353,7 +356,18 @@ def create_app(dbs=None, generate=None, execute=run_sql, log_path="data/handoff.
         path, a1 = agent1(req)
         ctx = a1.run(req.query)
         log(trace, "agent1", input=req.query, output=ctx)
-        out = {"trace": trace, "context": ctx, "steps": []}  # steps: one entry per generate -> execute attempt
+        # Stage 1, question gate: Agent 2's classifier (if configured) AND Agent 1's word check must both say "database"
+        g = {"by": gate_label, "database": ctx["matched"]}
+        if gate:
+            try:
+                g = {"by": gate_label, **gate(req.query)}
+            except Exception as e:  # her model failed (e.g. GPU out of memory): fall back to the word check, say so
+                g = {"by": "Agent 1's word-match check", "database": ctx["matched"], "error": f"{type(e).__name__}: {e}"}
+        log(trace, "agent2.gate", input=req.query, output=g)
+        out = {"trace": trace, "context": ctx, "gate": g, "steps": []}  # steps: one entry per generate -> execute attempt
+        if "p_database" in g and not g["database"]:  # her model: a general question, not about data
+            return {**out, "ok": False, "sql": None, "attempts": 0, "total_ms": ms(t0),
+                    "error": f"This looks like a general question, not one about data (question gate: P(database) = {g.get('p_database', 0):.2f})."}
         if not ctx["matched"]:  # decline instead of letting the model guess SQL for an off-topic question
             return {**out, "ok": False, "sql": None, "attempts": 0, "total_ms": ms(t0),
                     "error": "I couldn't match this question to any table or column in this database."}

@@ -25,3 +25,8 @@ data/spider_data/
 results/day5/baseline_predictions.json
 results/day5/execution_feedback.csv
 results/day5/execution_feedback.json
+
+# Agent 2 (Wathsala) model files: large binaries, shared by Drive/zip, not git. Her small result CSVs stay tracked.
+MultiTask_Research/student_1_5b_kd_multitask/
+MultiTask_Research/student_1_5b_native_multitask/
+MultiTask_Research/teacher_7b_multitask/

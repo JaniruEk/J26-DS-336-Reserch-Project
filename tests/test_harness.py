@@ -38,7 +38,7 @@ def test_retry_loop_passes_error_hint_and_logs_every_handoff(db, tmp_path):
     assert r["ok"] and r["attempts"] == 2 and r["rows"] == [[9.5]]
     assert seen[0] is None and "no such column" in seen[1]  # hint carries the DB error back to generation
     stages = [json.loads(line)["stage"] for line in log.read_text().splitlines()]
-    assert stages == ["agent1", "agent3.generate", "agent4.execute", "agent3.generate", "agent4.execute"]
+    assert stages == ["agent1", "agent2.gate", "agent3.generate", "agent4.execute", "agent3.generate", "agent4.execute"]
 
 
 def test_retry_is_bounded(db, tmp_path):
@@ -212,3 +212,26 @@ def test_add_database_at_runtime(db, tmp_path):
     assert r.status_code == 403 and "proxy" in r.json()["detail"]
     assert make(admin_token="t0k", admin_hosts={"testserver"}, db_hosts={"db.bank.local"}).post(
         "/dbs", json={"name": "q", "url": "postgresql+psycopg://u:p@evil.example/x"}, headers=H).status_code == 403
+
+
+def test_question_gate_agent2(db, tmp_path):
+    def make(gate):
+        return TestClient(create_app({"t": db}, generate=lambda q, ddl, **kw: "SELECT total FROM invoice", log_path=str(tmp_path / "g.jsonl"),
+                                     answers_path=str(tmp_path / "ga.db"), superset=lambda: None, gate=gate))
+    general = lambda q: {"database": False, "p_database": 0.02}
+    general.label, general.stand_in = "Agent 2 test gate", False
+    c = make(general)
+    assert "gate" not in c.get("/health").json()["stand_ins"]  # a real gate removes the stand-in badge
+    r = c.post("/query", json={"query": "total of each invoice", "mode": "structural"}).json()
+    assert not r["ok"] and r["attempts"] == 0 and r["gate"] == {"by": "Agent 2 test gate", "database": False, "p_database": 0.02}
+    assert "general question" in r["error"]
+    data = lambda q: {"database": True, "p_database": 0.99}
+    data.label, data.stand_in = "Agent 2 test gate", False
+    assert make(data).post("/query", json={"query": "total of each invoice", "mode": "structural"}).json()["ok"]
+    def broken(q):
+        raise RuntimeError("CUDA out of memory")
+    broken.label, broken.stand_in = "Agent 2 test gate", False
+    r = make(broken).post("/query", json={"query": "total of each invoice", "mode": "structural"}).json()
+    assert r["ok"] and "CUDA out of memory" in r["gate"]["error"]  # her model failing never blocks the pipeline
+    r = make(None).post("/query", json={"query": "total of each invoice", "mode": "structural"}).json()
+    assert r["ok"] and r["gate"]["by"] == "Agent 1's word-match check"
