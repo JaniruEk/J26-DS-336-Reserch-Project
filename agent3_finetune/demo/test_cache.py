@@ -77,3 +77,19 @@ def test_load_rejects_non_json(tmp_path):
     p.write_text("not json", encoding="utf-8")
     with pytest.raises(json.JSONDecodeError):
         load_cache(p)
+
+
+def test_every_manual_example_routes_to_its_manual_label(dbs):
+    cache = build_cache(FakeEngine(), None, dbs)
+    manual = [(ex, e["result"]) for ex, e in zip(EXAMPLES, cache["examples"]) if "label_mode" in ex]
+    assert len(manual) >= 4
+    for ex, res in manual:
+        assert res["label"] == ex["manual_label"] and res["routed_head"] == ex["manual_label"]
+
+
+def test_routing_pairs_share_a_question_but_not_a_label():
+    manual = [e for e in EXAMPLES if "label_mode" in e]
+    by_q = {}
+    for e in manual:
+        by_q.setdefault((e["db"], e["question"]), set()).add(e["manual_label"])
+    assert all(len(labels) >= 2 for labels in by_q.values())  # each question appears with a right and a wrong head
