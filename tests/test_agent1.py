@@ -200,3 +200,14 @@ def test_schema_aware_classifier(tiny_db):
     assert classify_query("total of each invoice with the customer first name", r) in BUCKETS
     out = Agent1(tiny_db, schema_classifier=True).run("total of each invoice with the customer first name")
     assert out["complexity"] in BUCKETS
+
+
+@pytest.mark.skipif(not (ROOT / "data" / "northwind.db").exists(), reason="needs data/northwind.db")
+def test_gate_ignores_function_words_and_loose_similarity():
+    nw = Retriever(str(ROOT / "data" / "northwind.db"))
+    # 'in' used to match UnitsInStock, so this passed the gate on Northwind (found live in the chat)
+    for q in ("What is the weather in Paris?", "Tell me a joke", "best pizza recipe", "What time is it in London?"):
+        assert not nw.matched(q), q
+    for q in ("Which products are discontinued?", "How many orders did each employee take?",
+              "List the names of all shipping companies.", "What is the total freight cost per shipping company?"):
+        assert nw.matched(q), q

@@ -9,8 +9,10 @@ from dataclasses import dataclass, replace
 from functools import lru_cache
 
 from .complexity import classify_query, p_simple
-from .pruning import explain_columns, is_relevant, lemma, query_terms, split_ident
+from .pruning import explain_columns, lemma, query_terms, split_ident
 from .schema import adjacency, infer_fks, reflect, render
+
+FUNCTION_POS = {"ADP", "DET", "AUX", "PRON", "CCONJ", "SCONJ", "PART", "INTJ", "PUNCT"}  # 'in', 'the', 'is', 'what', ...
 
 MODES = ("semantic", "structural", "hybrid", "hybrid_pruned")
 # PP1 configuration (Phase 8) = Phase 7's best execution config (3 anchors joined by FK paths on every question,
@@ -137,10 +139,16 @@ class Retriever:
         return self if self.schema_classifier else None
 
     def matched(self, query):
-        """Confidence gate: does any question word match any table or column name (lemma, else similarity)?
-        False for gibberish / off-topic questions, which the semantic anchor would otherwise map to its nearest table anyway."""
-        terms = query_terms(query)
-        return any(is_relevant(n, terms, self.threshold) for t in self.tables.values() for n in [t.name] + [c for c, _, _ in t.columns])
+        """Confidence gate: does a content word of the question name a table or column?
+        False for gibberish / off-topic questions, which the semantic anchor would otherwise map to its nearest table anyway.
+        Exact lemma matches only, on names split the way pruning splits them (linking.identifier_words: 'l_extendedprice'
+        -> extended, price). Function words don't count: 'in' matched UnitsInStock, so "What is the weather in Paris?"
+        passed on Northwind. Word-vector similarity doesn't count either: 'joke' was 'similar' to Name columns.
+        Measured on all 224 eval questions: 0 declined (old rule: 0); 1 of 60 off-topic let through (old: most)."""
+        from .linking import identifier_words
+        from .pruning import table_prefix
+        qlem = {t.lemma_.lower() for t in query_terms(query) if t.pos_ not in FUNCTION_POS}
+        return any(qlem & identifier_words(n, table_prefix(t)) for t in self.tables.values() for n in [t.name] + [c for c, _, _ in t.columns])
 
     # --- sub-agent 2: FK traversal ---
     def _traverse(self, anchor, depth=None):
