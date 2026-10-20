@@ -77,8 +77,25 @@ def test_off_topic_question_declined_without_generation(db, tmp_path):
 
 def test_explorer_page_and_db_list(db, tmp_path):
     c, _ = client(db, tmp_path, None)
-    assert "Retrieval Explorer" in c.get("/").text
+    assert "Pipeline Explorer" in c.get("/").text
+    ex = c.get("/examples.js")  # one list of example questions for the chat page and the explorer
+    assert ex.status_code == 200 and "javascript" in ex.headers["content-type"] and "const EXAMPLES" in ex.text
     assert c.get("/dbs").json() == ["t"]
+    a = c.get("/agents").json()  # what each agent runs, for the explorer's tabs
+    assert a["gate"]["stand_in"] and a["generate"]["stand_in"] and a["execute"]["stand_in"]
+    assert a["quantization"] is None or {"layers", "runs"} <= set(a["quantization"])
+
+
+def test_quantization_results_read_agent4_files(tmp_path):
+    from harness.app import quantization_results
+    assert quantization_results(tmp_path) is None  # her files missing: the explorer says so instead of failing
+    (tmp_path / "qwen_precision_allocation.csv").write_text("layer,sensitivity_score,precision\n0,0.1,INT8\n")  # what her model loads
+    (tmp_path / "fp16_results.csv").write_text("EX,latency,peak_vram_mb\n1,2.0,100\n0,4.0,100\n")
+    (tmp_path / "int4_results.csv").write_text("EX,latency,peak_vram_mb\n1,1.0,40\n")
+    q = quantization_results(tmp_path)
+    assert q["layers"][0]["precision"] == "INT8"
+    assert q["runs"] == [{"config": "FP16", "n": 2, "ex": 0.5, "latency_s": 3.0, "mem_vs_fp16": 1.0},
+                         {"config": "Uniform INT4", "n": 1, "ex": 1.0, "latency_s": 1.0, "mem_vs_fp16": 0.4}]
 
 
 def test_query_returns_per_attempt_trace_with_timings(db, tmp_path):

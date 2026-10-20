@@ -3,80 +3,314 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Retrieval Explorer</title>
+<title>Pipeline Explorer</title>
 <style>
-  :root { --fg:#111; --muted:#666; --line:#ccc; --bg:#fff; --kept:#e8f5e9; --cut:#fdecea; --warn:#fff4e5; }
-  @media (prefers-color-scheme: dark) { :root { --fg:#eee; --muted:#999; --line:#444; --bg:#161616; --kept:#1d3320; --cut:#3a1c1a; --warn:#3a2e14; } }
-  body { font: 15px/1.45 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 1000px; margin: 0 auto; padding: 16px; }
-  h1 { font-size: 20px; margin: 0 0 4px; } .muted { color: var(--muted); }
-  form { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
-  input[type=text] { flex: 1 1 320px; padding: 8px; font: inherit; }
-  select, button { padding: 8px 12px; font: inherit; }
-  table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; }
-  th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
-  h2 { font-size: 16px; margin: 20px 0 4px; }
-  .k { background: var(--kept); } .c { background: var(--cut); text-decoration: line-through; }
-  .chip { display: inline-block; padding: 1px 6px; margin: 2px; border-radius: 4px; font-family: ui-monospace, monospace; font-size: 13px; }
-  .box { padding: 10px; border: 1px solid var(--line); background: var(--warn); }
-  pre { white-space: pre-wrap; border: 1px solid var(--line); padding: 8px; font-size: 13px; }
+  /* Same tokens as the chat page. System fonts only: nothing is fetched from outside this machine. */
+  :root {
+    color-scheme: light dark;
+    --paper: #F5F7FA; --surface: #FFFFFF; --ink: #18222D; --slate: #5A6573; --line: #DCE1E8; --soft: #EEF2F6;
+    --teal: #0E7C86; --teal-ink: #FFFFFF; --teal-wash: #E3F2F3;
+    --amber: #A86A12; --amber-wash: #FBF1E1; --red: #B4342D; --red-wash: #FBE9E7; --green: #2C7A4B; --green-wash: #E6F4EA;
+    --code-bg: #18222D; --code-ink: #E3E9F0;
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+    --mono: "Cascadia Code", "Cascadia Mono", Consolas, "SF Mono", monospace;
+    --r-sm: 6px; --r-md: 10px; --r-lg: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0F151C; --surface: #17202A; --ink: #E6EBF1; --slate: #96A1AE; --line: #2A3542; --soft: #1D2833;
+      --teal: #3BB3BD; --teal-ink: #0B1A1C; --teal-wash: #12302F; --amber: #E0A54A; --amber-wash: #2E2414;
+      --red: #F07A70; --red-wash: #3A1F1C; --green: #5FCB8C; --green-wash: #15301F; --code-bg: #0B1016; --code-ink: #D7E0EA;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--paper); }
+  body { margin: 0; font: 15px/1.5 var(--sans); color: var(--ink); background: var(--paper); }
+  a { color: var(--teal); }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .muted { color: var(--slate); }
+
+  header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--paper) 88%, transparent);
+           backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1040px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .brand { margin-right: auto; flex: 1 1 280px; min-width: 0; }
+  .brand h1 { font-size: 18px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+  .brand p { margin: 0; font-size: 13px; color: var(--slate); }
+  nav { display: flex; gap: 4px; }
+  nav a { padding: 7px 12px; border-radius: var(--r-sm); text-decoration: none; color: var(--ink); font-size: 14px; }
+  nav a:hover { background: var(--soft); }
+
+  main { max-width: 1040px; margin: 0 auto; padding: 22px 16px 60px; }
+  form#f { display: flex; gap: 8px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 6px; }
+  form#f:focus-within { border-color: var(--teal); }
+  #q { flex: 1 1 320px; border: 0; background: none; padding: 9px 10px; min-width: 0; }
+  #q:focus-visible { outline: none; }
+  select#db { padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper); flex: 0 1 230px; min-width: 150px; }
+  .primary { background: var(--teal); color: var(--teal-ink); border: 0; border-radius: var(--r-sm); padding: 8px 16px; cursor: pointer; font-weight: 600; }
+  .primary:disabled { opacity: .5; cursor: default; }
+  .secondary { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 7px 14px; cursor: pointer; }
+  .secondary:hover { border-color: var(--teal); }
+  #examples { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin: 12px 2px 0; }
+  #examples .label { font-size: 13px; color: var(--slate); }
+  #examples .ex { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px;
+                  font-size: 13.5px; cursor: pointer; text-align: left; }
+  #examples .ex:hover { border-color: var(--teal); background: var(--teal-wash); }
+  #examples .ex.guard { border-style: dashed; }
+  #examples .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; }
+  #status { font-size: 14px; color: var(--slate); margin: 10px 4px 0; min-height: 1.5em; }
+
+  /* Tabs: one per agent, in pipeline order */
+  [role=tablist] { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 18px 0 0; }
+  [role=tab] { text-align: left; border: 1px solid var(--line); border-bottom-width: 3px; border-radius: var(--r-md); background: var(--surface);
+               padding: 10px 12px; cursor: pointer; min-width: 0; }
+  [role=tab][aria-selected=true] { border-color: var(--teal); background: var(--teal-wash); }
+  [role=tab] b { display: block; font-size: 15px; }
+  [role=tab] span { font-size: 12.5px; color: var(--slate); }
+  .tag { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; margin-top: 4px; }
+  .tag.real { background: var(--teal-wash); color: var(--teal); } .tag.stand-in { background: var(--amber-wash); color: var(--amber); }
+  [role=tab][aria-selected=true] .tag.real { background: var(--surface); }
+  @media (max-width: 680px) { [role=tablist] { grid-template-columns: 1fr 1fr; } }
+
+  [role=tabpanel] { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px; margin-top: 10px; min-width: 0; }
+  [role=tabpanel] h2 { font-size: 17px; margin: 0 0 4px; }
+  [role=tabpanel] h3 { font-size: 14.5px; margin: 20px 0 6px; }
+  .lead { color: var(--slate); margin: 0 0 12px; max-width: 75ch; }
+  .note { font-size: 14px; padding: 10px 12px; border-radius: var(--r-md); background: var(--soft); max-width: 80ch; margin: 8px 0; }
+  .note.warn { background: var(--amber-wash); } .note.bad { background: var(--red-wash); color: var(--red); } .note.good { background: var(--green-wash); }
+  .tablewrap { overflow-x: auto; }
+  table.t { border-collapse: collapse; width: 100%; font-size: 14px; }
+  table.t th, table.t td { border-bottom: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  table.t th { background: var(--soft); font-weight: 600; }
+  table.t td.num, table.t th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t tr.best td { background: var(--teal-wash); }
+  .chip { display: inline-block; padding: 1px 7px; margin: 2px; border-radius: var(--r-sm); font: 12.5px/1.6 var(--mono); }
+  .chip.k { background: var(--green-wash); } .chip.c { background: var(--red-wash); text-decoration: line-through; color: var(--slate); }
+  .chip small { font-family: var(--sans); color: var(--slate); }
+  pre { margin: 6px 0 0; background: var(--code-bg); color: var(--code-ink); font: 12.5px/1.55 var(--mono); padding: 10px 12px;
+        border-radius: var(--r-md); white-space: pre-wrap; overflow-x: auto; }
+  details summary { cursor: pointer; color: var(--slate); font-size: 14px; margin-top: 10px; }
+  .io { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 18px; }
+  .io > div { min-width: 0; }
+  .iolab { font-size: 12.5px; font-weight: 600; color: var(--slate); margin: 6px 0 4px; }
+  .attempt { border-left: 3px solid var(--line); padding: 2px 0 2px 14px; margin: 12px 0; }
+  .attempt.ok { border-color: var(--green); } .attempt.fail { border-color: var(--red); }
+  .okline { color: var(--green); font-weight: 600; } .badline { color: var(--red); font-weight: 600; }
+
+  /* Agent 4's precision map: one cell per transformer layer */
+  .layers { display: grid; grid-template-columns: repeat(28, minmax(0, 1fr)); gap: 3px; margin: 10px 0 4px; }
+  .layer { height: 34px; border-radius: 4px; border: 2px solid var(--line); background: var(--surface); position: relative; }
+  .layer.int8 { background: var(--teal); border-color: var(--teal); }
+  .layers-axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--slate); }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--slate); margin: 6px 0 0; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; border: 2px solid var(--line); }
+  .legend i.int8 { background: var(--teal); border-color: var(--teal); }
+  @media (max-width: 680px) { .layers { grid-template-columns: repeat(14, minmax(0, 1fr)); } }
 </style>
 </head>
 <body>
-<h1>Agent 1 — Retrieval Explorer</h1>
-<div class="muted">Runs Agent 1 on its own: anchor selection → FK traversal → column pruning, across all four modes. No other agent is called.</div>
+<header><div class="bar">
+  <div class="brand">
+    <h1>Pipeline Explorer</h1>
+    <p>One question, each agent's work on its own: what it received, what it decided, what it handed on.</p>
+  </div>
+  <nav><a href="chat">Chat</a><a href="dashboard">Dashboard</a></nav>
+</div></header>
 
-<form id="f">
-  <input type="text" id="q" placeholder="Ask a question, e.g. which customers spent the most?" autofocus>
-  <select id="db"></select>
-  <button>Retrieve</button>
-</form>
-<div id="out"></div>
+<main>
+  <form id="f">
+    <input id="q" placeholder="Ask a question, e.g. Which 5 customers spent the most in total?" autofocus autocomplete="off" maxlength="500" aria-label="Question">
+    <select id="db" aria-label="Database"></select>
+    <button class="primary" id="go">Explore</button>
+  </form>
+  <div id="examples"></div>
+  <p id="status" aria-live="polite"></p>
 
+  <div role="tablist" aria-label="Agents">
+    <button role="tab" id="t1" aria-controls="p1" aria-selected="true"><b>Retrieval</b><span>Agent 1, Ekanayake</span><br><span class="tag real">real</span></button>
+    <button role="tab" id="t2" aria-controls="p2" aria-selected="false" tabindex="-1"><b>Question gate</b><span>Agent 2, Wathsala</span><br><span class="tag" id="tag2">stand-in</span></button>
+    <button role="tab" id="t3" aria-controls="p3" aria-selected="false" tabindex="-1"><b>SQL writing</b><span>Agent 3, Thathsarani</span><br><span class="tag" id="tag3">stand-in</span></button>
+    <button role="tab" id="t4" aria-controls="p4" aria-selected="false" tabindex="-1"><b>Execution</b><span>Agent 4, Karunanayake</span><br><span class="tag" id="tag4">stand-in</span></button>
+  </div>
+
+  <section role="tabpanel" id="p1" aria-labelledby="t1">
+    <h2>Schema retrieval and pruning</h2>
+    <p class="lead">Finds the tables the question needs (anchor selection, then foreign-key traversal), then cuts the columns it doesn't need. All four retrieval modes are compared on the same question.</p>
+    <div id="a1"><p class="note">Ask a question above to see Agent 1's output.</p></div>
+  </section>
+  <section role="tabpanel" id="p2" aria-labelledby="t2" hidden>
+    <h2>Question gate and base model</h2>
+    <p class="lead">Decides whether the question is about the database before any SQL is written. Agent 2 also builds the distilled base model the SQL writer is fine-tuned from.</p>
+    <div id="a2"><p class="note">Ask a question above to see the gate's decision.</p></div>
+    <h3>Base model</h3>
+    <p class="note warn">The distilled Qwen2.5-1.5B base model is not delivered yet (requested in <code>handoff/Request_Wathsala.md</code>). Until then the SQL writer starts from the released Qwen2.5-1.5B-Instruct or a stand-in model.</p>
+  </section>
+  <section role="tabpanel" id="p3" aria-labelledby="t3" hidden>
+    <h2>SQL writing</h2>
+    <p class="lead">Turns the question and Agent 1's pruned schema into SQL. HydraLoRA picks one of four specialist heads by the complexity label Agent 1 hands over.</p>
+    <p class="note" id="gen3"></p>
+    <div id="a3"><p class="note">Ask a question above to see the SQL that was written.</p></div>
+  </section>
+  <section role="tabpanel" id="p4" aria-labelledby="t4" hidden>
+    <h2>Execution and quantization</h2>
+    <p class="lead">Runs the SQL read-only and turns failures into retry hints for the SQL writer. Agent 4 also compresses the model so it fits mid-range hardware: sensitive layers stay 8-bit, the rest go 4-bit.</p>
+    <div id="a4"><p class="note">Ask a question above to see the execution attempts.</p></div>
+    <h3>Mixed-precision model</h3>
+    <div id="quant"><p class="note">Loading Agent 4's results…</p></div>
+  </section>
+</main>
+
+<script src="examples.js"></script>
 <script>
-const MODES = ["semantic", "structural", "hybrid", "hybrid_pruned"];
+const MODES =["semantic", "structural", "hybrid", "hybrid_pruned"];
 const $ = s => document.querySelector(s);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pct = x => `${Math.round(x * 100)}%`;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+let AGENTS = null;
 
-fetch("dbs").then(r => r.json()).then(ds => $("#db").innerHTML = ds.map(d => `<option>${esc(d)}</option>`).join(""));
+// Tabs: click or arrow keys
+const tabs = [...document.querySelectorAll("[role=tab]")];
+function select(tab) {
+  tabs.forEach(t => { const on = t === tab; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1;
+                      $("#" + t.getAttribute("aria-controls")).hidden = !on; });
+  tab.focus();
+}
+tabs.forEach((t, i) => { t.onclick = () => select(t);
+  t.onkeydown = e => { const d = {ArrowRight: 1, ArrowLeft: -1}[e.key]; if (d) select(tabs[(i + d + tabs.length) % tabs.length]); }; });
 
-async function retrieve(mode) {
-  const r = await fetch("retrieve", {method: "POST", headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({query: $("#q").value, db: $("#db").value, mode})});
-  const body = await r.json();
-  if (!r.ok) throw new Error(Array.isArray(body.detail) ? body.detail.map(d => d.msg).join("; ") : body.detail);
-  return body;
+fetch("dbs").then(r => r.json()).then(ds => { $("#db").innerHTML = ds.map(d => `<option>${esc(d)}</option>`).join(""); renderExamples(); });
+
+// Example questions (shared list, examples.js), one row per difficulty group; a click fills the box and explores.
+function renderExamples() {
+  const groups = examplesFor($("#db").value);
+  const row = (name, qs, cls = "") => `<div class="row"><span class="label">${esc(name)}</span>` +
+    qs.map(q => `<button type="button" class="ex ${cls}" data-q="${esc(q)}">${esc(q)}</button>`).join("") + `</div>`;
+  $("#examples").innerHTML = Object.entries(groups).map(([g, qs]) => row(g, qs)).join("") + row("Check the guardrails", GUARD, "guard") +
+    (Object.keys(groups).length ? "" : `<span class="label">No prepared questions for this database: ask about its tables in your own words.</span>`);
+}
+$("#db").onchange = renderExamples;
+$("#examples").onclick = e => { const b = e.target.closest(".ex"); if (b && !$("#go").disabled) { $("#q").value = b.dataset.q; $("#f").requestSubmit(); } };
+fetch("agents").then(r => r.json()).then(a => {
+  AGENTS = a;
+  const tag = (id, standIn) => { $(id).className = `tag ${standIn ? "stand-in" : "real"}`; $(id).textContent = standIn ? "stand-in" : "real"; };
+  tag("#tag2", a.gate.stand_in); tag("#tag3", a.generate.stand_in); tag("#tag4", a.execute.stand_in);
+  $("#gen3").innerHTML = `SQL is written by <b>${esc(a.generate.runs)}</b>${a.generate.stand_in ? ": a stand-in until Agent 3's LoRA or HydraLoRA model is connected." : "."}`;
+  renderQuant(a.quantization);
+});
+
+async function post(path, body) {
+  const r = await fetch(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  const j = await r.json();
+  if (!r.ok) throw new Error(Array.isArray(j.detail) ? "Type a question of 1 to 500 characters." : j.detail);
+  return j;
 }
 
+// ---------------- Agent 1
+function renderA1(res) {
+  const p = res.hybrid_pruned, h = res.hybrid;
+  let html = p.matched ? "" : `<p class="note warn">No word in the question matches a table or column in this database, so the pipeline declines it instead of guessing.</p>`;
+  html += `<h3>Retrieval modes compared</h3><div class="tablewrap"><table class="t"><tr><th>Mode</th><th>Tables sent</th><th class="num">Columns</th><th class="num">Tokens</th><th class="num">Time</th></tr>` +
+    MODES.map(m => `<tr${m === "hybrid_pruned" ? ' class="best"' : ""}><td>${m === "hybrid_pruned" ? "hybrid + pruning (used live)" : m}</td>` +
+      `<td>${esc(Object.keys(res[m].tables).join(", ") || "none")}</td><td class="num">${Object.values(res[m].tables).flat().length}</td>` +
+      `<td class="num">${res[m].tokens}</td><td class="num">${Math.round(res[m].latency_ms)} ms</td></tr>`).join("") + `</table></div>`;
+  if (h.tokens) html += `<p class="muted">Pruning sends ${h.tokens - p.tokens} fewer tokens than the same tables unpruned (${Math.round(100 * (h.tokens - p.tokens) / h.tokens)}% smaller).</p>`;
+  html += `<h3>What each step decided</h3><div class="tablewrap"><table class="t">
+    <tr><th>Complexity label</th><td><b>${esc(p.complexity)}</b> <span class="muted">(handed to Agent 3 to pick a HydraLoRA head)</span></td></tr>
+    <tr><th>1. Anchor selection</th><td>${esc(p.anchor ?? "none")}</td></tr>
+    <tr><th>2. Foreign-key traversal</th><td>${Object.keys(p.tables).map(t => `${esc(t)} <span class="muted">(${esc(((p.trace?.roles || {})[t] || "").replace(/_/g, " "))})</span>`).join(", ") || "none"}</td></tr>
+    <tr><th>3. Column pruning</th><td>` +
+    Object.entries(h.tables).map(([t, cols]) => `<div><b>${esc(t)}</b> ` +
+      cols.map(c => { const why = ((p.trace?.reasons || {})[t] || {})[c] || "";
+        return `<span class="chip ${(p.tables[t] || []).includes(c) ? "k" : "c"}" title="${esc(why)}">${esc(c)}${why && why !== "pruned" ? ` <small>${esc(why.replace(/_/g, " "))}</small>` : ""}</span>`; }).join("") + `</div>`).join("") +
+    `<p class="muted" style="margin:6px 0 0;font-size:13px">Green: kept, with the reason. Struck through: removed.</p></td></tr></table></div>
+    <h3>Handed to Agent 3</h3><pre>${esc(p.ddl || "(empty)")}</pre>
+    <details><summary>Full handoff JSON</summary><pre>${esc(JSON.stringify(p, null, 2))}</pre></details>`;
+  $("#a1").innerHTML = html;
+}
+
+// ---------------- Agent 2
+function renderA2(r) {
+  const c = r.context;
+  $("#a2").innerHTML = `<div class="io"><div><div class="iolab">Input</div><p style="margin:0">${esc(c.query)}</p></div>
+    <div><div class="iolab">Decision</div>${c.matched ? `<p class="note good" style="margin:0">Database question: continue to the SQL writer.</p>`
+      : `<p class="note bad" style="margin:0">Declined: no word matches this database's tables or columns. No SQL is written.</p>`}</div></div>
+    ${AGENTS?.gate.stand_in ? `<p class="note warn">Stand-in: this decision comes from ${esc(AGENTS.gate.runs)}. Agent 2's question classifier replaces it once connected.</p>` : ""}`;
+}
+
+// ---------------- Agent 3
+function renderA3(r) {
+  const c = r.context;
+  if (!r.steps.length) { $("#a3").innerHTML = `<p class="note">Not reached: the question gate declined the question.</p>`; return; }
+  $("#a3").innerHTML = r.steps.map(s => `<div class="attempt ${s.ok ? "ok" : "fail"}"><div class="iolab">Attempt ${s.attempt}, ${(s.generate_ms / 1000).toFixed(1)} s</div>
+    <div class="io"><div><div class="iolab">Input</div><table class="t"><tr><th>Question</th><td>${esc(c.query)}</td></tr>
+      <tr><th>Complexity (HydraLoRA head)</th><td>${esc(c.complexity)}</td></tr><tr><th>Schema</th><td>${c.tokens} tokens from Agent 1</td></tr>
+      <tr><th>Retry hint</th><td>${s.hint ? `<pre>${esc(s.hint)}</pre>` : '<span class="muted">none (first attempt)</span>'}</td></tr></table></div>
+    <div><div class="iolab">SQL written</div><pre>${esc(s.sql)}</pre></div></div></div>`).join("") +
+    `<h3>Does the retrieval mode change the SQL?</h3><p class="muted">Runs the whole pipeline once per retrieval mode, so you can see how Agent 1's choice of schema changes what Agent 3 writes. Takes a few seconds per mode.</p>
+     <button class="secondary" id="cmp">Compare the four retrieval modes</button><div id="cmpout"></div>`;
+  $("#cmp").onclick = () => compareModes(c.query);
+}
+async function compareModes(q) {
+  $("#cmp").disabled = true;
+  const db = $("#db").value, rows = [];
+  for (const m of MODES) {
+    $("#cmpout").innerHTML = `<p class="muted">Running ${m}…</p>` + table(rows);
+    try { const r = await post("query", {query: q, db, mode: m});
+          rows.push({m, tokens: r.context.tokens, sql: r.sql, ok: r.ok, out: r.ok ? plural(r.rows.length, "row") : (r.error || "declined")}); }
+    catch (e) { rows.push({m, tokens: "", sql: "", ok: false, out: e.message}); }
+  }
+  $("#cmpout").innerHTML = table(rows); $("#cmp").disabled = false;
+  function table(rs) {
+    return rs.length ? `<div class="tablewrap"><table class="t"><tr><th>Mode</th><th class="num">Tokens</th><th>SQL</th><th>Result</th></tr>` +
+      rs.map(x => `<tr><td>${x.m}</td><td class="num">${x.tokens}</td><td><pre style="margin:0">${esc(x.sql || "")}</pre></td>` +
+        `<td class="${x.ok ? "okline" : "badline"}">${esc(x.out)}</td></tr>`).join("") + `</table></div>
+      <p class="muted" style="font-size:13px">A result that runs is not necessarily correct: check the SQL.</p>` : "";
+  }
+}
+
+// ---------------- Agent 4
+function renderA4(r) {
+  if (!r.steps.length) { $("#a4").innerHTML = `<p class="note">Not reached: no SQL was written.</p>`; return; }
+  $("#a4").innerHTML = r.steps.map(s => `<div class="attempt ${s.ok ? "ok" : "fail"}"><div class="iolab">Attempt ${s.attempt}, ${s.execute_ms} ms</div>
+      <pre>${esc(s.sql)}</pre>
+      ${s.ok ? `<p class="okline">Ran read-only: ${plural(s.rows, "row")}${r.columns ? ` (${esc(r.columns.join(", "))})` : ""}</p>`
+        : String(s.error).startsWith("Blocked") ? `<p class="badline">Refused: ${esc(s.error)}</p><p class="muted">Not retried: the assistant never changes data.</p>`
+        : `<p class="badline">Error: ${esc(s.error)}</p><p class="muted">${s.attempt < r.attempts ? "Sent back to the SQL writer as the retry hint." : "Final attempt."}</p>`}</div>`).join("") +
+    (AGENTS?.execute.stand_in ? `<p class="note warn">Stand-in: ${esc(AGENTS.execute.runs)}. Agent 4's error-diagnosis step will replace the raw error with a targeted hint.</p>` : "");
+}
+function renderQuant(q) {
+  if (!q) { $("#quant").innerHTML = `<p class="note">No results from Agent 4 on this machine yet (results/qwen/ is missing).</p>`; return; }
+  const int8 = q.layers.filter(l => l.precision === "INT8").map(l => l.layer), fp16 = q.runs.find(r => r.config === "FP16");
+  $("#quant").innerHTML = `<p class="muted">${esc(q.model)}: ${q.layers.length} transformer layers. The ${int8.length} layers that mattered most for SQL stay 8-bit (layers ${int8.join(", ")}); the rest are 4-bit.</p>
+    <div class="layers" role="img" aria-label="Layer precision map: ${int8.length} of ${q.layers.length} layers at 8-bit">
+      ${q.layers.map(l => `<div class="layer ${l.precision === "INT8" ? "int8" : ""}" title="Layer ${l.layer}: ${l.precision}, sensitivity ${l.sensitivity_score.toFixed(3)}"></div>`).join("")}</div>
+    <div class="layers-axis"><span>Layer 0</span><span>Layer ${q.layers.length - 1}</span></div>
+    <div class="legend"><span><i class="int8"></i>8-bit (sensitive)</span><span><i></i>4-bit</span></div>
+    <h3>Accuracy, memory and speed</h3><div class="tablewrap"><table class="t"><tr><th>Configuration</th><th class="num">Questions</th><th class="num">Execution accuracy</th><th class="num">Peak memory vs FP16</th><th class="num">Time per answer</th></tr>` +
+    q.runs.map(r => `<tr${r.config.startsWith("Adaptive") ? ' class="best"' : ""}><td>${esc(r.config)}</td><td class="num">${r.n}</td><td class="num">${pct(r.ex)}</td>` +
+      `<td class="num">${r.mem_vs_fp16 == null ? "" : pct(r.mem_vs_fp16)}</td><td class="num">${r.latency_s.toFixed(1)} s</td></tr>`).join("") + `</table></div>` +
+    (q.runs.some(r => fp16 && r.n !== fp16.n) ? `<p class="note warn">Not all rows used the same questions (see the Questions column), so their accuracies are not directly comparable yet.</p>` : "") +
+    `<p class="muted" style="font-size:13px">From Agent 4's own result files (results/qwen/). Her evaluation questions, not the team's eval sets.</p>`;
+}
+
+// ---------------- Run
 $("#f").onsubmit = async e => {
   e.preventDefault();
-  $("#out").innerHTML = '<p class="muted">Running…</p>';
-  let res;
-  res = {};  // sequential, so each mode's ms is measured without the others competing for the CPU
-  try { for (const m of MODES) res[m] = await retrieve(m); }
-  catch (err) { $("#out").innerHTML = `<div class="box">Rejected: ${esc(err.message)}</div>`; return; }
-
-  const p = res.hybrid_pruned, h = res.hybrid;
-  let html = p.matched ? "" :
-    `<div class="box">Low confidence: no word in the question matches any table or column in this database. ` +
-    `The full pipeline declines this question instead of guessing.</div>`;
-
-  html += `<h2>Mode comparison</h2><table><tr><th>Mode</th><th>Tokens</th><th>ms</th><th>Tables</th></tr>` +
-    MODES.map(m => `<tr><td>${m}</td><td>${res[m].tokens}</td><td>${res[m].latency_ms}</td><td>${esc(Object.keys(res[m].tables).join(", ") || "—")}</td></tr>`).join("") +
-    `</table>`;
-  if (h.tokens) html += `<div>Pruning saves <b>${h.tokens - p.tokens}</b> tokens vs hybrid (${Math.round(100 * (h.tokens - p.tokens) / h.tokens)}%).</div>`;
-
-  html += `<h2>Sub-agent outputs (hybrid_pruned)</h2><table>
-    <tr><th>Complexity label</th><td>${esc(p.complexity)}</td></tr>
-    <tr><th>1. Anchor selection</th><td>${esc(p.anchor ?? "none")}</td></tr>
-    <tr><th>2. FK traversal</th><td>${Object.keys(p.tables).map(t => `${esc(t)} <span class="muted">(${esc((p.trace?.roles || {})[t] || "")})</span>`).join(", ") || "—"}</td></tr>
-    <tr><th>3. Column pruning</th><td>` +
-    Object.entries(h.tables).map(([t, cols]) => `<div><b>${esc(t)}</b>: ` +
-      cols.map(c => { const why = ((p.trace?.reasons || {})[t] || {})[c] || "";
-        return `<span class="chip ${(p.tables[t] || []).includes(c) ? "k" : "c"}" title="${esc(why)}">${esc(c)}${why && why !== "pruned" ? ` <small class="muted">${esc(why.replace("_", " "))}</small>` : ""}</span>`; }).join("") + `</div>`).join("") +
-    `<div class="muted">green = kept (with the reason), struck = removed. Hover a column for its reason.</div></td></tr></table>`;
-
-  html += `<h2>Handoff to Agent 3 (pruned DDL)</h2><pre>${esc(p.ddl || "(empty)")}</pre>`;
-  $("#out").innerHTML = html;
+  const q = $("#q").value, db = $("#db").value;
+  $("#go").disabled = true;
+  try {
+    const res = {};  // sequential, so each mode's time is measured without the others competing for the CPU
+    for (const m of MODES) { $("#status").textContent = `Agent 1: retrieving with ${m}…`; res[m] = await post("retrieve", {query: q, db, mode: m}); }
+    renderA1(res);
+    $("#status").textContent = "Running the full pipeline (the SQL writer can take a few seconds)…";
+    const r = await post("query", {query: q, db, mode: "hybrid_pruned"});
+    renderA2(r); renderA3(r); renderA4(r);
+    $("#status").textContent = r.ok ? `Done in ${(r.total_ms / 1000).toFixed(1)} s: ${plural(r.rows.length, "row")}. Open each tab to see that agent's work.`
+      : `Done: ${r.attempts ? `no working query after ${plural(r.attempts, "attempt")}` : "declined at the question gate"}. Open each tab to see why.`;
+  } catch (err) {
+    $("#status").textContent = err.message;
+  } finally { $("#go").disabled = false; }
 };
 </script>
 </body>

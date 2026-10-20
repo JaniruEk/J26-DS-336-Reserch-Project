@@ -41,6 +41,33 @@ LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 URL_OPTIONS = {"sslmode", "connect_timeout"}  # the only ?options a connection URL may carry (no host/hostaddr/passfile/service overrides)
 
 
+QUANT_DIR = Path(__file__).resolve().parents[1] / "results" / "qwen"  # Agent 4 (Karunanayake) writes these
+
+
+def quantization_results(folder=QUANT_DIR):
+    """Agent 4's per-layer INT8/INT4 allocation and per-configuration results, or None if her files aren't there.
+    Memory is reported relative to FP16 (her peak_vram_mb column), not as an absolute figure."""
+    import csv
+    alloc = folder / "qwen_precision_allocation.csv"  # the file her model is built from (qwen_build_adaptive.INPUT)
+    if not alloc.exists():
+        return None
+    layers = [{"layer": int(r["layer"]), "precision": r["precision"], "sensitivity_score": float(r["sensitivity_score"])}
+              for r in csv.DictReader(open(alloc, encoding="utf-8"))]
+    runs = []
+    for name, file in (("FP16", "fp16_results.csv"), ("Uniform INT8", "int8_results.csv"), ("Uniform INT4", "int4_results.csv"),
+                       ("Adaptive INT4/INT8", "adaptive_model_result.csv")):
+        if (folder / file).exists():
+            rows = list(csv.DictReader(open(folder / file, encoding="utf-8")))
+            if rows:
+                runs.append({"config": name, "n": len(rows), "ex": sum(float(r["EX"]) for r in rows) / len(rows),
+                             "latency_s": sum(float(r["latency"]) for r in rows) / len(rows),
+                             "peak_mem": max(float(r["peak_vram_mb"]) for r in rows)})
+    fp16 = next((r["peak_mem"] for r in runs if r["config"] == "FP16"), None)
+    for r in runs:
+        r["mem_vs_fp16"] = round(r.pop("peak_mem") / fp16, 3) if fp16 else None
+    return {"model": "Qwen/Qwen2.5-1.5B-Instruct", "layers": layers, "runs": runs}
+
+
 def env_set(name):
     return {v.strip().lower() for v in os.environ.get(name, "").split(",") if v.strip()}
 
@@ -135,6 +162,12 @@ def create_app(dbs=None, generate=None, execute=run_sql, log_path="data/handoff.
     Path(answers_path).parent.mkdir(parents=True, exist_ok=True)
     answers = AnswerStore(answers_path)
     answered = OrderedDict()  # trace -> (question, db name, sql) of successful /query answers: the only SQL /answers will save
+    row_cache = {}  # SQLite path -> has rows (for /health's "schema only" list)
+
+    def has_rows_cached(path):
+        if path not in row_cache:
+            row_cache[path] = safe_has_rows(path)
+        return row_cache[path]
     # pipeline stages still running a placeholder; the chat page badges them. Agent 2's question gate is not wired in yet.
     # generate=None: the model named by J26_GENERATOR (harness/generators.py; default phi3 via Ollama)
     generate = generate or generators.from_env()
@@ -169,14 +202,32 @@ def create_app(dbs=None, generate=None, execute=run_sql, log_path="data/handoff.
     def chat():
         return FileResponse(Path(__file__).with_name("chat.html"))
 
+    @app.get("/examples.js", include_in_schema=False)
+    def examples_js():  # example questions shared by the chat page and the Pipeline Explorer
+        return FileResponse(Path(__file__).with_name("examples.js"), media_type="text/javascript")
+
     @app.get("/dashboard", include_in_schema=False)
     def dashboard():
         return FileResponse(Path(__file__).with_name("dashboard.html"))
 
     @app.get("/health")
     def health():
-        return {"ok": True, "dbs": list(dbs), "schema_only": [n for n, p in dbs.items() if not safe_has_rows(p)], "max_attempts": MAX_ATTEMPTS,
+        # Only SQLite files are checked for rows (the schema-only TPC-H file): a server database that is down would
+        # otherwise hold every page load for its connection timeout. Answers are cached; files rarely change.
+        schema_only = [n for n, p in dbs.items() if not is_url(p) and not has_rows_cached(p)]
+        return {"ok": True, "dbs": list(dbs), "schema_only": schema_only, "max_attempts": MAX_ATTEMPTS,
                 "superset": superset() is not None, "stand_ins": stand_ins, "generator": generator}
+
+    @app.get("/agents")
+    def agents_info():
+        """What each agent runs right now, for the Pipeline Explorer. Read-only; Agent 4's numbers come from her own
+        result files (results/qwen/, written by scripts/qwen_*.py) when they exist."""
+        return {"gate": {"stand_in": "gate" in stand_ins, "runs": "Agent 1's word-match check" if "gate" in stand_ins else "Agent 2's classifier"},
+                "retrieval": {"config": {k: v for k, v in agent1_config.items()}},
+                "generate": {"stand_in": "generate" in stand_ins, "runs": generator},
+                "execute": {"stand_in": "execute" in stand_ins,
+                            "runs": "read-only SQL runner; raw error used as the retry hint" if "execute" in stand_ins else getattr(execute, "__name__", "custom")},
+                "quantization": quantization_results()}
 
     @app.get("/dbs")
     def list_dbs():
