@@ -89,6 +89,7 @@ def env_glossaries():
     return json.loads(os.environ.get("J26_GLOSSARIES", "{}"))
 
 
+INJECTION = "Refused, unsafe input"  # error prefix when Agent 2's gate flags a prompt injection
 BLOCKED = "Blocked by SQL guard"  # an error starting with this is final: the harness does not retry it
 
 
@@ -365,6 +366,10 @@ def create_app(dbs=None, generate=None, execute=run_sql, log_path="data/handoff.
                 g = {"by": "Agent 1's word-match check", "database": ctx["matched"], "error": f"{type(e).__name__}: {e}"}
         log(trace, "agent2.gate", input=req.query, output=g)
         out = {"trace": trace, "context": ctx, "gate": g, "steps": []}  # steps: one entry per generate -> execute attempt
+        if g.get("malicious"):  # her model, Task 2: an attempt to override the assistant's instructions
+            return {**out, "ok": False, "sql": None, "attempts": 0, "total_ms": ms(t0),
+                    "error": f"{INJECTION}: this looks like an attempt to override the assistant's instructions "
+                             f"(prompt injection, P = {g['p_malicious']:.2f}). Ask a question about the data instead."}
         if "p_database" in g and not g["database"]:  # her model: a general question, not about data
             return {**out, "ok": False, "sql": None, "attempts": 0, "total_ms": ms(t0),
                     "error": f"This looks like a general question, not one about data (question gate: P(database) = {g.get('p_database', 0):.2f})."}

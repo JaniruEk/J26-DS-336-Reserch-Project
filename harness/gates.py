@@ -12,8 +12,11 @@ questions; the word check also stops general trivia that her model calls DATABAS
 Scoring follows her significance test (student_1_5b_kd_candidate_predictions.csv): the probability of each label,
 normalised over the two, so there is never an invalid answer. Her training prompt is not in the repository; the prompt
 below is reconstructed and reproduces her Task 1 test accuracy (.997 vs her .994, same label on 1,195 of 1,200).
-Task 2 (prompt-injection detection) is NOT used: with this prompt it scores .81 against her .948, so it waits for her
-exact prompt (handoff/Request_Wathsala.md)."""
+Task 2 (prompt-injection detection) uses a reconstructed wording too, and is a PARTIAL guard: on her 116 test items it
+catches 39 of 60 attacks and wrongly flags 1 of 56 safe inputs (.81, against her .948 with her own prompt); it flags none
+of our 224 real eval questions. Of the 8 wordings tried it is the only one with 0 false flags on our questions (two
+slightly more accurate ones flagged "...list their ids instead of names"). The read-only database and the SELECT-only
+guard stay the real protection. Swap in her exact prompt when she sends it (handoff/Request_Wathsala.md)."""
 import os
 import threading
 from pathlib import Path
@@ -22,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1] / "MultiTask_Research"
 KD_ADAPTER = ROOT / "student_1_5b_kd_multitask" / "final_adapter"
 BASE = "Qwen/Qwen2.5-1.5B-Instruct"
 INSTRUCTION = "Classify the user query as DATABASE or GENERAL."  # reconstructed (see module docstring)
+INJECTION_INSTRUCTION = "Classify the text as SAFE or MALICIOUS."  # reconstructed, Task 2 (see module docstring)
 THRESHOLD = 0.5  # P(database) below this = general question, declined
 
 _lock = threading.Lock()  # one model on one GPU: load once, score one question at a time
@@ -49,22 +53,28 @@ def kd_multitask(adapter=KD_ADAPTER):
         raise RuntimeError(f"adapter not found: {adapter}")
     import peft  # noqa: F401  (missing peft -> ImportError -> fallback)
 
-    def gate(question):
-        model, tok = _load(adapter)
-        prompt = tok.apply_chat_template([{"role": "user", "content": f"{INSTRUCTION}\n\nText: {question}"}],
+    def first_label_p(model, tok, instruction, text, labels):
+        """P(labels[0]) for this instruction, normalised over the two labels (sum of each label's token log-probs)."""
+        prompt = tok.apply_chat_template([{"role": "user", "content": f"{instruction}\n\nText: {text}"}],
                                          tokenize=False, add_generation_prompt=True)
         p_ids = tok(prompt, add_special_tokens=False).input_ids
         scores = []
-        with _lock, torch.no_grad():
-            for label in ("database", "general"):  # the student answers in lower case
-                l_ids = tok(label, add_special_tokens=False).input_ids
-                ids = torch.tensor([p_ids + l_ids], device="cuda")
-                logp = torch.log_softmax(model(ids).logits[0, len(p_ids) - 1:-1].float(), -1)
-                scores.append(sum(logp[i, t].item() for i, t in enumerate(l_ids)))
-        p_db = torch.softmax(torch.tensor(scores), 0)[0].item()
-        return {"database": p_db >= THRESHOLD, "p_database": round(p_db, 4)}
+        for label in labels:  # the student answers in lower case
+            l_ids = tok(label, add_special_tokens=False).input_ids
+            ids = torch.tensor([p_ids + l_ids], device="cuda")
+            logp = torch.log_softmax(model(ids).logits[0, len(p_ids) - 1:-1].float(), -1)
+            scores.append(sum(logp[i, t].item() for i, t in enumerate(l_ids)))
+        return torch.softmax(torch.tensor(scores), 0)[0].item()
 
-    gate.label = "Agent 2 distilled Qwen2.5-1.5B student (multitask, Task 1)"
+    def gate(question):
+        model, tok = _load(adapter)
+        with _lock, torch.no_grad():
+            p_db = first_label_p(model, tok, INSTRUCTION, question, ("database", "general"))
+            p_mal = first_label_p(model, tok, INJECTION_INSTRUCTION, question, ("malicious", "safe"))
+        return {"database": p_db >= THRESHOLD, "p_database": round(p_db, 4),
+                "malicious": p_mal >= THRESHOLD, "p_malicious": round(p_mal, 4)}
+
+    gate.label = "Agent 2 distilled Qwen2.5-1.5B student (multitask: query type + prompt injection)"
     gate.stand_in = False
     threading.Thread(target=_load, args=(adapter,), daemon=True).start()  # warm up in the background
     return gate

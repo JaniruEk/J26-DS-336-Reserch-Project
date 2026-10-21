@@ -3,6 +3,8 @@
 Project J26-DS-336 | Panel DS-P03 | 16 Oct 2026
 Companion files: `PP1_Runtime_Flow.png` (the live flow with component breakdown), `PP1_Offline_Build_Flow.png` (the build pipeline), and the team and per-student documents (00–04).
 
+**Update 21 Oct 2026:** both diagrams were redrawn (`python -m scripts.draw_flows`) to match the system as built. Agent 4 is now adaptive mixed-precision quantization (INT8 for the layers SQL depends on, INT4 for the rest) instead of QAT vs PTQ (scope change, 19 Oct). Agent 2's distilled model now runs live as the question gate. The chat front end, input checks and SQL guard are built, so they are no longer marked new. In both diagrams, solid boxes run today and dashed, shaded boxes are stand-ins or planned. Sections 3–5 below are updated to match; the rest of this file is the 16 Oct PP1 snapshot.
+
 ---
 
 ## 0. Reality check against this repository (read first)
@@ -27,7 +29,7 @@ This document was drafted against an engineering plan whose paths do not exist i
 ## The short answers
 
 1. **Does the system need changes?** Yes, but the research design does not. The four-agent split, each component's research question and the offline pipeline all stay. What changes is the *product around them*: a front end, input checks, a SQL guard, and a demo-ready end-to-end slice. The slice already runs with stand-in models in `harness/app.py`.
-2. **What is the flow?** One query passes through a front end and a controller, then three live agents (retrieval, generation, execution) with a bounded retry loop owned by the controller. Agent 2 is not in the live path; it produces the base model once, offline. See `PP1_Runtime_Flow.png`.
+2. **What is the flow?** One query passes through a front end and a controller, then three live agents (retrieval, generation, execution) with a bounded retry loop owned by the controller. Agent 2's distilled classifier now runs live as the question gate, after Agent 1 (updated 21 Oct). See `PP1_Runtime_Flow.png`.
 3. **What is the breakdown?** Four layers (user and presentation, orchestration, live agents, data and model stores). Each agent is split into sub-components with a stated input and output (Section 3).
 
 ---
@@ -95,10 +97,10 @@ Status key: **Built** = runs in this repo today; **Stand-in** = runs with a plac
 | 3 Agent 4 | Error diagnosis | Karunanayake | Error text | Hint for retry | Stand-in (raw error as hint) |
 | 4 Stores | Target databases (read-only) | Shared | SQL | Rows | **Built** (Chinook, TPC-H, Spider) |
 | 4 Stores | ChromaDB schema index | Ekanayake | Table DDL embeddings | Nearest tables | **Built** |
-| 4 Stores | Model store (base, adapters, GGUF in Ollama) | Wathsala, Thathsarani, Karunanayake | Offline artefacts | Models served to Agent 3 | Planned |
-| Offline | Agent 2: distillation and base model | Wathsala | Teacher prompts | Base-model artefact + model card | Planned |
-| Offline | Agent 3: LoRA vs HydraLoRA | Thathsarani | Base model, labelled data | Winner + runner-up artefacts | Planned (branches `thathsarani-lora-baseline`, `thathsarani-hydra` exist) |
-| Offline | Agent 4: QAT vs PTQ, cross-check, deploy | Karunanayake | Winner, runner-up | Quantized deployable model | Planned (quantization branches exist) |
+| 4 Stores | Model store (Qwen2.5-1.5B-Instruct, Agent 2's gate adapter, Agent 4's INT4/INT8 layer plan, Agent 3's adapters) | Wathsala, Thathsarani, Karunanayake | Offline artefacts | Models loaded by the app | Partly built (gate adapter and Agent 4's model load today; Agent 3's adapters planned) |
+| Offline | Agent 2: distillation | Wathsala | Teacher (Qwen2.5-7B-Instruct), two classification tasks | Distilled 1.5B question classifier (live gate); distilled SQL base still planned | Classifier built (KD vs native: Task 1 n.s., Task 2 p = .004) |
+| Offline | Agent 3: LoRA vs HydraLoRA | Thathsarani | Base model, labelled data | Winner + runner-up artefacts | First comparison done (preliminary: winner LoRA .56, runner-up HydraLoRA .52) |
+| Offline | Agent 4: adaptive mixed precision (layer sensitivity → INT8 for sensitive layers, INT4 for the rest), compared with FP16 / uniform INT8 / uniform INT4; re-run on Agent 3's winner, cross-check on the runner-up (proposed) | Karunanayake | Released Qwen2.5-1.5B-Instruct today; Agent 3's winner and runner-up later | Mixed INT4/INT8 model (in the app as `J26_GENERATOR=adaptive_qwen`) | Built on the released model (6 of 28 layers INT8); re-run on the fine-tuned model planned |
 
 Confirm the teammates' rows against their own branches before presenting anything as working.
 
@@ -115,17 +117,17 @@ Confirm the teammates' rows against their own branches before presenting anythin
 7. **On failure:** error diagnosis returns an error and a hint to the controller, which calls Agent 3 again with the hint, up to N attempts (N = 3 today). Every attempt is logged. When attempts run out, the controller returns a clear failure instead of looping.
 8. The controller assembles the response (SQL, rows, attempt count, trace) and the front end renders it with one trace section per agent.
 
-Agent 2 is not part of this path. Its base model is published beforehand as an artefact, and Agent 3 loads it through the model store.
+Update 21 Oct: Agent 2 is now part of this path as the question gate. After Agent 1 (step 4), her distilled classifier and Agent 1's word check must both say the question is about the data; otherwise the question is declined before any SQL is written. Her distilled SQL base model, when it exists, will still be an offline artefact that Agent 3 loads through the model store.
 
 ## 5. The offline flow
 
-Agent 2 (teacher, distillation dataset, student, native baseline, comparison, published base model) feeds Agent 3 (LoRA vs HydraLoRA under identical conditions; winner and runner-up published). Agent 3 feeds Agent 4 (QAT vs PTQ on the winner, cross-check on the runner-up, merge, quantize, register). See `PP1_Offline_Build_Flow.png`.
+Agent 2 (Qwen2.5-7B-Instruct teacher, two classification tasks, KD and native 1.5B students, comparison) publishes the distilled classifier used as the live question gate; a distilled SQL base for Agent 3 is planned. Agent 3 (LoRA vs HydraLoRA under identical conditions on Qwen2.5-1.5B-Instruct; winner and runner-up published) feeds Agent 4. Agent 4 measures each layer's sensitivity for SQL, keeps the most sensitive layers at INT8 and the rest at INT4, and compares the mixed model with FP16, uniform INT8 and uniform INT4; today on the released Qwen, later on Agent 3's winner, with a proposed cross-check on the runner-up. QAT vs PTQ was dropped (scope change, 19 Oct). See `PP1_Offline_Build_Flow.png`.
 
 ## 6. About the diagrams
 
 - They are black and white; shaded, dashed boxes mark what is new.
 - The proposal template said diagrams must not be produced with AI tools. If the supervisors apply that rule to PP1, redraw these by hand or in draw.io and use the PNGs only as reference.
-- Fixes before use: remove "Enterprise HR schema" from the target-database box (or build it), and note that the read-only connection inside the "SQL safety guard [NEW]" box already exists.
+- Done 21 Oct: "Enterprise HR schema" removed from the target-database box (the real list is shown); the SQL safety guard is drawn as built. The diagrams are produced by `scripts/draw_flows.py`, so edit the text there and re-run instead of editing the PNGs.
 
 ## 7. Order of work
 

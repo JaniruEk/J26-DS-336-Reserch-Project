@@ -231,9 +231,11 @@ function renderA1(res) {
 
 // ---------------- Agent 2
 function renderA2(r) {
-  const c = r.context, g = r.gate || {}, pass = g.database !== false && c.matched;
+  const c = r.context, g = r.gate || {}, pass = g.database !== false && !g.malicious && c.matched;
   const model = g.p_database == null ? `<p class="note warn" style="margin:0">Not connected: Agent 1's word check decides alone.</p>`
-    : `<p class="note ${g.database ? "good" : "bad"}" style="margin:0">${g.database ? "Database question" : "General question: declined"} (P(database) = ${g.p_database.toFixed(3)})</p>`;
+    : (g.p_malicious == null ? "" : `<p class="note ${g.malicious ? "bad" : "good"}" style="margin:0 0 6px">${g.malicious
+        ? `Malicious: prompt-injection attempt, refused (P = ${g.p_malicious.toFixed(3)})` : `Safe: no prompt injection (P(malicious) = ${g.p_malicious.toFixed(3)})`}</p>`) +
+      `<p class="note ${g.database ? "good" : "bad"}" style="margin:0">${g.database ? "Database question" : "General question: declined"} (P(database) = ${g.p_database.toFixed(3)})</p>`;
   $("#a2").innerHTML = `<div class="io"><div><div class="iolab">Input</div><p style="margin:0">${esc(c.query)}</p></div>
     <div><div class="iolab">Agent 2's distilled model</div>${model}
       <div class="iolab">Agent 1's word check</div><p class="note ${c.matched ? "good" : "bad"}" style="margin:0">${c.matched ? "A question word names a table or column" : "No word matches this database's tables or columns"}</p></div></div>
@@ -245,7 +247,7 @@ function renderKD(rows) {
   $("#kd").innerHTML = `<div class="tablewrap"><table class="t"><tr><th>Task</th><th class="num">Test items</th><th class="num">Native 1.5B</th><th class="num">Distilled 1.5B</th><th class="num">Wins / losses</th><th class="num">McNemar p</th></tr>` +
     rows.map(x => `<tr${x.p < .05 ? ' class="best"' : ""}><td>${esc(x.task)}</td><td class="num">${x.n}</td><td class="num">${pct(x.native)}</td><td class="num">${pct(x.kd)}</td>` +
       `<td class="num">${x.wins} / ${x.losses}</td><td class="num">${x.p.toFixed(3)}</td></tr>`).join("") + `</table></div>
-    <p class="muted" style="font-size:13px">From Agent 2's own results (MultiTask_Research/native_vs_kd_statistical_results.csv). The app uses only the query-classification task: the injection task needs her exact training prompt, which is not in the repository yet.</p>`;
+    <p class="muted" style="font-size:13px">From Agent 2's own results (MultiTask_Research/native_vs_kd_statistical_results.csv). The app uses both tasks. Her training prompt is not in the repository, so the app uses a reconstructed one: it reproduces her query-classification result, but catches only about two thirds of attacks in her injection test set (against .948 with her own prompt), and flags none of the team's 224 real evaluation questions.</p>`;
 }
 
 // ---------------- Agent 3

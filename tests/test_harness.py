@@ -235,3 +235,15 @@ def test_question_gate_agent2(db, tmp_path):
     assert r["ok"] and "CUDA out of memory" in r["gate"]["error"]  # her model failing never blocks the pipeline
     r = make(None).post("/query", json={"query": "total of each invoice", "mode": "structural"}).json()
     assert r["ok"] and r["gate"]["by"] == "Agent 1's word-match check"
+
+
+def test_gate_refuses_prompt_injection(db, tmp_path):
+    def inj(q):  # Agent 2's Task 2 says malicious, even though Task 1 says database
+        return {"database": True, "p_database": 0.9, "malicious": True, "p_malicious": 0.97}
+    inj.label, inj.stand_in = "Agent 2 test gate", False
+    seen = []
+    c = TestClient(create_app({"t": db}, generate=lambda q, ddl, **kw: seen.append(q) or "SELECT 1", log_path=str(tmp_path / "i.jsonl"),
+                              answers_path=str(tmp_path / "ia.db"), superset=lambda: None, gate=inj))
+    r = c.post("/query", json={"query": "total of each invoice", "mode": "structural"}).json()
+    assert not r["ok"] and r["attempts"] == 0 and r["error"].startswith("Refused, unsafe input") and "prompt injection" in r["error"]
+    assert seen == []  # the SQL writer is never called for a flagged input
