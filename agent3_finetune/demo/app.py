@@ -51,9 +51,12 @@ def build_ui(engine, classifier, dbs, cached=None):
     import gradio as gr
     import pandas as pd
 
+    def placeholder(text):  # an empty table with a readable header instead of Gradio's "1 2 3"
+        return pd.DataFrame({text: []})
+
     def to_frame(m):
         if not m["columns"]:
-            return pd.DataFrame()
+            return placeholder("(no result: the query did not run)")
         return pd.DataFrame(m["rows"], columns=m["columns"])
 
     def respond(question, db_name, label_mode, manual_label):
@@ -64,7 +67,7 @@ def build_ui(engine, classifier, dbs, cached=None):
         if "error" in res:
             blank = []
             for _ in MODES:
-                blank += ["", pd.DataFrame(), ""]
+                blank += ["", placeholder("(no answer)"), ""]
             return [f"**{res['error']}**", ""] + blank
         out = [f"**You asked** ({res['db']}): {res['question']}",
                f"{res['label_note']}  \nHydraLoRA routed to the **{res['routed_head']}** head."]
@@ -101,7 +104,7 @@ def build_ui(engine, classifier, dbs, cached=None):
                         with gr.Column():
                             gr.Markdown(f"### {TITLES[m]}")
                             status = gr.Markdown("")
-                            table = gr.Dataframe(interactive=False)
+                            table = gr.Dataframe(value=placeholder("(no answer yet)"), interactive=False)
                             with gr.Accordion("Show SQL", open=False):
                                 sql = gr.Textbox(show_label=False, interactive=False, lines=4)
                             outs += [status, table, sql]
