@@ -14,7 +14,7 @@ Answers the proposal-presentation comments for Progress Presentation 1. Rewritte
 
 - **The finding to lead with:** distillation helped significantly where the task is hard (injection detection, +11 points) and made no measurable difference where the task is easy (query classification, both near the ceiling).
 - **In the team app:** the distilled student runs the question gate, shown as "real" with its probability. On the team's 224 evaluation questions it declined none.
-- **Say it before the panel finds it:** free-text generation produced invalid answers on 60 of 116 injection items (.44); the .948 comes from scoring the two labels. The app uses only query classification until her exact training prompt is shared, because a reconstructed prompt reproduces Task 1 (.997) but not Task 2 (.81).
+- **Say it before the panel finds it:** free-text generation produced invalid answers on 60 of 116 injection items (.44); the .948 comes from scoring the two labels. The app uses both tasks, but her exact training prompt was not shared, so it runs a reconstructed prompt: Task 1 reproduces (.997), Task 2 only partly (.81: catches 39 of 60 attacks, flags none of the team's 224 real questions). Injection detection is therefore a partial guard in the app, behind the read-only database and the SELECT-only guard; her own prompt should restore the .948.
 
 The sections below are the earlier pilot (0.5B students, query classification only) and the plan to the SQL study.
 

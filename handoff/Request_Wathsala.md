@@ -2,7 +2,7 @@
 
 > **Update, 21 Oct 2026:** your `MultiTask_Research/` folder arrived. Your distilled multitask student now runs as **stage 1 of the team app** (the question gate), shown as "real" in the chat and the Explorer. Thank you. One thing is still needed:
 >
-> **Your exact training prompt**, word for word: the notebook cell that turns a `text` (and its `task`) into the model input, and how you scored the candidate labels. It isn't in the folder. I reconstructed one that reproduces your query-classification result (.997 vs your .994, same label on 1,195 of 1,200), but for prompt-injection detection it only reaches .81 against your .948. So injection detection stays switched off in the app until I have your prompt.
+> **Your exact training prompt**, word for word: the notebook cell that turns a `text` (and its `task`) into the model input, and how you scored the candidate labels. It isn't in the folder. I reconstructed one that reproduces your query-classification result (.997 vs your .994, same label on 1,195 of 1,200), but for prompt-injection detection it only reaches .81 against your .948. The app now uses it anyway as a partial guard (it catches 39 of 60 attacks and flags none of our real questions), and with your prompt it should match your .948.
 >
 > Also useful: which checkpoint `final_adapter` is (step number), and the notebook itself, committed under `Agent2/`.
 >

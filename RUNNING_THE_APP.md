@@ -113,7 +113,7 @@ Stage 1 decides whether a question is about data before any SQL is written. A qu
 
 Her model files are not in git (about 1.5 GB): copy her `MultiTask_Research/` folder into the project folder. It loads in the background at startup, alongside Agent 4's model; both fit together on one mid-range GPU, and it adds about 0.2 s per question. The chat and the Explorer show her model's probability for each question. If her model can't load, the app falls back to the word check and says so in the log.
 
-Only her query-classification task is used. Her prompt-injection task needs her exact training prompt, which is not in the repository yet.
+Both her tasks are used. Her prompt-injection check runs first: if it says malicious, the app refuses the question as unsafe ("Refused, unsafe input") and shows **Malicious** in the chat and the Explorer. It is a partial guard: her exact training prompt is not in the repository yet, and with a reconstructed prompt it catches about two in three attacks on her test set (39 of 60) while flagging none of our 224 real questions. The read-only database and the SELECT-only guard remain the real protection.
 
 ### Choose the SQL model (`J26_GENERATOR`)
 

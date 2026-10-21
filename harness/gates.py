@@ -40,7 +40,8 @@ def _load(adapter=KD_ADAPTER):
             from peft import PeftModel
             from transformers import AutoModelForCausalLM, AutoTokenizer
             tok = AutoTokenizer.from_pretrained(adapter)
-            base = AutoModelForCausalLM.from_pretrained(BASE, dtype=torch.float16).to("cuda")
+            # device_map, not .to("cuda"): .to() failed on meta tensors while Agent 4's model loaded in parallel
+            base = AutoModelForCausalLM.from_pretrained(BASE, dtype=torch.float16, device_map="cuda")
             _model = (PeftModel.from_pretrained(base, str(adapter)).eval(), tok)
     return _model
 
