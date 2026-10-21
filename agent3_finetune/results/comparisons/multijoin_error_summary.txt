@@ -1,12 +1,13 @@
 Wrong multi-join answers by category (manual label if given, otherwise automatic)
 
 category                                                lora        base
-unknown column or table                                   20          17
-runs but returns no rows                                   2           3
-same tables, wrong columns / join key / filter             2           3
-missing table(s)                                           3           1
+missing join (needed table not used)                      17           9
+invented column or table                                   4           4
+wrong alias or table for a column                          2           6
+other (runs, wrong result)                                 3           3
+wrong filter value                                         1           2
 TOTAL wrong answers                                       27          24
 
-lora: 0 rows had a manual label; 0 of them differ from the automatic label  (nothing checked by hand yet: automatic labels only)
-base: 0 rows had a manual label; 0 of them differ from the automatic label  (nothing checked by hand yet: automatic labels only)
+lora: 27 rows had a manual label; 27 of them differ from the automatic label
+base: 24 rows had a manual label; 24 of them differ from the automatic label
 Labels typed by hand are your own judgement; say in the thesis which rows you checked and which you did not.
