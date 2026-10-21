@@ -1,0 +1,803 @@
+{
+ "meta": {
+  "recorded_at": "2026-10-21 03:07",
+  "gpu": "Tesla T4",
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "note": "Saved answers recorded from the live system; not a live run."
+ },
+ "examples": [
+  {
+   "title": "1. Easy: how many singers?",
+   "result": {
+    "question": "How many singers are there?",
+    "db": "concert_singer",
+    "label": "aggregation",
+    "label_note": "Live classifier says: **aggregation** (it is right only about 59% of the time)",
+    "routed_head": "aggregation",
+    "modes": {
+     "base": {
+      "sql": "SELECT count(*) FROM singer",
+      "status": "Ran, 1 row",
+      "columns": [
+       "count(*)"
+      ],
+      "rows": [
+       [
+        6
+       ]
+      ],
+      "seconds": 3.19,
+      "head": null,
+      "ok": true
+     },
+     "lora": {
+      "sql": "SELECT count(*) FROM singer",
+      "status": "Ran, 1 row",
+      "columns": [
+       "count(*)"
+      ],
+      "rows": [
+       [
+        6
+       ]
+      ],
+      "seconds": 1.34,
+      "head": null,
+      "ok": true
+     },
+     "hydra": {
+      "sql": "SELECT count(*) FROM singer",
+      "status": "Ran, 1 row",
+      "columns": [
+       "count(*)"
+      ],
+      "rows": [
+       [
+        6
+       ]
+      ],
+      "seconds": 1.32,
+      "head": "aggregation",
+      "ok": true
+     }
+    }
+   }
+  },
+  {
+   "title": "2. Single-join: albums by AC/DC",
+   "result": {
+    "question": "List the titles of all albums by the artist AC/DC.",
+    "db": "chinook",
+    "label": "single-join",
+    "label_note": "Live classifier says: **single-join** (it is right only about 59% of the time)",
+    "routed_head": "single-join",
+    "modes": {
+     "base": {
+      "sql": "SELECT Title FROM Album WHERE ArtistId = (SELECT ArtistId FROM Artist WHERE Name = 'AC/DC')",
+      "status": "Ran, 2 rows",
+      "columns": [
+       "Title"
+      ],
+      "rows": [
+       [
+        "For Those About To Rock We Salute You"
+       ],
+       [
+        "Let There Be Rock"
+       ]
+      ],
+      "seconds": 3.43,
+      "head": null,
+      "ok": true
+     },
+     "lora": {
+      "sql": "SELECT T2.Title FROM Artist AS T1 JOIN Album AS T2 ON T1.ArtistId  =  T2.ArtistId WHERE T1.Name  =  \"AC/DC\"",
+      "status": "Ran, 2 rows",
+      "columns": [
+       "Title"
+      ],
+      "rows": [
+       [
+        "For Those About To Rock We Salute You"
+       ],
+       [
+        "Let There Be Rock"
+       ]
+      ],
+      "seconds": 4.73,
+      "head": null,
+      "ok": true
+     },
+     "hydra": {
+      "sql": "SELECT T1.Title FROM Album AS T1 JOIN Artist AS T2 ON T1.ArtistId  =  T2.ArtistId WHERE T2.Name  =  \"AC/DC\"",
+      "status": "Ran, 2 rows",
+      "columns": [
+       "Title"
+      ],
+      "rows": [
+       [
+        "For Those About To Rock We Salute You"
+       ],
+       [
+        "Let There Be Rock"
+       ]
+      ],
+      "seconds": 4.68,
+      "head": "single-join",
+      "ok": true
+     }
+    }
+   }
+  },
+  {
+   "title": "3. Top-5 country areas: the correct head (simple), set by hand",
+   "result": {
+    "question": "What are the names and areas of countries with the top 5 largest area?",
+    "db": "world_1",
+    "label": "simple",
+    "label_note": "Manual label: **simple**",
+    "routed_head": "simple",
+    "modes": {
+     "base": {
+      "sql": "SELECT Name , SurfaceArea FROM country ORDER BY SurfaceArea DESC LIMIT 5",
+      "status": "Ran, 5 rows",
+      "columns": [
+       "Name",
+       "SurfaceArea"
+      ],
+      "rows": [
+       [
+        "Russian Federation",
+        17075400.0
+       ],
+       [
+        "Antarctica",
+        13120000.0
+       ],
+       [
+        "Canada",
+        9970610.0
+       ],
+       [
+        "China",
+        9572900.0
+       ],
+       [
+        "United States",
+        9363520.0
+       ]
+      ],
+      "seconds": 2.53,
+      "head": null,
+      "ok": true
+     },
+     "lora": {
+      "sql": "SELECT name ,  surfacearea FROM country ORDER BY surfacearea DESC LIMIT 5",
+      "status": "Ran, 5 rows",
+      "columns": [
+       "Name",
+       "SurfaceArea"
+      ],
+      "rows": [
+       [
+        "Russian Federation",
+        17075400.0
+       ],
+       [
+        "Antarctica",
+        13120000.0
+       ],
+       [
+        "Canada",
+        9970610.0
+       ],
+       [
+        "China",
+        9572900.0
+       ],
+       [
+        "United States",
+        9363520.0
+       ]
+      ],
+      "seconds": 2.37,
+      "head": null,
+      "ok": true
+     },
+     "hydra": {
+      "sql": "SELECT name ,  SurfaceArea FROM country ORDER BY SurfaceArea DESC LIMIT 5",
+      "status": "Ran, 5 rows",
+      "columns": [
+       "Name",
+       "SurfaceArea"
+      ],
+      "rows": [
+       [
+        "Russian Federation",
+        17075400.0
+       ],
+       [
+        "Antarctica",
+        13120000.0
+       ],
+       [
+        "Canada",
+        9970610.0
+       ],
+       [
+        "China",
+        9572900.0
+       ],
+       [
+        "United States",
+        9363520.0
+       ]
+      ],
+      "seconds": 2.32,
+      "head": "simple",
+      "ok": true
+     }
+    }
+   }
+  },
+  {
+   "title": "4. Top-5 country areas: a wrong head (single-join), set by hand",
+   "result": {
+    "question": "What are the names and areas of countries with the top 5 largest area?",
+    "db": "world_1",
+    "label": "single-join",
+    "label_note": "Manual label: **single-join**",
+    "routed_head": "single-join",
+    "modes": {
+     "base": {
+      "sql": "SELECT Name , SurfaceArea FROM country ORDER BY SurfaceArea DESC LIMIT 5",
+      "status": "Ran, 5 rows",
+      "columns": [
+       "Name",
+       "SurfaceArea"
+      ],
+      "rows": [
+       [
+        "Russian Federation",
+        17075400.0
+       ],
+       [
+        "Antarctica",
+        13120000.0
+       ],
+       [
+        "Canada",
+        9970610.0
+       ],
+       [
+        "China",
+        9572900.0
+       ],
+       [
+        "United States",
+        9363520.0
+       ]
+      ],
+      "seconds": 2.61,
+      "head": null,
+      "ok": true
+     },
+     "lora": {
+      "sql": "SELECT name ,  surfacearea FROM country ORDER BY surfacearea DESC LIMIT 5",
+      "status": "Ran, 5 rows",
+      "columns": [
+       "Name",
+       "SurfaceArea"
+      ],
+      "rows": [
+       [
+        "Russian Federation",
+        17075400.0
+       ],
+       [
+        "Antarctica",
+        13120000.0
+       ],
+       [
+        "Canada",
+        9970610.0
+       ],
+       [
+        "China",
+        9572900.0
+       ],
+       [
+        "United States",
+        9363520.0
+       ]
+      ],
+      "seconds": 2.41,
+      "head": null,
+      "ok": true
+     },
+     "hydra": {
+      "sql": "SELECT T1.name ,  T1.surfacearea FROM country AS T1 JOIN city AS T2 ON T1.code  =  T2.countrycode ORDER BY surfacearea DESC LIMIT 5",
+      "status": "Ran, 5 rows",
+      "columns": [
+       "Name",
+       "SurfaceArea"
+      ],
+      "rows": [
+       [
+        "Russian Federation",
+        17075400.0
+       ],
+       [
+        "Russian Federation",
+        17075400.0
+       ],
+       [
+        "Russian Federation",
+        17075400.0
+       ],
+       [
+        "Russian Federation",
+        17075400.0
+       ],
+       [
+        "Russian Federation",
+        17075400.0
+       ]
+      ],
+      "seconds": 4.51,
+      "head": "single-join",
+      "ok": true
+     }
+    }
+   }
+  },
+  {
+   "title": "5. Singers in 2014 concerts: the correct head (multi-join), set by hand",
+   "result": {
+    "question": "What are the names of the singers who performed in a concert in 2014?",
+    "db": "concert_singer",
+    "label": "multi-join",
+    "label_note": "Manual label: **multi-join**",
+    "routed_head": "multi-join",
+    "modes": {
+     "base": {
+      "sql": "SELECT T3.Name FROM concert AS T1 JOIN singer_in_concert AS T2 ON T1.concert_ID = T2.concert_ID JOIN singer AS T3 ON T2.Singer_ID = T3.Singer_ID WHERE T1.Year = '2014'",
+      "status": "Ran, 6 rows",
+      "columns": [
+       "Name"
+      ],
+      "rows": [
+       [
+        "Timbaland"
+       ],
+       [
+        "Justin Brown"
+       ],
+       [
+        "John Nizinik"
+       ],
+       [
+        "Justin Brown"
+       ],
+       [
+        "Tribal King"
+       ],
+       [
+        "Rose White"
+       ]
+      ],
+      "seconds": 6.15,
+      "head": null,
+      "ok": true
+     },
+     "lora": {
+      "sql": "SELECT T3.Name FROM singer_in_concert AS T1 JOIN concert AS T2 ON T1.concert_ID  =  T2.concert_ID JOIN singer AS T3 ON T1.Singer_ID  =  T3.Singer_ID WHERE T2.Year  =  2014",
+      "status": "Ran, 6 rows",
+      "columns": [
+       "Name"
+      ],
+      "rows": [
+       [
+        "Timbaland"
+       ],
+       [
+        "Justin Brown"
+       ],
+       [
+        "John Nizinik"
+       ],
+       [
+        "Justin Brown"
+       ],
+       [
+        "Tribal King"
+       ],
+       [
+        "Rose White"
+       ]
+      ],
+      "seconds": 6.48,
+      "head": null,
+      "ok": true
+     },
+     "hydra": {
+      "sql": "SELECT T3.Name FROM singer_in_concert AS T1 JOIN concert AS T2 ON T1.concert_ID  =  T2.concert_ID JOIN singer AS T3 ON T1.Singer_ID  =  T3.Singer_ID WHERE T2.Year  =  2014",
+      "status": "Ran, 6 rows",
+      "columns": [
+       "Name"
+      ],
+      "rows": [
+       [
+        "Timbaland"
+       ],
+       [
+        "Justin Brown"
+       ],
+       [
+        "John Nizinik"
+       ],
+       [
+        "Justin Brown"
+       ],
+       [
+        "Tribal King"
+       ],
+       [
+        "Rose White"
+       ]
+      ],
+      "seconds": 6.54,
+      "head": "multi-join",
+      "ok": true
+     }
+    }
+   }
+  },
+  {
+   "title": "6. Singers in 2014 concerts: a wrong head (simple), set by hand",
+   "result": {
+    "question": "What are the names of the singers who performed in a concert in 2014?",
+    "db": "concert_singer",
+    "label": "simple",
+    "label_note": "Manual label: **simple**",
+    "routed_head": "simple",
+    "modes": {
+     "base": {
+      "sql": "SELECT T3.Name FROM concert AS T1 JOIN singer_in_concert AS T2 ON T1.concert_ID = T2.concert_ID JOIN singer AS T3 ON T2.Singer_ID = T3.Singer_ID WHERE T1.Year = '2014'",
+      "status": "Ran, 6 rows",
+      "columns": [
+       "Name"
+      ],
+      "rows": [
+       [
+        "Timbaland"
+       ],
+       [
+        "Justin Brown"
+       ],
+       [
+        "John Nizinik"
+       ],
+       [
+        "Justin Brown"
+       ],
+       [
+        "Tribal King"
+       ],
+       [
+        "Rose White"
+       ]
+      ],
+      "seconds": 5.97,
+      "head": null,
+      "ok": true
+     },
+     "lora": {
+      "sql": "SELECT T3.Name FROM singer_in_concert AS T1 JOIN concert AS T2 ON T1.concert_ID  =  T2.concert_ID JOIN singer AS T3 ON T1.Singer_ID  =  T3.Singer_ID WHERE T2.Year  =  2014",
+      "status": "Ran, 6 rows",
+      "columns": [
+       "Name"
+      ],
+      "rows": [
+       [
+        "Timbaland"
+       ],
+       [
+        "Justin Brown"
+       ],
+       [
+        "John Nizinik"
+       ],
+       [
+        "Justin Brown"
+       ],
+       [
+        "Tribal King"
+       ],
+       [
+        "Rose White"
+       ]
+      ],
+      "seconds": 6.3,
+      "head": null,
+      "ok": true
+     },
+     "hydra": {
+      "sql": "SELECT Name FROM singer WHERE Song_release_year  =  2014",
+      "status": "Ran, 1 row",
+      "columns": [
+       "Name"
+      ],
+      "rows": [
+       [
+        "John Nizinik"
+       ]
+      ],
+      "seconds": 2.41,
+      "head": "simple",
+      "ok": true
+     }
+    }
+   }
+  },
+  {
+   "title": "7. Aggregation: average life expectancy in Asia",
+   "result": {
+    "question": "What is the average life expectancy of the countries in Asia?",
+    "db": "world_1",
+    "label": "aggregation",
+    "label_note": "Live classifier says: **aggregation** (it is right only about 59% of the time)",
+    "routed_head": "aggregation",
+    "modes": {
+     "base": {
+      "sql": "SELECT AVG(LifeExpectancy)\nFROM country",
+      "status": "Ran, 1 row",
+      "columns": [
+       "AVG(LifeExpectancy)"
+      ],
+      "rows": [
+       [
+        66.48603603603604
+       ]
+      ],
+      "seconds": 2.06,
+      "head": null,
+      "ok": true
+     },
+     "lora": {
+      "sql": "SELECT avg(LifeExpectancy) FROM country WHERE Continent  =  \"Asia\"",
+      "status": "Ran, 1 row",
+      "columns": [
+       "avg(LifeExpectancy)"
+      ],
+      "rows": [
+       [
+        67.44117647058823
+       ]
+      ],
+      "seconds": 2.45,
+      "head": null,
+      "ok": true
+     },
+     "hydra": {
+      "sql": "SELECT avg(LifeExpectancy) FROM country WHERE Continent  =  \"Asia\"",
+      "status": "Ran, 1 row",
+      "columns": [
+       "avg(LifeExpectancy)"
+      ],
+      "rows": [
+       [
+        67.44117647058823
+       ]
+      ],
+      "seconds": 2.43,
+      "head": "aggregation",
+      "ok": true
+     }
+    }
+   }
+  },
+  {
+   "title": "8. Aggregation with a join: cities per continent",
+   "result": {
+    "question": "How many cities are there in each continent?",
+    "db": "world_1",
+    "label": "aggregation",
+    "label_note": "Live classifier says: **aggregation** (it is right only about 59% of the time)",
+    "routed_head": "aggregation",
+    "modes": {
+     "base": {
+      "sql": "SELECT Continent, COUNT(*) FROM city GROUP BY Continent",
+      "status": "Failed: no such column: Continent",
+      "columns": [],
+      "rows": [],
+      "seconds": 2.22,
+      "head": null,
+      "ok": false
+     },
+     "lora": {
+      "sql": "SELECT count(*) ,  T1.Continent FROM country AS T1 JOIN city AS T2 ON T1.Code  =  T2.CountryCode GROUP BY T1.Continent",
+      "status": "Ran, 6 rows",
+      "columns": [
+       "count(*)",
+       "Continent"
+      ],
+      "rows": [
+       [
+        366,
+        "Africa"
+       ],
+       [
+        1766,
+        "Asia"
+       ],
+       [
+        841,
+        "Europe"
+       ],
+       [
+        581,
+        "North America"
+       ],
+       [
+        55,
+        "Oceania"
+       ],
+       [
+        470,
+        "South America"
+       ]
+      ],
+      "seconds": 4.07,
+      "head": null,
+      "ok": true
+     },
+     "hydra": {
+      "sql": "SELECT Continent ,  count(*) FROM city GROUP BY Continent",
+      "status": "Failed: no such column: Continent",
+      "columns": [],
+      "rows": [],
+      "seconds": 1.93,
+      "head": "aggregation",
+      "ok": false
+     }
+    }
+   }
+  },
+  {
+   "title": "9. Hard: car makers with 8-cylinder cars",
+   "result": {
+    "question": "What are the names of the car makers that produced a car with 8 cylinders?",
+    "db": "car_1",
+    "label": "single-join",
+    "label_note": "Live classifier says: **single-join** (it is right only about 59% of the time)",
+    "routed_head": "single-join",
+    "modes": {
+     "base": {
+      "sql": "SELECT Maker FROM car_makers WHERE Id IN (SELECT MakeId FROM cars_data WHERE Cylinders = 8)",
+      "status": "Failed: no such column: MakeId",
+      "columns": [],
+      "rows": [],
+      "seconds": 13.43,
+      "head": null,
+      "ok": false
+     },
+     "lora": {
+      "sql": "SELECT t1.fullname FROM car_makers AS t1 JOIN cars_data AS t2 ON t1.id  =  t2.makeid WHERE t2.cylinders  =  8",
+      "status": "Failed: no such column: t2.makeid",
+      "columns": [],
+      "rows": [],
+      "seconds": 4.38,
+      "head": null,
+      "ok": false
+     },
+     "hydra": {
+      "sql": "SELECT T1.FullName FROM car_makers AS T1 JOIN cars_data AS T2 ON T1.Id  =  T2.Make WHERE T2.Cylinders  =  8",
+      "status": "Failed: no such column: T2.Make",
+      "columns": [],
+      "rows": [],
+      "seconds": 4.18,
+      "head": "single-join",
+      "ok": false
+     }
+    }
+   }
+  },
+  {
+   "title": "10. Typos: the model gets a messy question",
+   "result": {
+    "question": "how mny singrs r there",
+    "db": "concert_singer",
+    "label": "aggregation",
+    "label_note": "Live classifier says: **aggregation** (it is right only about 59% of the time)",
+    "routed_head": "aggregation",
+    "modes": {
+     "base": {
+      "sql": "SELECT count(*) FROM singer",
+      "status": "Ran, 1 row",
+      "columns": [
+       "count(*)"
+      ],
+      "rows": [
+       [
+        6
+       ]
+      ],
+      "seconds": 1.46,
+      "head": null,
+      "ok": true
+     },
+     "lora": {
+      "sql": "SELECT count(*) FROM singer",
+      "status": "Ran, 1 row",
+      "columns": [
+       "count(*)"
+      ],
+      "rows": [
+       [
+        6
+       ]
+      ],
+      "seconds": 1.29,
+      "head": null,
+      "ok": true
+     },
+     "hydra": {
+      "sql": "SELECT count(*) FROM singer",
+      "status": "Ran, 1 row",
+      "columns": [
+       "count(*)"
+      ],
+      "rows": [
+       [
+        6
+       ]
+      ],
+      "seconds": 1.34,
+      "head": "aggregation",
+      "ok": true
+     }
+    }
+   }
+  },
+  {
+   "title": "11. Off-topic: nothing to do with the database",
+   "result": {
+    "question": "What is the weather in Colombo today?",
+    "db": "concert_singer",
+    "label": "simple",
+    "label_note": "Live classifier says: **simple** (it is right only about 59% of the time)",
+    "routed_head": "simple",
+    "modes": {
+     "base": {
+      "sql": "SELECT * FROM `weather` WHERE City = 'Colombo' AND Date = CURDATE()",
+      "status": "Failed: no such table: weather",
+      "columns": [],
+      "rows": [],
+      "seconds": 2.45,
+      "head": null,
+      "ok": false
+     },
+     "lora": {
+      "sql": "SELECT Weather FROM city WHERE Name  =  'Colombo'",
+      "status": "Failed: no such table: city",
+      "columns": [],
+      "rows": [],
+      "seconds": 2.02,
+      "head": null,
+      "ok": false
+     },
+     "hydra": {
+      "sql": "SELECT Weather FROM city WHERE Name  =  'Colombo'",
+      "status": "Failed: no such table: city",
+      "columns": [],
+      "rows": [],
+      "seconds": 2.16,
+      "head": "simple",
+      "ok": false
+     }
+    }
+   }
+  }
+ ]
+}
