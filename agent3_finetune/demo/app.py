@@ -8,11 +8,15 @@ Start on Colab (GPU), from the project root, after mounting Drive:
       --db-dir /content/drive/MyDrive/agent3/demo_dbs --share
 It prints a public link ("Running on public URL: https://....gradio.live"): open that link in the browser.
 
-UNTESTED screen code: the logic in pipeline.py / sql_runner.py / engine.py is tested, this file is not (Gradio could
-not be installed where it was written). Run it on Colab first and tell me what you see.
+Saved-answers mode (no GPU, runs on the laptop; add --db-dir to also browse the databases):
+  python -m agent3_finetune.demo.app --cached agent3_finetune/demo/cache/examples.json [--db-dir <folder>]
+
+Status: the live screen opened on Colab and answered a question. The database viewer, the auto-loaded first
+cached example and the cached screen are written but not yet seen in a browser by the author.
 """
 import argparse
 
+from agent3_finetune.demo.dbinfo import describe_markdown
 from agent3_finetune.demo.pipeline import AUTO, LABELS, MANUAL, MODES, list_databases, run_all
 
 TITLES = {"base": "Before fine-tuning (base model)", "lora": "After fine-tuning (LoRA)",
@@ -22,7 +26,7 @@ BENCHMARK = """### My benchmark numbers
 Execution accuracy on 128 questions (Spider dev + Chinook). One seed, placeholder base model
 (Qwen2.5-1.5B-Instruct), about 31 questions per bucket.
 
-| Question type | Base | LoRA | HydraLoRA (true label) |
+| Type | Base | LoRA | Hydra |
 |---|---|---|---|
 | simple | 0.55 | 0.77 | 0.71 |
 | single-join | 0.29 | **0.74** | 0.65 |
@@ -30,8 +34,8 @@ Execution accuracy on 128 questions (Spider dev + Chinook). One seed, placeholde
 | aggregation | 0.56 | 0.59 | 0.56 |
 | **overall** | **0.41** | **0.56** | **0.52** |
 
-HydraLoRA with the **live classifier** (what you get in Auto mode): **0.39**. The classifier is right only
-about 59% of the time.
+Hydra = HydraLoRA given the **true** complexity label. With the **live classifier** (what you get in Auto
+mode) it scores **0.39**: the classifier is right only about 59% of the time.
 
 **What this shows**
 - Fine-tuning clearly helps single-join questions (0.29 to 0.74).
@@ -71,6 +75,12 @@ def build_ui(engine, classifier, dbs, cached=None):
             out += [f"**{r['status']}**{secs}{head}", to_frame(r), r["sql"]]
         return out
 
+    def add_browser(db_dropdown, first):
+        """Accordion that shows the tables, columns, links and a few rows of the chosen database."""
+        with gr.Accordion("Show the database: tables, columns and a few rows", open=False):
+            md = gr.Markdown(describe_markdown(dbs[first], first))
+        db_dropdown.change(lambda n: describe_markdown(dbs[n], n), [db_dropdown], [md])
+
     with gr.Blocks(title="Agent 3 demo: LoRA vs HydraLoRA") as demo:
         if cached is None:
             gr.Markdown("## Agent 3 demo: the same question, three models\n"
@@ -106,6 +116,8 @@ def build_ui(engine, classifier, dbs, cached=None):
                                 value=AUTO if classifier is not None and classifier.available else MANUAL,
                                 label="Complexity label")
                 manual = gr.Dropdown(list(LABELS), value="simple", label="Manual label (used only in Manual mode)")
+            if dbs:
+                add_browser(db, next(iter(dbs)))
             go = gr.Button("Ask", variant="primary")
             inputs = [question, db, mode, manual]
             go.click(respond, inputs, outputs)
@@ -117,6 +129,10 @@ def build_ui(engine, classifier, dbs, cached=None):
             go = gr.Button("Show saved answer", variant="primary")
             go.click(lambda t: render(by_title[t]), [pick], outputs)
             pick.change(lambda t: render(by_title[t]), [pick], outputs)
+            demo.load(lambda: render(by_title[titles[0]]), None, outputs)  # show the first example at start-up
+            if dbs:  # databases given with --db-dir: let the panel look inside them (questions stay saved ones)
+                first = next(iter(dbs))
+                add_browser(gr.Dropdown(list(dbs), value=first, label="Browse a database"), first)
     return demo
 
 
@@ -132,7 +148,8 @@ def main():
 
     if a.cached:  # last-resort mode: runs on the laptop with only gradio installed
         from agent3_finetune.demo.cache import load_cache
-        build_ui(None, None, {}, cached=load_cache(a.cached)).queue().launch(share=a.share)
+        dbs = list_databases(a.db_dir) if a.db_dir else {}
+        build_ui(None, None, dbs, cached=load_cache(a.cached)).queue().launch(share=a.share)
         return
     if not (a.lora and a.hydra and a.db_dir):
         raise SystemExit("live mode needs --lora, --hydra and --db-dir (or use --cached <examples.json>)")
