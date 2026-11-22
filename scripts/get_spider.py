@@ -45,6 +45,36 @@ def extract_and_build():
     print(len(out), "pairs written to eval/spider_pairs.json")
 
 
+def build_width_sets(train_n=1200):
+    """For the adaptive-width study (python -m scripts.get_spider --width):
+    eval/spider_dev_full.json     every dev question that is not nested/compound (the test set, about 1,000)
+    eval/spider_train_width.json  train_n train questions, equal numbers per complexity bucket where possible
+                                  (the selector's training set; train and dev databases are different)."""
+    z = zipfile.ZipFile(ZIP)
+    nested = re.compile(r"\bSELECT\b.*\bSELECT\b|\bINTERSECT\b|\bUNION\b|\bEXCEPT\b", re.I | re.S)
+    path = lambda d: f"data/spider/{d['db_id']}/{d['db_id']}.sqlite"
+    row = lambda d: {"db": path(d), "question": d["question"], "sql": d["query"]}
+    dev = [d for d in json.loads(z.read("spider_data/dev.json")) if not nested.search(d["query"])]
+    json.dump([row(d) for d in dev], open("eval/spider_dev_full.json", "w", encoding="utf-8"), indent=1)
+    train = [d for d in json.loads(z.read("spider_data/train_spider.json")) if not nested.search(d["query"])]
+    rnd = random.Random(0)
+    picked = []
+    for b in BUCKETS:
+        pool = sorted((d for d in train if classify_sql(d["query"]) == b), key=lambda d: (d["db_id"], d["question"]))
+        picked += rnd.sample(pool, min(train_n // len(BUCKETS), len(pool)))
+    for db in sorted({d["db_id"] for d in picked}):
+        os.makedirs(f"data/spider/{db}", exist_ok=True)
+        if not os.path.exists(f"data/spider/{db}/{db}.sqlite"):
+            with open(f"data/spider/{db}/{db}.sqlite", "wb") as f:
+                f.write(z.read(f"spider_data/database/{db}/{db}.sqlite"))
+    json.dump([row(d) for d in picked], open("eval/spider_train_width.json", "w", encoding="utf-8"), indent=1)
+    print(len(dev), "dev pairs -> eval/spider_dev_full.json;", len(picked), "train pairs -> eval/spider_train_width.json")
+
+
 if __name__ == "__main__":
+    import sys
     download()
-    extract_and_build()
+    if "--width" in sys.argv:
+        build_width_sets()
+    else:
+        extract_and_build()

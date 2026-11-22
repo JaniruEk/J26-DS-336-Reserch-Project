@@ -99,7 +99,8 @@ def test_nl_classifier_and_handoff_contract(tiny_db):
     from agent1_retrieval import BUCKETS, Agent1, classify_query
     assert classify_query("How many customers are there in each market segment?") == "aggregation"
     out = Agent1(tiny_db, mode="structural").run("what is the total of each invoice")
-    assert set(out) == {"query", "complexity", "mode", "anchor", "matched", "tables", "ddl", "tokens", "latency_ms", "trace"}
+    assert set(out) == {"query", "complexity", "mode", "width", "anchor", "matched", "tables", "ddl", "tokens", "latency_ms", "trace"}
+    assert out["width"] is None  # no width selector in use
     assert out["complexity"] in BUCKETS and out["anchor"] == "invoice" and out["matched"]
     assert _json.loads(_json.dumps(out)) == out  # contract must survive JSON transport
 
@@ -141,6 +142,37 @@ def test_lower_case_compound_names_are_split_but_real_words_are_not():
     from agent1_retrieval.linking import segment
     assert segment("firstname") == ["first", "name"] and segment("productname") == ["product", "name"]
     assert segment("category") == ["category"] and segment("customer") == ["customer"]
+
+
+@pytest.mark.skipif(not (ROOT / "agent1_retrieval" / "complexity_schema.joblib").exists(),
+                    reason="run scripts/train_complexity_schema.py")
+def test_schema_classifier_is_wired_into_handoff(tiny_db):
+    from agent1_retrieval import Agent1, BUCKETS
+    from agent1_retrieval.complexity import schema_features
+
+    r = Retriever(tiny_db, schema_classifier=True)
+    features = schema_features(r, "what is the total of each invoice")
+    assert len(features) == 7
+    assert all(isinstance(value, int) and value >= 0 for value in features)
+
+    out = Agent1(tiny_db, mode="structural", schema_classifier=True).run(
+        "what is the total of each invoice"
+    )
+    assert out["complexity"] in BUCKETS
+
+
+def test_adaptive_width_returns_anchor_only_for_confident_simple_question(tiny_db, monkeypatch):
+    import agent1_retrieval.retrieval as retrieval_module
+
+    r = Retriever(tiny_db, narrow_simple=0.6)
+    r._semantic_anchors = lambda q, k=1: ["invoice"]
+    monkeypatch.setattr(retrieval_module, "p_simple", lambda q, retriever=None: 0.99)
+
+    context = r.retrieve("what is the total of each invoice", "hybrid_pruned")
+
+    assert context.columns == {"invoice": ["invoice_id", "total", "notes", "customer_id"]}
+    assert context.roles == {"invoice": "anchor"}
+    assert set(context.reasons["invoice"].values()) == {"simple_question"}
 
 
 @pytest.fixture
@@ -211,3 +243,117 @@ def test_gate_ignores_function_words_and_loose_similarity():
     for q in ("Which products are discontinued?", "How many orders did each employee take?",
               "List the names of all shipping companies.", "What is the total freight cost per shipping company?"):
         assert nw.matched(q), q
+
+
+# ---------------------------------------------------------------- adaptive context width (width.py)
+def _width_rows(n=120):
+    """Synthetic sweep rows: 'simple' questions are correct only at W1 (wide context distracts), the rest only at W3."""
+    import random
+    from agent1_retrieval.width import FEATURES, WIDTHS
+    rnd = random.Random(0)
+    rows = []
+    for i in range(n):
+        simple = i % 2 == 0
+        feats = {f: rnd.random() for f in FEATURES}
+        feats["p_simple"] = 0.9 if simple else 0.1
+        good = "W1" if simple else "W3"
+        rows.append({"id": str(i), "db": f"db{i % 12}", "bucket": "simple" if simple else "multi-join",
+                     "ok": {w: w == good for w in WIDTHS}, "runs": {w: w >= good for w in WIDTHS}, "tokens": {w: 10 * (k + 1) for k, w in enumerate(WIDTHS)},
+                     "features": feats})
+    return rows
+
+
+def test_width_label_is_the_narrowest_correct_width():
+    from agent1_retrieval.width import label
+    assert label({"ok": {"W1": False, "W2": True, "W3": True, "W4": False}}) == "W2"
+    assert label({"ok": {"W1": False, "W2": False, "W3": False, "W4": False}}) is None
+
+
+def test_width_selector_learns_and_never_tests_on_a_training_database():
+    pytest.importorskip("sklearn")
+    from scripts.width_selector import make_model
+    from agent1_retrieval.width import accuracy, choose_fixed, choose_oracle, choose_rule, compare, cross_fit
+    rows = _width_rows()
+    seen = []
+
+    class Spy:
+        def __init__(self):
+            self.m = make_model()
+
+        def fit(self, X, y):
+            self.n = len(X)
+            return self.m.fit(X, y)
+
+        def predict(self, X):
+            seen.append((self.n, len(X)))
+            return self.m.predict(X)
+
+    picked = cross_fit(rows, Spy, folds=4)
+    assert all(a + b == len(rows) for a, b in seen)  # train and test parts never overlap
+    selector = lambda r: picked[r["id"]]
+    assert accuracy(rows, choose_oracle) == 1.0
+    assert accuracy(rows, choose_fixed("W1")) == 0.5
+    assert accuracy(rows, selector) > 0.9  # p_simple separates the two groups
+    assert accuracy(rows, choose_rule()) == 0.5  # the rule sends the non-simple half to W2, which is wrong here
+    c = compare(rows, selector, choose_fixed("W1"))
+    assert c["wins"] > 0 and c["losses"] == 0 and c["p"] < 0.001 and c["ci"][0] > 0
+
+
+def test_retry_wider_path_and_complexity_only_ablation():
+    pytest.importorskip("sklearn")
+    from scripts.width_selector import make_model
+    from agent1_retrieval.width import COMPLEXITY_ONLY, WIDTHS, accuracy, cross_fit, retry_path
+    row = {"runs": {"W1": False, "W2": False, "W3": True, "W4": True}}
+    assert retry_path(row, "W1") == ["W1", "W2", "W3"]
+    assert retry_path(row, "W3") == ["W3"]  # it ran: no retry, even if the answer is wrong
+    never = {"runs": {w: False for w in WIDTHS}}
+    assert retry_path(never, "W1") == ["W1", "W2", "W3"]  # at most 3 attempts, as in the app
+    assert retry_path(never, "W4") == ["W4"]  # nothing wider than the full schema
+    rows = _width_rows()
+    for feats, good in ((COMPLEXITY_ONLY, True), (("q_words",), False)):  # only p_simple carries the signal
+        picked = cross_fit(rows, make_model, folds=4, features=feats)
+        assert (accuracy(rows, lambda r: picked[r["id"]]) > 0.9) is good
+
+
+def test_width_selector_script_runs_on_sweep_rows(tmp_path, monkeypatch, capsys):
+    pytest.importorskip("sklearn")
+    import json
+    import sys
+    from scripts import width_selector
+    f = tmp_path / "rows.jsonl"
+    f.write_text("\n".join(json.dumps(r) for r in _width_rows()), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["width_selector", str(f)])
+    width_selector.main()
+    out = capsys.readouterr().out
+    for name in ("learned selector", "learned, cplx only", "W2 + retry wider", "selector + retry", "oracle (limit)"):
+        assert name in out
+
+
+def test_full_schema_width_holds_every_table(tmp_path):
+    import sqlite3
+    from agent1_retrieval.retrieval import Retriever
+    from agent1_retrieval.width import width_context
+    p = str(tmp_path / "w.db")
+    c = sqlite3.connect(p)
+    c.executescript("CREATE TABLE a (id INTEGER PRIMARY KEY, x TEXT); CREATE TABLE b (id INTEGER PRIMARY KEY, a_id INTEGER REFERENCES a(id));")
+    c.close()
+    ctx = width_context(Retriever(p), "how many b", "W4")
+    assert set(ctx.columns) == {"a", "b"} and ctx.columns["b"] == ["id", "a_id"] and ctx.tokens > 0
+
+
+def test_elbow_keeps_the_tables_before_the_drop():
+    from agent1_retrieval.width import elbow_k
+    assert elbow_k([0.9, 0.88, 0.2, 0.15, 0.1], alpha=1.0) == 2  # the drop is after the second table
+    assert elbow_k([0.9, 0.88, 0.2, 0.15, 0.1], alpha=0.6) == 1
+    assert elbow_k([0.9, 0.89, 0.88, 0.1], alpha=1.0) == 3  # three similar tables, then the drop
+    assert elbow_k([0.5, 0.4]) == 2 and elbow_k([0.5, 0.5, 0.5]) == 3  # too few tables or no shape: keep all
+
+
+def test_quant_split_shares_no_database():
+    from scripts.make_quant_split import split
+    pairs = [{"db": f"db{i % 10}", "question": f"q{i}", "sql": "SELECT a FROM t" if i % 2 else "SELECT count(*) FROM t"}
+             for i in range(200)]
+    s = split(pairs, {"calibration": 5, "test": 8})
+    assert s["calibration"] and s["test"]
+    assert not {p["db"] for p in s["calibration"]} & {p["db"] for p in s["test"]}
+    assert split(pairs, {"calibration": 5, "test": 8}) == s  # same seed, same sets

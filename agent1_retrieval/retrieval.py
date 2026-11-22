@@ -1,6 +1,7 @@
 """Agent 1: four switchable retrieval modes built from three sub-agents
 (anchor selection -> FK traversal -> column pruning)."""
 import hashlib
+import os
 import json
 import tempfile
 import time
@@ -54,8 +55,15 @@ def _embedder():
 
 @lru_cache(maxsize=1)
 def _enc():
+    """Token counter. Default: tiktoken cl100k (a proxy; all earlier results use it). J26_TOKENIZER=<Hugging Face model>
+    (e.g. Qwen/Qwen2.5-1.5B-Instruct) counts with the SQL model's own tokenizer instead (needs transformers)."""
+    name = os.environ.get("J26_TOKENIZER")
+    if name:
+        from transformers import AutoTokenizer
+        tok = AutoTokenizer.from_pretrained(name)
+        return type("Enc", (), {"encode": staticmethod(lambda text: tok(text, add_special_tokens=False)["input_ids"])})()
     import tiktoken
-    return tiktoken.get_encoding("cl100k_base")  # ponytail: proxy tokenizer, swap for the SLM's own once Agent 2 picks the base model
+    return tiktoken.get_encoding("cl100k_base")
 
 
 class Retriever:
