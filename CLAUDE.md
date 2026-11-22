@@ -21,7 +21,7 @@ Regulated enterprises (regional banks, insurers, credit unions, FinTech) want NL
 ## Four agents (sequential pipeline, run fresh per query; no independent track)
 | Agent | Owner | Role |
 |---|---|---|
-| 1 Retrieval | J.K.B. Ekanayake (IT23199262) | Schema retrieval + column-level pruning; builds shared complexity classifier |
+| 1 Retrieval | J.K.B. Ekanayake (IT23199262) | Schema retrieval with adaptive context width (main claim since 21 Nov 2026: how much schema each question gets, learned from the small model's SQL results); column-level pruning; builds shared complexity classifier |
 | 2 Foundation model | W.A.T. Wathsala (IT23282704) | Knowledge distillation (~7B teacher → small student vs. native baseline); critical path |
 | 3 Fine-tuned generation | K.G.Y.V. Thathsarani (IT23404250) | Standard LoRA vs. HydraLoRA (hard-coded complexity routing); live SQL generation; outputs winner **and runner-up** |
 | 4 Quantized execution | K.M.I.N. Karunanayake (IT23179912) | Adaptive mixed-precision quantization (final scope, 19 Oct 2026; replaced QAT vs PTQ): per-layer SQL-task sensitivity → sensitive layers INT8, rest INT4, vs uniform INT4/INT8; on Qwen2.5-1.5B-Instruct (28 layers; her earlier Phi-3 Mini work = preliminary), final allocation on Agent 3's winner; SQL execution + error diagnosis/retry |
@@ -30,7 +30,7 @@ Handoffs: A1→A3 pruned schema context + complexity label (live); A2→A3 two b
 
 ### Agent 1 detail (Ekanayake — the user's own component)
 - Sub-agents: Anchor-Selection (ChromaDB semantic or keyword match) → Traversal (FK graph via `PRAGMA foreign_key_list`) → Pruning (lemma overlap first, spaCy cosine fallback vs tuned threshold).
-- Four switchable modes: semantic-only, structural-only, hybrid, hybrid+pruning (novel). Baseline = table-level hybrid.
+- Four switchable modes: semantic-only, structural-only, hybrid, hybrid+pruning. Since 21 Nov 2026 these are the fixed-width baselines of the adaptive-width study (see "Agent 1 main claim" below); pruning is no longer the novelty claim.
 - Metrics: token count, schema-linking precision/recall, execution accuracy — stratified by complexity.
 - NFRs: <500ms retrieval per query; ≥20 tables; tolerate missing FKs.
 
@@ -45,7 +45,7 @@ Handoffs: A1→A3 pruned schema context + complexity label (live); A2→A3 two b
 - Closest competitor: **MATS** (arXiv 2512.18622; 5 SLM agents, 9B total, 24GB GPU, 87.1% Spider / 64.73% BIRD). Do NOT claim multi-agent SLM text-to-SQL as novel. Claim efficiency (one shared base + adapters + quantization on mid-range hardware) and depth on fine-tuning/quantization.
 - Strongest claim: complexity-routed HydraLoRA for SQL (Thathsarani). Be ready to defend hard-coded vs learned router (auditable, avoids gating collapse).
 - Quantization (Agent 4, mixed precision): per-layer mixed precision is NOT new (HAWQ/HAWQ-V2, OWQ, SpQR, SliM-LLM, llama.cpp `Q4_K_M`). Claim only task-specific (SQL, per complexity bucket) vs generic sensitivity; baselines must include `Q4_K_M` and random layers at equal INT8 count. Plan: Execution Plan section 4. Her Day 6 sensitivity used 25 questions (most layers differ by 0–1 question = noise).
-- Schema retrieval is crowded (GRASP, RASL, RSL-SQL, SchemaGraphSQL) — Ekanayake's contribution is the four-mode ablation/measurement rigor, not a novel retrieval algorithm. Read GRASP and RASL.
+- Schema retrieval is crowded (GRASP, RASL, RSL-SQL, SchemaGraphSQL, CHESS): do NOT claim pruning or a retrieval algorithm as novel. Agent 1's claim (approved 21 Nov 2026) is the per-question context width learned from the small model's own SQL results, plus the distraction curves (best width by model size and complexity). Per-question schema amount, outcome-learned routing and the cheapest-success label each exist separately (novelty check 22 Nov 2026): claim only their combination for schema width on small local models. The pruning result is "no loss" (.43 vs .41, p=.69), not a gain.
 - Privacy: combination of local hosting + active schema pruning (Prem-1B-SQL skips pruning; MaskSQL uses redaction instead of local hosting).
 - Commercial tools (Snowflake Cortex Analyst, Databricks Genie, ThoughtSpot): cite once as market context / proof of demand.
 
@@ -119,16 +119,101 @@ Reference prototype: github.com/JaniruEk/enterprise-slm-framework (`pillar1_rag/
 - Accuracy: 148 eval questions (Agent 3's routing set) **.588 -> .676** (22 fixed / 9 broken, McNemar p=.029); Spider dev .57 -> .64, Chinook .57 -> .93, TPC-H .71 -> .71. Set cover was the feature that mattered (first version without it: .622, Spider unchanged). Gotcha repeated and fixed: don't drop spaCy stop words ('name', 'first', 'last').
 - HydraLoRA (Thathsarani seed 42, offline estimate from her oracle + text-classifier predictions): old routing .391, oracle .516, new routing **between .445 and .539** (12 of 128 questions get a head neither run used; needs her fixed-head runs to pin down).
 
-- Prior work (novelty check, partly abstracts only): QCMA-SQL (Findings NAACL 2025) routes by difficulty with a schema selector (closest; read the PDF before claiming a difference); DIN-SQL classifies but links schema identically; RSL-SQL picks full vs pruned per question after generation. Claim: measured complexity-conditioned width on small local models, not complexity routing itself. Retry-time re-retrieval (idea 2) is essentially AutoLink (arXiv 2511.17190) -> only an ablation on SLMs would be new.
+- Prior work (full text read 22 Nov 2026): QCMA-SQL (Findings NAACL 2025) has a learned per-question schema selector trained on gold-SQL labels, and its difficulty class (simple/complex) picks the AGENT, not the schema amount; API LLMs only. DIN-SQL classifies but links schema identically; RSL-SQL picks full vs pruned per question after generation. AutoLink (arXiv 2511.17190) widens the schema on verification errors BEFORE generation; after a failed execution it revises only the SQL (App. B), so retry-wider is close to it but not the same: keep it an ablation, not a claim.
+
+## Agent 1 main claim: adaptive context width (approved 21 Nov 2026; replaces pruning as the claim)
+- **Claim:** Agent 1 selects how much schema to show for each question (the *width*), and learns the selection from the SQL results of the small model in use. Research question, hypotheses, objectives and evaluation: `reports/agent1_width/README.md` and the proposal addendum (Claude Doc "Agent 1 Proposal Addendum: Adaptive Context Width"). The four-mode pruning work is now the fixed-width baselines; value hints and the schema-aware classifier stay as support results.
+- **Widths** (`agent1_retrieval/width.py`, `width_context(retriever, question, width)`; the Retriever must use `RECOMMENDED` with `narrow_simple` unset): W1 = anchor table only (mode `semantic`), W2 = `hybrid_pruned`, W3 = `hybrid`, W4 = full schema (new). `elbow_context()` = baseline "E", a simplified adaptive elbow (arXiv 2611.20979: no smoothing, no training).
+- **Selector inputs** `features()` / `FEATURES` (all known before the SQL model runs): the four complexity probabilities, top-3 table similarities and their gap, schema size, 4 schema features, tokens at each width, question length. **Label** `label(row)` = the narrowest width with correct SQL; a question with no correct width is not used for training.
+- **Pure functions on sweep rows** (no model needed, unit-tested with synthetic rows): `choose_fixed`, `choose_rule` (the old `narrow_simple` rule: W1 if P(simple) >= 0.5, else W2), `choose_elbow`, `choose_oracle`, `accuracy`, `compare` (bootstrap CI + exact McNemar), `cross_fit` (folds by DATABASE: a selector never predicts a question from a database it trained on).
+- **Scripts:** `python -m scripts.get_spider --width` -> `eval/spider_dev_full.json` (all non-nested dev questions, the test set) + `eval/spider_train_width.json` (1,200 train questions, selector training; extracts the train DBs). `python -m scripts.width_sweep --pairs ... --model <ollama model> [--elbow] [--agent3 <adapter folder>] [--limit N] [--out file]` -> one JSON line per question in `results/width/*.jsonl` (`ok`, `tokens`, `sql` per width, `features`); resumable; skips questions whose gold SQL returns no rows. `python -m scripts.width_selector <rows> [--test <rows>] [--save agent1_retrieval/width_selector.joblib]` -> table of fixed W1..W4, complexity rule, elbow (if present), learned selector (GradientBoosting), learned selector with `COMPLEXITY_ONLY` features (Adaptive-RAG-style ablation), "W2 + retry wider" and "selector + retry" (`width.retry_path`: next wider width when the SQL fails to RUN, max 3 attempts; tokens = sum of widths tried; offline, no error hint), oracle; each against the best fixed width. Threshold = hypothesis 3 below (p < 0.0125); elbow, complexity-only and retry rows are secondary. Sweep rows carry `runs` (SQL ran without a DB error; added 22 Nov, before any real sweep).
+- **In the app:** env `J26_WIDTH_SELECTOR=<joblib>` -> `Agent1(width_selector=...)` (only for mode `hybrid_pruned`). The handoff has a new key **`width`** (W1..W4, or None without a selector; the contract test checks it). After a failed attempt `Agent1.wider(width)` gives the next wider width and `/query` re-runs Agent 1 with it (log stage `agent1.wider`, step field `next_width`). With the selector Agent 1 builds all four contexts per question: **measure latency against the 500 ms target** (not measured yet).
+- `J26_TOKENIZER=<HF model>` (e.g. `Qwen/Qwen2.5-1.5B-Instruct`) counts tokens with the model's own tokenizer; default stays tiktoken cl100k so old numbers reproduce. Say which one a result used.
+- **Novelty check 22 Nov 2026 (full table and sources: `reports/agent1_width/README.md`, section "Novelty check").** Narrowest claim the search supports: for one given small local model, a selector chooses one of four nested schema widths per question BEFORE generation, trained on labels from that same model's own execution results; plus distraction curves by model size (0.5B-7B) AND SQL complexity. NOT new, credit it: per-question schema amount (QCMA-SQL, AttnLink 2608.00693 = closest, EviLink, Adaptive-Elbow, DSR-SQL arXiv 2511.21402 token rule, DecoSearch 2606.17821, CHESS); a router learned from the model's own outcomes (Adaptive-RAG, NAACL 2024); the "cheapest option that succeeds" label (EllieSQL 2503.22402, for pipelines); learned context amount in RAG (DynamicRAG 2505.07233, 2512.14313); accuracy vs schema budget (BudgetSchemaBench 2610.00092: API models, no size/difficulty split; Balancing Content Size 2502.15723; LitE-SQL 2510.09014); pruned vs full chosen after generation (RSL-SQL; DSR-SQL EMNLP 2026 "Dual-Schema", a different paper from arXiv 2511.21402 despite the same name). Rethinking Schema Linking's (2510.14296) future work is choosing a retrieval PATH by complexity, not width. CHS-SQL (2607.22624): one global threshold on model confidence. Never write "first to study accuracy vs schema size". Read before PP2: DynamicRAG, arXiv 2603.11513, Google long-context 2501.12372, MCTS-SQL, MSc-SQL, JOLT-SQL.
+- **Status: NO real model run exists.** Everything was tested with synthetic rows and stub models only. Do not write any width/selector number in a report until a `results/width/*.jsonl` file from a real run is committed.
+
+## Agent 3's model as the real SQL writer (21 Nov 2026)
+- `harness/generators.py`: `J26_GENERATOR=agent3`, `J26_AGENT3_ADAPTER=<folder with adapters.pt + adapter_meta.json>`, optional `J26_AGENT3_BASE`. `generators.agent3(adapter, base=None, load_base=...)` loads the base model + her adapter with her own `agent3_finetune.hydra` code, her training prompt (`AGENT3_PROMPT`, a copy of `train_lora.PROMPT` because that module imports peft; a test keeps them equal) and greedy decoding, `clean_sql` on the output. `stand_in = False`, `wants_complexity = True`: `/query` passes `complexity=ctx["complexity"]` to any generator with that attribute, and HydraLoRA uses it to select the head (unknown label -> her `DEFAULT_HEAD`). Missing adapter or torch -> falls back to phi3 with the reason in the label. CPU works but is slow.
+- Not done: no run with the real adapter (the adapter files are not in git; ask Thathsarani). Her adapters were trained on the FULL schema; the app sends Agent 1's selected schema: measure the difference. `main` does not have her `thathsarani-hydra` branch (policies, artefacts): merge it.
+
+## Whole-system evaluation and team support (21 Nov 2026)
+- `python -m scripts.e2e_eval --pairs <files> --name <configuration>`: runs `/query` (gate -> SQL -> read-only run, retries) for every question through `create_app` with the current env settings; correct = final SQL returns the gold rows; declined or failed = wrong; `results/e2e/<name>.jsonl` + `.meta.json` (records the generator and the stand-ins). `--compare A.jsonl B.jsonl`: per-bucket difference, bootstrap CI, McNemar. This makes the one end-to-end results table for PP2 (does not exist yet).
+- `python -m scripts.make_quant_split` (needs `eval/spider_dev_full.json`): `eval/quant_calibration.json` (25 per bucket) and `eval/quant_test.json` (50 per bucket) from disjoint databases, for Agent 4 (her test set was her calibration set).
+- `handoff/Next_Steps_Team_Nov2026.md`: next steps for each member. Novelty review of all agents (21 Nov): Agent 3 strongest (negative result, 1 seed, 128 questions); Agent 2 not tested on SQL (Struct-SQL, arXiv 2512.17053, already distils for text-to-SQL at 4B; her injection gain holds only under label scoring: free text native .957 vs distilled .440); Agent 4 close to TAQ (arXiv 2511.06516: per-task 8/4-bit layers, Qwen2.5-3B), new part = SQL and per-bucket results; pipeline itself not novel (MATS).
+
+## Plan to PP2 and the final submission (written 22 Nov 2026)
+Week 1 starts 23 Nov 2026. The PP2 date is not confirmed: move the weeks to match it. "Queue" = the implementation queue below.
+
+**Goal for PP2:** a connected system with real results: (1) Agent 1's width study measured on Qwen2.5-1.5B, (2) Agent 3's adapter writing the SQL in the app, (3) one end-to-end results table (`scripts/e2e_eval.py`), (4) each member's "fix before PP2" item done.
+**Goal for the final submission:** re-runs on the final models, thesis chapters, research paper, final presentation.
+
+### Agent 1 (Ekanayake) week by week
+| Weeks | Work | Queue step | Done when |
+|---|---|---|---|
+| 1 | Tests pass on this PC; commits; Spider sets; 20-question check with `--local fp16 --elbow` | 1-4 | Stop point A shown to the user |
+| 2-3 | Full sweep on dev + Chinook + Northwind, then the training set, Qwen2.5-1.5B FP16 | 5 | `results/width/dev_qwen1.5b_fp16.jsonl` and `train_qwen1.5b_fp16.jsonl` committed |
+| 4 | Selector trained and tested; table in `reports/agent1_width/README.md` | 6 | Stop point B shown to the user |
+| 5-6 | Other model sizes (0.5B, 3B, 7B; needs downloads and the user's go-ahead); selector transfer test (hypothesis 4) | 5-6 | One result file per model size |
+| 7 | Distraction-curve charts; selector latency in the app against 500 ms | 7-8 | Charts in `reports/agent1_width/`; median and p95 recorded |
+| 8 | **PP2 gate:** all conditions (fixed W1-W4, rule, elbow, selector, oracle) with CIs; literature search repeated | - | PP2 results table complete |
+| 9-10 | Re-run with Agent 3's adapter (`--agent3`), end-to-end runs and comparisons | 9 | `results/e2e/*.jsonl` for each configuration |
+| 11-12 | Documents updated for the new claim; thesis chapters (retrieval engine and baselines; width study) | 10 | Draft to the supervisor |
+
+### Hypotheses to test (report each as supported / not supported / not testable, with the numbers)
+1. The best fixed width becomes narrower when the model becomes smaller.
+2. The best width is different for each complexity label.
+3. The learned selector beats every fixed width and the complexity rule (threshold p < 0.0125).
+4. A selector trained for one model is not the best selector for a different model.
+If hypothesis 3 fails, hypotheses 1 and 2 (the distraction curves) are the main finding.
+
+### Other members (their own work; this repo only supports them, see `handoff/Next_Steps_Team_Nov2026.md`)
+| Member | Before PP2 | Before the final submission | Blocks |
+|---|---|---|---|
+| Wathsala (Agent 2) | Commit the 1.5B notebook, exact prompt, checkpoint location; fix the 60/116 invalid free-text answers; start SQL distillation (Spider train, teacher SQL that runs) and agree a delivery date | Distilled + native + gold-label control base models delivered to Agent 3 | Agent 3's final comparison (critical path). Fallback if late: Agent 3 keeps the released Qwen base |
+| Thathsarani (Agent 3) | Send adapter folders; merge `thathsarani-hydra` into `main`; 3 seeds; full Spider dev; re-route with the schema-aware classifier (.676) | Re-train on Agent 2's two bases; training with Agent 1's schema format | Agent 4's final run; Agent 1 queue step 9 |
+| Karunanayake (Agent 4) | `scripts/make_quant_split.py` sets (select layers and test on different databases); mixed vs INT4/INT8/FP16 on 200 test questions; random-layer and `Q4_K_M` controls; cite TAQ (arXiv 2511.06516) | Final run on Agent 3's winner; empty-result check and retry | - |
+| Team | Agent 3's adapter in the app (`J26_GENERATOR=agent3`); one end-to-end table | End-to-end on Chinook / Spider / TPC-H / Northwind, SQLite and PostgreSQL; paper; final presentation | - |
+
+### Risks and the action for each
+- Selector not better than the rule -> report it; the distraction curves stay as the finding.
+- Sweeps too slow -> 1.5B first, 7B last; never delete result files; the runs resume.
+- Agent 2 late -> the fallback above, declared early to the supervisor.
+- A new paper publishes the same idea -> repeat the literature search in week 8 and before the thesis.
+- 100-token limit of Agent 4's `generate_sql` cuts long SQL -> count the cut answers; if more than a few percent, raise the limit for ALL conditions and say so.
+
+## Implementation queue for Claude Code (in this order; stop and ask when a step needs a file that is missing)
+- **Where it runs (decided 22 Nov 2026):** Claude Code in VS Code on Janiru's Windows PC, with local Ollama and the local GPU. The Claude cloud workspace has no GPU and cannot download models or reach this PC's Ollama, so every model run happens here. Commands in this file are for PowerShell from the repository folder; activate the project's virtual environment first.
+- **SQL model for the width study (decided 22 Nov 2026): no Ollama.** Use the team base model Qwen2.5-1.5B-Instruct through transformers, already in this PC's Hugging Face cache from the `adaptive_qwen` and gate runs: `python -m scripts.width_sweep ... --local fp16` (`harness.generators.qwen_local`: Agent 4's `src.qwen_model_loader.load_qwen`, `src.prompt_builder.build_prompt`, `src.qwen_generate.generate_sql`; needs the NVIDIA GPU and `pip install -r requirements-gpu.txt`). In every command of this queue replace `--model qwen2.5:1.5b-instruct` with `--local fp16` and name the outputs `..._qwen1.5b_fp16.jsonl`. In the app: `J26_GENERATOR=qwen_fp16` (also `qwen_int8`, `qwen_int4`). Limits to report: her `generate_sql` stops at 100 new tokens (count how many answers hit the limit; long multi-join SQL can be cut), and `--local` answers are not cached (the sweep still resumes per question). The other model sizes (0.5B, 3B, 7B) are not in the cache: they need a download (Hugging Face or Ollama) and the user's go-ahead; the Ollama prompt differs from this prompt, so do not mix the two in one comparison.
+- **Before step 1:** `python -c "import torch; print(torch.cuda.is_available())"` must print True. Ollama is optional (only for `--model` runs): `ollama list` shows what is pulled. `python -c "import agent1_retrieval, sklearn, joblib, fastapi"` must work.
+- **Stop points (wait for the user):** (A) after step 4: show the per-width table of the 20-question check and three example SQL answers per width. (B) after step 6: show the selector table. Never start the 0.5b / 3b / 7b sweeps, or step 9, without the user's go-ahead.
+- **Long runs:** start a sweep in a terminal that stays open; it is resumable (finished questions are skipped, answers are cached in `data/gen_cache.json`). If Ollama stops answering, start Ollama again and run the same command again. Do not delete `results/width/*.jsonl` or `data/gen_cache.json`.
+- **Give back to the user after step 6** (they bring these to the Claude chat for analysis and charts): `results/width/dev_qwen1.5b.jsonl`, `results/width/train_qwen1.5b.jsonl`, the printed selector table, the pytest summary line, and the model tag from `ollama list` (name + ID). Commit the result files.
+- **Rules:** do not push unless the user asks. Do not change `RECOMMENDED` / `LIVE` or the old result logs. If a real result contradicts a statement in this file or in a report, report it to the user; do not adjust the method to get a better number. A negative result is valid.
+- If the Spider download fails (Google Drive): ask the user to put the Spider zip at `data/spider.zip`, then run `python -m scripts.get_spider --width` again.
+1. **Verify on this machine:** `python -m pytest tests`. In the cloud workspace 83 passed with STUB embeddings; `tests/test_pp1_fixes.py::test_handoff_carries_explanations` failed there, most probably because of the stub. Fix real failures before anything else.
+2. **Commit** the uncommitted work in logical commits (Agent 1 CLI options; `agent3` generator; width module + scripts; selector in the app; e2e + quant split + handoff). Delete the temporary files `pp1/_*.patch`, `pp1/_claude_md_sections.md` and `pp1/_claude_md_apply.py` (do not commit them). Push only when the user asks.
+3. `python -m scripts.get_spider --width` (downloads Spider from Google Drive).
+4. Quick check: `python -m scripts.width_sweep --pairs eval/chinook_pairs.json --model qwen2.5:1.5b-instruct --limit 20 --elbow` (needs `ollama pull qwen2.5:1.5b-instruct`). Read some SQL per width by eye: W4 on a large schema can exceed the model's context.
+5. Full sweeps (long; resumable): dev + Chinook + Northwind for `qwen2.5:1.5b-instruct` first, then 0.5b, 3b, 7b; then `eval/spider_train_width.json` for 1.5b. Always `--elbow`, always `--out results/width/<set>_<model>.jsonl`.
+6. `python -m scripts.width_selector results/width/train_qwen1.5b.jsonl --test results/width/dev_qwen1.5b.jsonl --save agent1_retrieval/width_selector.joblib`. Record the printed table in `reports/agent1_width/README.md` with the command and date. Then hypothesis 4: test the 1.5B selector on the 0.5B and 3B rows.
+7. Charts for the distraction curves (accuracy by width x model size x bucket): matplotlib, greyscale, saved under `reports/agent1_width/`.
+8. Measure selector latency in the app (`J26_WIDTH_SELECTOR`), median and p95 over the 148 routing questions; if above 500 ms, build W2 and W3 from one shared retrieval (same anchors) instead of two calls.
+9. When Thathsarani's adapter folder arrives: `J26_GENERATOR=agent3`, sweep with `--agent3`, then `scripts.e2e_eval` for each configuration (phi3, adaptive_qwen, agent3; each with and without the selector) and `--compare`.
+10. Update for the new Agent 1 claim: `Individual_Proposal_Ekanayake`, `Combined_Proposal`, `Project_Scope` (Agent 1 section), `Execution_Plan` (Agent 1 phases 9, 12, 13 -> width phases), `PROJECT_STATUS_CONNECTIONS.md`, `README.md`.
+- Not implemented (decide before PP2): the full adaptive elbow (smoothing windows), a parameter sweep for the selector, per-model selectors in the app.
+- Do NOT write code for Agents 2, 3 or 4's own experiments unless the user asks: each member is assessed on her own component.
 
 ## Open TODOs
 - Paste remainder of combined proposal (Sections 4 onward) and save.
 - Redraw system diagrams by hand / diagramming tool (B&W, NOT AI-generated) per template.
 - Verify all citations (references were compiled without live lookup).
 - Add MATS, HydraLoRA (arXiv 2404.19245), arXiv 2607.25583 to literature reviews.
-- Agree handoff formats between agents.
+- Agree handoff formats between agents (the Agent 1 handoff gained `width` on 21 Nov 2026: tell Thathsarani).
+- Width study: every step of the "Implementation queue for Claude Code" above is open; no real model run exists.
 - Typo in Ekanayake proposal §1.1: "Road-scale enterprise data querying" (likely "Large-scale"); combined proposal refers to "Pillar 2" for fine-tuning component.
 
 ## Working conventions
 - Audience is academic (supervisors/panel): keep claims defensible, cite limits. Proposals must include an AI-use disclosure (Appendix 3).
 - Commit only when asked.
+- Explanations to the user: ASD-STE100 style (short sentences, active voice, one meaning per word, one instruction per sentence). Requested 21 Nov 2026.
+- Never put a number in a report, slide or this file unless it comes from a committed result file; say which stand-in model produced it.

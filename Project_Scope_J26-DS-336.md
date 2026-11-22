@@ -6,6 +6,8 @@ This is a complete, standalone scope document — what the project is and how it
 
 **Agent 4 scope change (19 Oct 2026, final):** Karunanayake's component is now adaptive mixed-precision quantization (per-layer INT4/INT8 chosen by SQL-task sensitivity) instead of QAT vs. PTQ. The restructuring note above is kept as history.
 
+**Update note (22 Nov 2026):** Agent 1's research claim changed from column-level pruning to adaptive schema context width (A.3, C.1), after a literature check of the closest work; the handoff gained `width`.
+
 **Update note (19 Oct 2026):** this revision brings the scope in line with what has been built and learned since: claims corrected against the research reports in `reports/`, the closest existing system (MATS) named, dashboards described as something the system works *with*, server databases (PostgreSQL), security and deployment (B.5), Agent 1's additions, base-model and quantization decisions, and known limitations (D.4). Measured results live in `Execution_Plan_J26-DS-336.md` and `CLAUDE.md`, not here.
 
 ---
@@ -53,7 +55,7 @@ Following Design Science methodology, each component produces two things: an **e
 
 The business framing (A.1–A.2) is what makes the research *relevant*; the rigor of the independent studies is what actually gets defended and evaluated.
 
-**What is and isn't new.** A multi-agent, small-model Text-to-SQL pipeline is not new in itself: the closest existing system, MATS (arXiv 2512.18622), already uses five small agents (about 9B parameters in total, on a 24GB GPU) for schema filtering, planning, validation and repair. This project does not claim the pipeline shape as its contribution. It claims (1) the four controlled comparisons — column-level pruning, distillation, complexity-routed HydraLoRA for SQL (the strongest novelty claim), and SQL-task-sensitive mixed-precision (INT4/INT8 per layer) quantization — and (2) efficiency: one shared small base model with adapters and quantization on mid-range hardware. Schema retrieval is a crowded area (GRASP, RASL, RSL-SQL), so Agent 1's contribution is the measured ablation, not a new retrieval algorithm.
+**What is and isn't new.** A multi-agent, small-model Text-to-SQL pipeline is not new in itself: the closest existing system, MATS (arXiv 2512.18622), already uses five small agents (about 9B parameters in total, on a 24GB GPU) for schema filtering, planning, validation and repair. This project does not claim the pipeline shape as its contribution. It claims (1) the four controlled studies — adaptive schema context width learned from the small model's own SQL results (changed from column-level pruning, November 2026), distillation, complexity-routed HydraLoRA for SQL (the strongest novelty claim), and SQL-task-sensitive mixed-precision (INT4/INT8 per layer) quantization — and (2) efficiency: one shared small base model with adapters and quantization on mid-range hardware. Schema retrieval is a crowded area (GRASP, RASL, RSL-SQL, CHESS), and a different amount of schema per question, routers learned from model outcomes, and accuracy-versus-schema-budget studies each already exist; Agent 1 claims only their combination for schema width on small local models (see C.1).
 
 ---
 
@@ -120,9 +122,20 @@ This harness is shared infrastructure, built collaboratively, and is not attribu
 
 # PART C — Each Component In Full Detail
 
-## C.1 Agent 1 — Ekanayake: Dynamic Schema Retrieval & Column-Level Pruning
+## C.1 Agent 1 — Ekanayake: Dynamic Schema Retrieval & Adaptive Context Width
 
-**What it does:** Decides which tables and columns from the database schema are relevant to a given query, so the downstream model isn't handed the entire schema every time.
+**What it does:** Decides which tables and columns from the database schema are relevant to a given query, and how much of the schema to show (the *width*), so the downstream model isn't handed the entire schema every time.
+
+**Research claim (approved November 2026; replaces column-level pruning as the claim):** for one given small local SQL model, a selector chooses one of four nested schema widths for each question before generation. The selector learns from labels that come from that same model's own execution results (the narrowest width whose SQL returned the correct rows). The study also measures execution accuracy against width, by model size (0.5B to 7B) and by query complexity. The four retrieval modes below are the fixed-width baselines:
+
+| Width | Content | Mode |
+|---|---|---|
+| W1 | anchor table only | semantic-only |
+| W2 | anchor tables + FK tables, columns pruned | hybrid + pruning |
+| W3 | anchor tables + FK tables, all columns | hybrid |
+| W4 | full schema | (new) |
+
+**What is and isn't new (literature check, November 2026):** a different amount of schema per question (QCMA-SQL, AttnLink, Adaptive-Elbow, DecoSearch), a router learned from a model's own outcomes (Adaptive-RAG), the "cheapest option that succeeds" label (EllieSQL) and accuracy against schema budget (BudgetSchemaBench, LitE-SQL) all exist separately. The contribution is their combination for schema width: nested structural widths, labels from the deployed small model's own execution results, one choice before generation, and the distraction curves by model size and complexity. Baselines include the best fixed width, a complexity rule, a training-free elbow cut, the same selector with complexity features only, and retry with a wider width. Full table: `reports/agent1_width/README.md`.
 
 **Why it's necessary:** Small AI models have a limited context window. Handing over 50 tables' worth of columns when only 3–4 matter wastes that budget and increases the chance of the model making mistakes.
 
@@ -139,9 +152,11 @@ This agent decomposes into three cooperating sub-agents, each making one bounded
 | Semantic-only | AI similarity | No | No |
 | Structural-only | Keyword/name match | No | No |
 | Hybrid | AI similarity | Yes (FK traversal) | No — full tables |
-| Hybrid + pruning | AI similarity | Yes (FK traversal) | **Yes — the novel contribution** |
+| Hybrid + pruning | AI similarity | Yes (FK traversal) | Yes |
 
-**The research question:** does column-level pruning, layered on structural+semantic table retrieval, improve context efficiency and downstream SQL accuracy under a fixed token budget — and does the effect vary by query complexity?
+**The original research question (answered):** does column-level pruning, layered on structural+semantic table retrieval, improve context efficiency and downstream SQL accuracy under a fixed token budget — and does the effect vary by query complexity? Answer with stand-in models: pruning saves tokens at no accuracy loss, but shows no significant gain. Wide context hurt simple questions, which led to the width study.
+
+**The current research question:** does a width selector learned from the small model's own SQL results beat the best fixed width, and how does the best width change with model size and query complexity?
 
 **Additions since the proposal (all switchable, so the original four-mode comparison still runs as designed):**
 - **Multi-anchor retrieval** — the top three semantically matching tables, connected along the shortest foreign-key paths (bridge tables included), because most missed multi-join columns came from whole tables never reached.
@@ -150,7 +165,7 @@ This agent decomposes into three cooperating sub-agents, each making one bounded
 - **Off-topic decline and explanation** — a question that matches no table or column is declined before generation; every kept or removed column carries the reason, shown in the trace.
 
 **Inputs:** the user's query; a live database connection (SQLite or PostgreSQL); optionally the institution's glossary.
-**Outputs:** pruned schema context → Agent 3, as a JSON handoff (`query, complexity, mode, anchor, matched, tables, ddl, tokens, latency_ms, trace`). Also produces the shared complexity classifier, used by Agents 3 and 4.
+**Outputs:** selected schema context → Agent 3, as a JSON handoff (`query, complexity, mode, anchor, matched, tables, ddl, tokens, latency_ms, trace, width`; `width` is the selector's choice, or empty without a selector). Also produces the shared complexity classifier, used by Agents 3 and 4.
 
 **Dependency status:** none — starts immediately, day one, in parallel with Agent 2.
 
@@ -240,7 +255,7 @@ Wathsala (Agent 2) ───┘
 
 | From | To | What's handed off |
 |---|---|---|
-| Agent 1 | Agent 3 | Pruned schema context as a JSON handoff (DDL text inside, plus complexity label, explanation trace); the shared complexity classifier (live, per query) |
+| Agent 1 | Agent 3 | Selected schema context as a JSON handoff (DDL text inside, plus complexity label, explanation trace, chosen width); the shared complexity classifier (live, per query) |
 | Agent 2 | Agent 3 | Two base model checkpoints (distilled, native) |
 | Agent 3 | Agent 4 | Winning and runner-up fine-tuned architectures (offline artefacts); candidate SQL (live, per query) |
 | Agent 4 | — | Deployment-ready quantized model; executed SQL + results, returned to the user |
