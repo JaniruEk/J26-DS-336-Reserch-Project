@@ -1,6 +1,6 @@
 # Width Study Weeks 5-6 (Model Sizes, Hypotheses 1 and 4) Implementation Plan
 
-> **Amended 23 Nov 2026:** no Colab GPU runtime was available. All runs are on the laptop: 0.5B and 3B FP16 (dev + train), 7B INT4 (dev), 1.5B INT4 bridge (dev); driver `scripts/local_size_runs.sh`. Rules: README, "Pre-registered rules for model sizes" (H1 = D(3B) - D(0.5B)). Tasks 5-6 below (Colab) are replaced by that script.
+> **Amended 23 Nov 2026:** no Colab GPU runtime was available. All runs are on the laptop: 0.5B and 3B FP16 (dev + train); no 7B (user decision); driver `scripts/local_size_runs.sh`. Rules: README, "Pre-registered rules for model sizes" (H1 = D(3B) - D(0.5B)). Tasks 5-6 below (Colab) are replaced by that script.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
