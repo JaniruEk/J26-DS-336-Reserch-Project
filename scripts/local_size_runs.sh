@@ -9,9 +9,12 @@ export TOKENIZERS_PARALLELISM=false
 
 run() {  # size (0.5b|1.5b|3b|7b), precision, set name (dev|train), question files
   local tag="$3_qwen$1_$2"
-  python -m scripts.width_sweep --pairs $4 --local "$2" --hf-model "Qwen/Qwen2.5-${1^^}-Instruct" --elbow \
-    --out "results/width/$tag.jsonl" >> "data/width_sweep_$tag.log" 2>&1
-  echo "$(date +%H:%M) $tag exit $?"
+  local attempt
+  for attempt in 1 2 3; do  # a load can fail on low Windows memory ("paging file too small"); runs resume
+    python -m scripts.width_sweep --pairs $4 --local "$2" --hf-model "Qwen/Qwen2.5-${1^^}-Instruct" --elbow \
+      --out "results/width/$tag.jsonl" >> "data/width_sweep_$tag.log" 2>&1 && { echo "$(date +%H:%M) $tag done"; return; }
+    echo "$(date +%H:%M) $tag attempt $attempt failed"; sleep 60
+  done
 }
 
 echo "$(date +%H:%M) phase 1"
