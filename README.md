@@ -55,6 +55,24 @@ python -m agent1_retrieval.evaluate --pairs eval/chinook_pairs.json eval/tpch_pa
 python -m agent1_retrieval.evaluate --pairs eval/chinook_pairs.json eval/spider_pairs.json --recommended --exec phi3
 ```
 
+For an opt-in run using the schema-aware complexity classifier (which uses
+table names, column names, and foreign-key structure for routing), add
+`--schema-classifier` to either the Agent 1 CLI or the evaluation command.
+The live application already enables this through its `LIVE` configuration;
+the reproducibility-focused `RECOMMENDED` configuration remains unchanged.
+
+The Agent 1 CLI also exposes the two supported configurations:
+
+```bash
+python -m agent1_retrieval "Which products are discontinued?" --live --json
+python -m agent1_retrieval "Which customers are from Canada?" --narrow-simple 0.6 --json
+python -m agent1_retrieval "Which accounts are active?" --value-hints --json
+```
+
+Use `--plain` to reproduce the original Phase 1–7 settings. `--live` and
+`--plain` are mutually exclusive. A glossary can be supplied with
+`--glossary path/to/glossary.json`.
+
 ## Agent 1 in brief
 
 There are three sub-agents, and each makes one bounded decision:

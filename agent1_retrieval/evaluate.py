@@ -119,6 +119,8 @@ if __name__ == "__main__":
     ap.add_argument("--value-hints", action="store_true", help="show the code values of low-cardinality columns in the schema")
     ap.add_argument("--glossary", help="JSON file {'Table.Column': 'meaning'} shown as column comments")
     ap.add_argument("--narrow-simple", type=float, metavar="TAU", help="anchor table only when P(simple) >= TAU")
+    ap.add_argument("--schema-classifier", action="store_true",
+                    help="use schema-aware complexity features for routing and handoff labels")
     ap.add_argument("--oracle", action="store_true", help="with --narrow-simple: route on the gold complexity label")
     ap.add_argument("--exec", metavar="MODEL", help="execution accuracy with this Ollama model (e.g. phi3)")
     a = ap.parse_args()
@@ -127,4 +129,5 @@ if __name__ == "__main__":
     run(a.db, [p for f in a.pairs for p in json.load(open(f, encoding="utf-8"))], generate=(lambda q, ddl, **kw: ollama_generate(q, ddl, a.exec, **kw)) if a.exec else None,
         modes=tuple(a.modes), depth=a.depth, threshold=a.threshold, labels=a.labels, adaptive=a.adaptive,
         multi_anchors=a.anchors, gate=not a.ungated, min_cols=a.min_cols, rich=a.rich, infer_missing_fks=a.infer_fks,
-        value_hints=a.value_hints, glossary=a.glossary, narrow_simple=a.narrow_simple, oracle=a.oracle)
+        value_hints=a.value_hints, glossary=a.glossary, narrow_simple=a.narrow_simple,
+        schema_classifier=a.schema_classifier, oracle=a.oracle)
