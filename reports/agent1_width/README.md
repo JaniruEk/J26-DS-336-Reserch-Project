@@ -176,22 +176,24 @@ Retry rows are offline: the retry sees a wider schema but no error hint.
 Secondary: the schema and retrieval features add information over complexity alone (+.038, p < .001). Retry with a
 wider schema adds accuracy (offline estimate), and the selector + retry reaches .63 at 129 tokens.
 
-## Pre-registered rules for model sizes (written 22 November 2026, before any run of another size)
+## Pre-registered rules for model sizes (written 22 November 2026; amended 23 November 2026, before any run of another size)
 
-Plan: `reports/agent1_width/plan_weeks5-6.md`. Runs: Qwen2.5 0.5B, 1.5B, 3B, 7B Instruct, all FP16, same prompt and
-decoding, on one Google Colab GPU (evaluation hardware, not the deployment target). Results in `results/width/colab/`.
+Plan: `reports/agent1_width/plan_weeks5-6.md`. Amendment: no Colab GPU runtime could be obtained, so every run is on the
+laptop GPU used for the 1.5B run (mid-range hardware). Its memory holds 0.5B and 3B at FP16 but 7B only at INT4.
+Runs: Qwen2.5 0.5B, 3B Instruct FP16 (dev + train), 7B Instruct INT4 (dev), 1.5B Instruct INT4 (dev, precision bridge);
+same prompt and decoding as the 1.5B FP16 run. Results in `results/width/`.
 
 - Test set: the dev ids of the sweep files; every comparison uses only the ids present in all files compared.
-- All size comparisons use the Colab runs (same GPU, FP16).
 - Distraction D(model) = accuracy(W4) - accuracy(W2) on the test set.
-- **H1 primary test:** D(7B) - D(0.5B) > 0, with a 95% paired bootstrap CI (10,000 resamples of questions, seed 0)
-  that excludes 0. Secondary (descriptive): best fixed width per size; D for all four sizes; simple-bucket
-  accuracy(W1) - accuracy(W4) per size.
-- **H4 test:** on the 0.5B, 3B and 7B test rows, the selector trained on that model's own train rows against the
+- **H1 primary test:** D(3B FP16) - D(0.5B FP16) > 0, with a 95% paired bootstrap CI (10,000 resamples of
+  questions, seed 0) that excludes 0. Secondary (descriptive): best fixed width per size; D for all sizes;
+  simple-bucket accuracy(W1) - accuracy(W4) per size; 7B INT4 shown with the bridge.
+- **Bridge:** D(1.5B INT4) - D(1.5B FP16) with the same CI. If its CI excludes 0, the 7B INT4 row is reported as
+  "precision-confounded" and is not used for H1.
+- **H4 test:** on the 0.5B and 3B test rows, the selector trained on that model's own train rows against the
   selector trained on the 1.5B train rows (exact McNemar). Supported if the own selector beats the transfer selector
-  at p < 0.0167 (0.05 / 3) for at least one model.
-- Hardware check (descriptive): agreement of the per-width correct flags between the laptop and Colab 1.5B runs.
-- Not done in these weeks: changing the label or the selector (post-hoc; a separate decision).
+  at p < 0.025 (0.05 / 2) for at least one of the two models.
+- Not done in these weeks: 7B train rows (H4 on 7B); changing the label or the selector (post-hoc; separate decisions).
 
 ## Not done yet
 
