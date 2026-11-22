@@ -105,8 +105,79 @@ Full text not read: DynamicRAG, arXiv 2603.11513 (small models and retrieval), G
 Need?" (arXiv 2501.12372), MCTS-SQL (2501.16607), MSc-SQL (2410.12916), JOLT-SQL (2505.14305). One search round is
 not the whole field: search again before PP2 and before the thesis.
 
+## Results: Qwen2.5-1.5B-Instruct FP16 (22 November 2026)
+
+Model: Qwen2.5-1.5B-Instruct through transformers, FP16, Agent 4's loader, prompt and `generate_sql` (greedy,
+max 100 new tokens). Retriever: `RECOMMENDED`, no value hints. Tokens: tiktoken cl100k (default). Commands:
+
+    python -m scripts.width_sweep --pairs eval/spider_dev_full.json eval/chinook_pairs.json eval/northwind_pairs.json --local fp16 --elbow --out results/width/dev_qwen1.5b_fp16.jsonl
+    python -m scripts.width_sweep --pairs eval/spider_train_width.json --local fp16 --elbow --out results/width/train_qwen1.5b_fp16.jsonl
+    python -m scripts.width_selector results/width/train_qwen1.5b_fp16.jsonl --test results/width/dev_qwen1.5b_fp16.jsonl --save agent1_retrieval/width_selector.joblib
+
+### Execution accuracy by width (distraction curves for 1.5B)
+
+Test set (Spider dev + Chinook + Northwind, 869 scored, 40 skipped because the gold SQL returns no rows; 22 DBs):
+
+| Bucket | n | W1 | W2 | W3 | W4 | E (elbow) | any width |
+|---|---|---|---|---|---|---|---|
+| simple | 245 | .79 | .64 | .69 | .61 | .79 | .84 |
+| single-join | 104 | .18 | .47 | .43 | .39 | .36 | .56 |
+| multi-join | 37 | .03 | .32 | .32 | .32 | .08 | .49 |
+| aggregation | 483 | .48 | .58 | .57 | .53 | .51 | .70 |
+| ALL | 869 | .51 | .57 | .57 | .53 | .55 | .71 |
+| mean tokens | | 58 | 151 | 180 | 245 | 84 | |
+
+Training set (Spider train, 1,144 scored, 56 skipped (one gold SQL names a missing table); 137 DBs, none in the test set):
+
+| Bucket | n | W1 | W2 | W3 | W4 | any width |
+|---|---|---|---|---|---|---|
+| simple | 297 | .77 | .72 | .73 | .70 | .87 |
+| single-join | 282 | .13 | .38 | .38 | .37 | .54 |
+| multi-join | 273 | .03 | .32 | .33 | .45 | .55 |
+| aggregation | 292 | .45 | .55 | .56 | .54 | .68 |
+| ALL | 1144 | .35 | .50 | .50 | .52 | .67 |
+| mean tokens | | 55 | 177 | 192 | 342 | |
+
+Answers of 95 or more tokens (possible cut at the 100-token limit), test set: W1 10, W2 3, W3 3, W4 7, E 11 of 869
+(at most 1.3%): the limit was kept. No schema was too long for the model.
+
+### Selector (trained on Spider train, tested on the test set)
+
+Training labels (narrowest correct width): W1 405, W2 235, W3 10, W4 97; no correct width 397 (not used).
+Each row against the best fixed width (W2); paired bootstrap 95% CI and exact McNemar.
+
+| System | simple | single-join | multi-join | aggregation | ALL | tokens | diff vs W2 | 95% CI | wins/losses | p |
+|---|---|---|---|---|---|---|---|---|---|---|
+| fixed W1 | .79 | .18 | .03 | .48 | .51 | 58 | -.060 | [-.093, -.026] | 86/138 | .001 |
+| fixed W2 | .64 | .47 | .32 | .58 | .57 | 151 | | | | |
+| fixed W3 | .69 | .43 | .32 | .57 | .57 | 180 | .000 | [-.014, +.014] | 19/19 | 1.000 |
+| fixed W4 | .61 | .39 | .32 | .53 | .53 | 245 | -.044 | [-.071, -.017] | 55/93 | .002 |
+| complexity rule | .73 | .45 | .30 | .57 | .59 | 127 | +.018 | [+.003, +.033] | 31/15 | .026 |
+| adaptive elbow | .79 | .36 | .08 | .51 | .55 | 84 | -.024 | [-.055, +.006] | 85/106 | .148 |
+| **learned selector** | .77 | .42 | .27 | .55 | .58 | 84 | +.010 | [-.016, +.036] | 78/69 | .510 |
+| learned, complexity only | .77 | .34 | .16 | .51 | .55 | 77 | -.028 | [-.056, +.001] | 76/100 | .083 |
+| W2 + retry wider | .67 | .52 | .41 | .61 | .61 | 219 | +.036 | [+.024, +.049] | 31/0 | <.001 |
+| selector + retry | .78 | .48 | .38 | .60 | .63 | 129 | +.054 | [+.030, +.078] | 85/38 | <.001 |
+| oracle (limit) | .84 | .55 | .49 | .69 | .71 | 80 | +.135 | [+.113, +.157] | 117/0 | <.001 |
+
+Learned selector against the complexity rule: -.008 [-.030, +.014], 48/55, p = .555. Against the complexity-only
+selector: +.038 [+.021, +.054], 46/13, p < .001. Widths picked: W1 660, W2 189, W3 0, W4 20.
+Retry rows are offline: the retry sees a wider schema but no error hint.
+
+### Hypotheses (1.5B only)
+
+1. Best fixed width narrower for smaller models: **not testable yet** (needs the 0.5B / 3B / 7B sweeps).
+2. Best width differs by complexity: **supported descriptively** (test set: simple W1 .79 vs W4 .61; single-join
+   W1 .18 vs W2 .47). No formal test run yet.
+3. Learned selector beats every fixed width and the complexity rule at p < .0125: **not supported.** It equals the
+   best fixed width (+.010, p = .51) at 84 against 151 tokens, and does not beat the complexity rule (p = .555).
+4. Selector transfer across models: **not testable yet.**
+
+Secondary: the schema and retrieval features add information over complexity alone (+.038, p < .001). Retry with a
+wider schema adds accuracy (offline estimate), and the selector + retry reaches .63 at 129 tokens.
+
 ## Not done yet
 
-- No model run exists: the code was tested with synthetic rows and stub models only.
+- Other model sizes (0.5B, 3B, 7B) and hypotheses 1 and 4.
 - With the selector, Agent 1 builds all four contexts for each question. Measure the retrieval time against the
   500 ms target.
