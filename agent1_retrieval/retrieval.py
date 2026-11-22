@@ -47,6 +47,7 @@ def _embedder():
 
     class _UnpaddedMiniLM(ONNXMiniLM_L6_V2):
         def __call__(self, input):
+            self._download_model_if_not_exists()  # the tokenizer is read from the model files: fresh machines first
             self.tokenizer.no_padding()
             return [super(_UnpaddedMiniLM, self).__call__([d])[0] for d in input]
 
