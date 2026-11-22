@@ -50,12 +50,15 @@ def main():
     ap.add_argument("--pairs", nargs="+", required=True)
     ap.add_argument("--model", default="qwen2.5:1.5b-instruct", help="Ollama model name")
     ap.add_argument("--local", choices=("fp16", "int8", "int4"), help="Qwen2.5-1.5B-Instruct via transformers (replaces --model)")
+    ap.add_argument("--hf-model", help="with --local: another Hugging Face id, e.g. Qwen/Qwen2.5-7B-Instruct")
     ap.add_argument("--agent3", metavar="ADAPTER", help="Agent 3's adapter folder (replaces --model)")
     ap.add_argument("--out", help="default results/width/<model>.jsonl")
     ap.add_argument("--limit", type=int, help="first N questions only (a quick check)")
     ap.add_argument("--value-hints", action="store_true", help="show code values in the schema (the live app setting)")
     ap.add_argument("--elbow", action="store_true", help="also run the adaptive-elbow baseline (stored as width 'E')")
     a = ap.parse_args()
+    if a.hf_model and not a.local:
+        ap.error("--hf-model needs --local")
 
     if a.agent3:
         from harness.generators import agent3
@@ -64,8 +67,8 @@ def main():
         generate = lambda q, ddl: gen3(q, ddl)
     elif a.local:
         from harness.generators import qwen_local
-        genq = qwen_local(a.local)
-        name = f"qwen2.5-1.5b-instruct_{a.local}_transformers"
+        genq = qwen_local(a.local, a.hf_model)
+        name = f"{(a.hf_model or 'Qwen/Qwen2.5-1.5B-Instruct').split('/')[-1].lower()}_{a.local}_transformers"
         generate = lambda q, ddl: genq(q, ddl)
     else:
         name = a.model

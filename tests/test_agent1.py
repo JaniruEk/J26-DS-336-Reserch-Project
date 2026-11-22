@@ -357,3 +357,45 @@ def test_quant_split_shares_no_database():
     assert s["calibration"] and s["test"]
     assert not {p["db"] for p in s["calibration"]} & {p["db"] for p in s["test"]}
     assert split(pairs, {"calibration": 5, "test": 8}) == s  # same seed, same sets
+
+
+def test_qwen_local_loads_the_requested_model(monkeypatch):
+    pytest.importorskip("transformers")
+    import torch
+    import src.qwen_model_loader as ql
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(ql, "MODEL_NAME", ql.MODEL_NAME)  # restored after the test
+    seen = []
+    monkeypatch.setattr(ql, "load_qwen", lambda p: seen.append((ql.MODEL_NAME, p)) or (None, None))
+    from harness.generators import qwen_local
+    g = qwen_local("int4", model="Qwen/Qwen2.5-0.5B-Instruct")
+    g.load()
+    assert seen == [("Qwen/Qwen2.5-0.5B-Instruct", "int4")]
+    assert g.label.startswith("Qwen2.5-0.5B-Instruct INT4")
+    assert qwen_local("fp16").label.startswith("Qwen2.5-1.5B-Instruct FP16")
+
+
+def test_transfer_selector_row(tmp_path, monkeypatch, capsys):
+    pytest.importorskip("sklearn")
+    import sys
+    from scripts import width_selector
+    from agent1_retrieval.width import WIDTHS
+    own, other = tmp_path / "own.jsonl", tmp_path / "other.jsonl"
+    rows = _width_rows()
+    own.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+    good = lambda r: "W2" if r["bucket"] == "simple" else "W4"  # another model: needs wider schemas
+    wide = [{**r, "ok": {w: w == good(r) for w in WIDTHS}} for r in rows]
+    other.write_text("\n".join(json.dumps(r) for r in wide), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["width_selector", str(own), "--test", str(own), "--transfer", str(other)])
+    width_selector.main()
+    out = capsys.readouterr().out
+    assert "transfer selector" in out and "against the transfer selector" in out
+
+
+def test_distraction_and_size_effect():
+    from agent1_retrieval.width import distraction, size_effect
+    small = [{"id": str(i), "ok": {"W2": True, "W4": i % 2 == 0}} for i in range(200)]  # W4 loses half
+    large = [{"id": str(i), "ok": {"W2": True, "W4": True}} for i in range(200)]  # no loss
+    assert distraction(small) == -0.5 and distraction(large) == 0
+    e = size_effect(small, large + [{"id": "extra", "ok": {"W2": True, "W4": True}}], n_boot=500)
+    assert e["n"] == 200 and e["diff"] == 0.5 and e["ci"][0] > 0

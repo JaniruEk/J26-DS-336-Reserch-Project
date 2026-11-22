@@ -67,22 +67,27 @@ def adaptive_qwen():
     return generate
 
 
-def qwen_local(precision="fp16"):
+def qwen_local(precision="fp16", model=None):
     """The plain base model without Ollama: src.qwen_model_loader.load_qwen(precision), called like adaptive_qwen.
+    model: another Hugging Face id (e.g. Qwen/Qwen2.5-7B-Instruct); default her Qwen2.5-1.5B-Instruct.
     Not fine-tuned for SQL, so it stays a stand-in. Her generate_sql stops at 100 new tokens (long SQL is cut)."""
     import torch  # fail here (ImportError) rather than on the first question
     if not torch.cuda.is_available():
         raise RuntimeError("no CUDA GPU")
+    import src.qwen_model_loader as ql
     from src.prompt_builder import build_prompt
     from src.qwen_generate import generate_sql
-    from src.qwen_model_loader import MODEL_NAME, load_qwen
     from src.sql_util import clean_sql
+    MODEL_NAME = model or "Qwen/Qwen2.5-1.5B-Instruct"  # not ql.MODEL_NAME: an earlier load may have changed it
     state = {}
 
     def load():
         with _lock:
             if not state:
-                state["model"], state["tok"] = load_qwen(precision)
+                # ponytail: sets Agent 4's module global so her loader runs unchanged for every size;
+                # a model argument in her load_qwen is cleaner if she adds one
+                ql.MODEL_NAME = MODEL_NAME
+                state["model"], state["tok"] = ql.load_qwen(precision)
         return state
 
     def generate(question, ddl, hint=None, dialect="SQLite"):
