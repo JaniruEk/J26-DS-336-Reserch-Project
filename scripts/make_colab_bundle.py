@@ -2,7 +2,7 @@
 
   python -m scripts.make_colab_bundle
 
-data/colab/j26_code.zip = the committed code (git archive HEAD; the commit id is the zip comment).
+data/colab/j26_code.zip = the committed code (git archive HEAD with LF line endings for bash; the commit id is the zip comment).
 data/colab/j26_data.zip = every database the width sweep files name (Spider dev + train, Chinook, Northwind).
 """
 import json
@@ -19,7 +19,7 @@ def main():
     if subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "agent1_retrieval", "scripts", "harness",
                        "src", "eval", "tests"], capture_output=True, text=True).stdout.strip():
         print("warning: uncommitted changes in code folders are NOT in the code zip")
-    subprocess.run(["git", "archive", "--format=zip", "-o", str(OUT / "j26_code.zip"), "HEAD"], check=True)
+    subprocess.run(["git", "-c", "core.autocrlf=false", "archive", "--format=zip", "-o", str(OUT / "j26_code.zip"), "HEAD"], check=True)
     dbs = sorted({p["db"] for f in SETS for p in json.loads(Path(f).read_text(encoding="utf-8"))})
     with zipfile.ZipFile(OUT / "j26_data.zip", "w", zipfile.ZIP_DEFLATED) as z:
         for db in dbs:
