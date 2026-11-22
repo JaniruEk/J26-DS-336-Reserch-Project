@@ -247,3 +247,118 @@ def test_gate_refuses_prompt_injection(db, tmp_path):
     r = c.post("/query", json={"query": "total of each invoice", "mode": "structural"}).json()
     assert not r["ok"] and r["attempts"] == 0 and r["error"].startswith("Refused, unsafe input") and "prompt injection" in r["error"]
     assert seen == []  # the SQL writer is never called for a flagged input
+
+
+def test_generator_gets_complexity_label_when_it_asks(db, tmp_path):
+    seen = {}
+
+    def gen(q, ddl, hint=None, complexity=None):
+        seen["complexity"] = complexity
+        return "SELECT total FROM invoice"
+
+    gen.wants_complexity = True
+    c, _ = client(db, tmp_path, gen)
+    r = c.post("/query", json={"query": "what is the total of each invoice", "db": "t", "mode": "structural"}).json()
+    assert r["ok"] and seen["complexity"] == r["context"]["complexity"]
+
+
+def test_agent3_generator_loads_adapter_and_routes_head(tmp_path):
+    torch = pytest.importorskip("torch")
+    from agent3_finetune import hydra
+    from harness import generators
+    PROMPT = generators.AGENT3_PROMPT
+
+    class Tiny(torch.nn.Module):  # stands in for the base model: one target layer + a generate() that records its call
+        def __init__(self):
+            super().__init__()
+            self.q_proj = torch.nn.Linear(4, 4)
+            self.calls = []
+
+        def generate(self, input_ids, max_new_tokens, do_sample, pad_token_id, **kw):
+            self.calls.append({"greedy": not do_sample, "head": None if self.router.index is None else int(self.router.index[0])})
+            return torch.cat([input_ids, torch.tensor([[7, 8]])], dim=1)
+
+    class Tok:
+        pad_token_id = 0
+
+        def __call__(self, text, return_tensors, add_special_tokens):
+            self.prompt = text
+            return type("Enc", (dict,), {"to": lambda s, d: s})(input_ids=torch.tensor([[1, 2, 3]]))
+
+        def decode(self, ids, skip_special_tokens):
+            assert ids.tolist() == [7, 8]  # only the new tokens are decoded
+            return "```sql\nSELECT 1; SELECT 2```"
+
+    trained, r = Tiny(), hydra.Router()
+    hydra.add_adapters(trained, r, rank=2, alpha=4, n_heads=4, dropout=0.0, targets=("q_proj",))
+    with torch.no_grad():
+        trained.q_proj.lora_B.normal_()
+    hydra.save_adapters(trained, tmp_path / "a", {"n_heads": 4, "rank": 2, "alpha": 4, "targets": ["q_proj"], "model": "tiny"})
+
+    base, tok = Tiny(), Tok()
+
+    def load_base(name, device):
+        assert name == "tiny"
+        return base, tok
+
+    gen = generators.agent3(tmp_path / "a", load_base=load_base)
+    gen.load()
+    base.router = base.q_proj.router  # the router the generator made; the fake generate() reads the head from it
+    sql = gen("how many", "CREATE TABLE t (a INT)", hint="no such column", complexity="multi-join")
+    assert sql == "SELECT 1"  # code fence removed, first statement only
+    assert tok.prompt == PROMPT.format(ddl="CREATE TABLE t (a INT)", question="how many\nno such column")
+    assert base.calls == [{"greedy": True, "head": hydra.HEADS.index("multi-join")}]
+    assert torch.equal(base.q_proj.lora_B, trained.q_proj.lora_B)  # the saved adapter weights are loaded
+    gen("q", "ddl", complexity="not-a-label")
+    assert base.calls[-1]["head"] == hydra.HEADS.index(hydra.DEFAULT_HEAD)  # her fallback head
+    assert gen.stand_in is False and gen.wants_complexity and "HydraLoRA" in gen.label
+
+
+def test_agent3_generator_falls_back_when_adapter_is_missing(tmp_path, monkeypatch):
+    from harness import generators
+    monkeypatch.setenv("J26_GENERATOR", "agent3")
+    monkeypatch.setenv("J26_AGENT3_ADAPTER", str(tmp_path / "missing"))
+    gen = generators.from_env()
+    assert gen.stand_in and "agent3 unavailable" in gen.label
+
+
+def test_agent3_prompt_copy_matches_training_prompt():
+    pytest.importorskip("peft")
+    from agent3_finetune.train_lora import PROMPT
+    from harness.generators import AGENT3_PROMPT
+    assert AGENT3_PROMPT == PROMPT
+
+
+def test_width_selector_sets_the_width_and_a_failed_attempt_gets_a_wider_schema(db, tmp_path):
+    joblib = pytest.importorskip("joblib")
+    from sklearn.dummy import DummyClassifier
+    from agent1_retrieval import LIVE
+    from agent1_retrieval.width import FEATURES
+    sel = tmp_path / "selector.joblib"  # a selector that always says W1
+    joblib.dump({"model": DummyClassifier(strategy="constant", constant="W1").fit([[0] * len(FEATURES)] * 2, ["W1", "W2"]),
+                 "features": FEATURES}, sel)
+    seen = []
+
+    def gen(q, ddl, hint=None):
+        seen.append(ddl)
+        return "SELECT total FROM invoice" if hint else "SELECT nope FROM invoice"
+
+    log = tmp_path / "log.jsonl"
+    c = TestClient(create_app({"t": db}, generate=gen, log_path=str(log), answers_path=str(tmp_path / "answers.db"),
+                              superset=lambda: None, agent1_config={**LIVE, "width_selector": str(sel)}))
+    r = c.post("/query", json={"query": "what is the total of each invoice", "db": "t"}).json()
+    assert r["ok"] and r["attempts"] == 2
+    assert r["context"]["width"] == "W1" and r["steps"][0]["next_width"] == "W2"
+    stages = [json.loads(line)["stage"] for line in log.read_text().splitlines()]
+    assert stages == ["agent1", "agent2.gate", "agent3.generate", "agent4.execute", "agent1.wider", "agent3.generate", "agent4.execute"]
+    assert len(seen) == 2
+
+
+def test_local_qwen_generator_falls_back_without_a_gpu(monkeypatch):
+    torch = pytest.importorskip("torch")
+    if torch.cuda.is_available():
+        pytest.skip("this machine has a GPU: the real model would load")
+    from harness import generators
+    monkeypatch.setenv("J26_GENERATOR", "qwen_fp16")
+    gen = generators.from_env()
+    assert gen.stand_in and "qwen_fp16 unavailable" in gen.label

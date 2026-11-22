@@ -184,6 +184,10 @@ def create_app(dbs=None, generate=None, execute=run_sql, log_path="data/handoff.
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps({"ts": time.time(), "trace": trace, "stage": stage, **fields}, default=str) + "\n")
 
+    selector_path = os.environ.get("J26_WIDTH_SELECTOR")  # file from scripts/width_selector.py --save; unset = no selector
+    if selector_path and "width_selector" not in agent1_config:
+        agent1_config = {**agent1_config, "width_selector": selector_path}
+
     def agent1(req):
         name = req.db or next(iter(dbs))
         if name not in dbs:
@@ -381,7 +385,8 @@ def create_app(dbs=None, generate=None, execute=run_sql, log_path="data/handoff.
             t = time.perf_counter()
             try:
                 d = dialect(path)  # server databases tell the generator their SQL dialect; SQLite calls are unchanged
-                sql = generate(req.query, ctx["ddl"], hint=hint, **({} if d == "SQLite" else {"dialect": d}))  # Agent 3 (stand-in)
+                extra = {"complexity": ctx["complexity"]} if getattr(generate, "wants_complexity", False) else {}
+                sql = generate(req.query, ctx["ddl"], hint=hint, **extra, **({} if d == "SQLite" else {"dialect": d}))  # Agent 3
             except OSError as e:  # model server down / unreachable: say so instead of a bare 500
                 log(trace, "agent3.generate", attempt=attempt, error=str(e))
                 raise HTTPException(503, f"SQL generator unavailable ({e}). Is the model server (Ollama) running?")
@@ -400,6 +405,11 @@ def create_app(dbs=None, generate=None, execute=run_sql, log_path="data/handoff.
                         "attempts": attempt, "total_ms": ms(t0)}
             if str(result).startswith(BLOCKED):  # unsafe request: refuse, don't coax the model into a different query
                 return {**out, "ok": False, "sql": sql, "error": result, "attempts": attempt, "total_ms": ms(t0)}
+            nxt = a1.wider(ctx.get("width"))
+            if nxt:  # adaptive width: the narrow schema may lack a table, so the retry sees the next wider one
+                ctx = a1.run(req.query, width=nxt)
+                log(trace, "agent1.wider", width=nxt, tokens=ctx["tokens"])
+                out["steps"][-1]["next_width"] = nxt
             hint = f"Your previous query failed with: {result}\nPrevious query: {sql}\nFix it."  # ponytail: Agent 4's error-diagnosis sub-agent replaces this raw-error hint
         return {**out, "ok": False, "sql": sql, "error": result, "attempts": MAX_ATTEMPTS, "total_ms": ms(t0)}
 
