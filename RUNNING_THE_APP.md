@@ -124,6 +124,7 @@ Set this before starting the app. The chat page shows which model is answering.
 | *(unset)* or `ollama:phi3` | phi3 through Ollama (default) | Ollama |
 | `ollama:<any model>` | any Ollama model, e.g. `ollama:qwen2.5-coder:1.5b-instruct` | `ollama pull <model>` |
 | `adaptive_qwen` | Karunanayake's (Agent 4) adaptive mixed-precision Qwen2.5-1.5B: sensitive layers 8-bit, the rest 4-bit, from `results/qwen/` | An NVIDIA GPU, and once: `pip install -r requirements-gpu.txt` |
+| `agent3` | Thathsarani's (Agent 3) fine-tuned model: Qwen2.5-1.5B with her LoRA or HydraLoRA adapter. This is the real SQL writer, not a stand-in | `J26_AGENT3_ADAPTER` = her adapter folder; torch + transformers; an NVIDIA GPU is recommended |
 
 ```powershell
 $env:J26_GENERATOR = "adaptive_qwen"
@@ -131,6 +132,16 @@ python -m uvicorn harness.app:app --port 8765
 ```
 
 `adaptive_qwen` downloads Qwen2.5-1.5B (about 3 GB) the first time and builds the model at startup (about 2 minutes; the first question waits for it). After that, answers take a few seconds. It is the base model quantized, **not fine-tuned for SQL** yet, so expect wrong answers on joins. Without an NVIDIA GPU or those libraries, the app says so in its log and falls back to phi3.
+
+**Agent 3's model (`agent3`).** Get the adapter folder from Thathsarani (it holds `adapters.pt` and `adapter_meta.json`; the files are too large for git). Then:
+
+```powershell
+$env:J26_GENERATOR = "agent3"
+$env:J26_AGENT3_ADAPTER = "C:\path\to\lora_r16_seed42"
+python -m uvicorn harness.app:app --port 8765
+```
+
+The app uses her training prompt and greedy decoding. With a HydraLoRA adapter, Agent 1's complexity label selects the head. The first start downloads Qwen2.5-1.5B (about 3 GB). On a CPU the model works, but each answer is slow. If the folder is missing or torch is not installed, the app falls back to phi3 and says so. Note: her adapters were trained with the full schema; the app sends Agent 1's selected schema.
 
 ---
 
@@ -208,6 +219,8 @@ All settings are environment variables, read when the app starts. Set them in th
 | Setting | What it does | Example |
 |---|---|---|
 | `J26_GENERATOR` | Which model writes the SQL (see "Choose the SQL model") | `adaptive_qwen` |
+| `J26_AGENT3_ADAPTER` | Folder with Agent 3's `adapters.pt` and `adapter_meta.json` (used when `J26_GENERATOR=agent3`) | `C:\\models\\lora_r16_seed42` |
+| `J26_AGENT3_BASE` | Another base model for Agent 3's adapter (optional) | `Qwen/Qwen2.5-1.5B-Instruct` |
 | `J26_GATE` | Which model decides whether a question is about data (see "The question gate") | `kd_multitask` |
 | `J26_DATABASES` | Extra databases, as JSON `{"name": "SQLite path or PostgreSQL URL"}`. Keeps passwords out of the code; use a read-only login | `{"bank": "postgresql+psycopg://ro_user:pw@dbhost/bank"}` |
 | `J26_NO_VALUE_LINKING` | Databases whose data values Agent 1 must never read (personal data), comma-separated | `bank,hr` |
