@@ -5,6 +5,7 @@
 
 One file: 5-fold test where every question is predicted by a selector that never saw its database.
 With --test: train on the first file, test on the second (for example Spider train -> Spider dev).
+With --transfer <train rows of another model>: that model's selector is tested on the same rows (hypothesis 4).
 Compared: fixed W1..W4, the complexity rule (the app today), the adaptive elbow (if swept), the learned selector,
 the same selector with complexity features only (Adaptive-RAG-style ablation), retry with the next wider width
 (if the rows have "runs"; tokens count every width tried), and the oracle (upper limit).
@@ -32,18 +33,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("rows")
     ap.add_argument("--test")
+    ap.add_argument("--transfer", help="train rows of ANOTHER model: its selector is tested here too (hypothesis 4)")
     ap.add_argument("--save", help="write the selector trained on all rows of the first file (joblib)")
     a = ap.parse_args()
     train = read(a.rows)
     rows = read(a.test) if a.test else train
     labelled = [r for r in train if label(r)]
 
-    def pick(feats):
+    def pick(feats, fit_rows=labelled):
         """{row id: width} for the test rows, from a selector that uses only `feats`."""
-        if not a.test:
+        if not a.test and fit_rows is labelled:
             return cross_fit(rows, make_model, features=feats)
         x = lambda r: [r["features"][f] for f in feats]
-        model = make_model().fit([x(r) for r in labelled], [label(r) for r in labelled])
+        model = make_model().fit([x(r) for r in fit_rows], [label(r) for r in fit_rows])
         return {r["id"]: str(w) for r, w in zip(rows, model.predict([x(r) for r in rows]))}
 
     picked, picked_c = pick(FEATURES), pick(COMPLEXITY_ONLY)
@@ -52,6 +54,9 @@ def main():
     systems = {**{f"fixed {w}": choose_fixed(w) for w in WIDTHS}, "complexity rule": choose_rule(),
                **({"adaptive elbow": choose_elbow} if all("E" in r["ok"] for r in rows) else {}),
                "learned selector": selector, "learned, cplx only": complexity_only}
+    if a.transfer:
+        picked_t = pick(FEATURES, [r for r in read(a.transfer) if label(r)])
+        systems["transfer selector"] = lambda r: picked_t[r["id"]]
     cost = {}  # systems whose tokens are not just the final width's
     if all("runs" in r for r in rows):
         for name, first in (("W2 + retry wider", choose_fixed("W2")), ("selector + retry", selector)):
@@ -73,7 +78,10 @@ def main():
         ci = "[{:+.3f}, {:+.3f}]".format(*c["ci"])
         tok = mean(cost[name](r) if name in cost else r["tokens"][ch(r)] for r in rows)
         print(f"{name:<18}{acc}{tok:>8.0f}{c['diff']:>+8.3f}{ci:>18}{wl:>8}{c['p']:>7.3f}")
-    for other, ch in (("the complexity rule", choose_rule()), ("the complexity-only selector", complexity_only)):
+    others = [("the complexity rule", choose_rule()), ("the complexity-only selector", complexity_only)]
+    if a.transfer:
+        others.append(("the transfer selector", systems["transfer selector"]))
+    for other, ch in others:
         c = compare(rows, selector, ch)
         print(f"\nlearned selector against {other}: {c['diff']:+.3f} [{c['ci'][0]:+.3f}, {c['ci'][1]:+.3f}], "
               f"{c['wins']}/{c['losses']}, McNemar p = {c['p']:.3f}")

@@ -132,6 +132,21 @@ def compare(rows, choose_a, choose_b):
     return {"diff": d, "ci": (lo, hi), "wins": win, "losses": loss, "p": mcnemar_exact(win, loss)}
 
 
+def distraction(rows, wide="W4", narrow="W2"):
+    """D = accuracy(wide) - accuracy(narrow): below 0 means the extra schema costs accuracy (hypothesis 1)."""
+    return accuracy(rows, choose_fixed(wide)) - accuracy(rows, choose_fixed(narrow))
+
+
+def size_effect(small, large, wide="W4", narrow="W2", n_boot=10000, seed=0):
+    """D(large) - D(small) on the questions both models answered, with a paired bootstrap CI over questions."""
+    by_id = {r["id"]: r for r in small}
+    pairs = [(by_id[r["id"]], r) for r in large if r["id"] in by_id]
+    d = lambda r: bool(r["ok"][wide]) - bool(r["ok"][narrow])
+    diff, lo, hi = bootstrap_ci([d(b) - d(a) for a, b in pairs], n=n_boot, seed=seed)
+    return {"n": len(pairs), "d_small": distraction([a for a, _ in pairs], wide, narrow),
+            "d_large": distraction([b for _, b in pairs], wide, narrow), "diff": diff, "ci": (lo, hi)}
+
+
 def cross_fit(rows, make_model, folds=5, seed=0, features=FEATURES):
     """Out-of-fold selector choices: every question is predicted by a model that never saw its DATABASE.
     make_model() -> object with fit(X, y) and predict(X). features: which inputs to use. Returns {row id: width}."""
