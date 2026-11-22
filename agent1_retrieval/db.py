@@ -65,6 +65,12 @@ def session(db, timeout=10):
             try:
                 cur = con.execute(sql, params or {})
                 return [d[0] for d in cur.description or []], cur.fetchall()
+            except sqlite3.OperationalError as e:
+                if "Could not decode" not in str(e) or con.text_factory is not str:
+                    raise DBError(str(e)) from e
+                # some Spider DBs (wta_1) hold non-UTF-8 text: decode it with U+FFFD and run again
+                con.text_factory = lambda b: b.decode(errors="replace")
+                return run(sql, params)
             except (sqlite3.Error, sqlite3.Warning) as e:  # Python < 3.11 raises Warning for multiple statements
                 raise DBError(str(e)) from e
         try:

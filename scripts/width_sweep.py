@@ -6,7 +6,7 @@ One JSON line per question in results/width/<model>.jsonl:
   {"id", "db", "question", "bucket", "ok": {W1..W4}, "runs": {W1..W4}, "tokens": {W1..W4}, "sql": {W1..W4},
    "features": {...}}   (runs = the SQL ran without a database error; used by the retry-wider systems)
 The script can be stopped and started again: finished questions are skipped, and model answers are cached.
-Questions whose gold SQL returns no rows (schema-only databases) are skipped: their accuracy has no meaning.
+Questions whose gold SQL returns no rows (schema-only databases) or fails are skipped: their accuracy has no meaning.
 --local fp16|int8|int4 uses the team base model Qwen2.5-1.5B-Instruct through transformers (no Ollama; needs a GPU).
 --agent3 <adapter folder> uses Agent 3's fine-tuned model in place of an Ollama model (needs torch, a GPU is recommended).
 """
@@ -81,6 +81,13 @@ def main():
             pid = hashlib.sha1(f"{p['db']}|{p['question']}".encode()).hexdigest()[:12]
             if pid in done:
                 continue
+            try:  # gold returns no rows (schema-only DB) or fails (a few Spider train golds name missing tables)
+                scorable = bool(_rows(p["db"], p["sql"]))
+            except DBError:
+                scorable = False
+            if not scorable:
+                skipped += 1
+                continue
             if p["db"] not in retrievers:
                 retrievers[p["db"]] = Retriever(p["db"], **RECOMMENDED, value_hints=a.value_hints)
             r = retrievers[p["db"]]
@@ -95,10 +102,7 @@ def main():
                     ran[w] = bool(ok[w]) or runs(p["db"], sql[w])
                 except ValueError as e:  # schema too long for the model: counted as wrong, and recorded
                     sql[w], ok[w], ran[w] = f"-- {e}", False, False
-            if ok["W4"] is None:  # the gold query returns no rows
-                skipped += 1
-                continue
-            row = {"id": pid, "db": p["db"], "question": p["question"], "bucket": classify_sql(p["sql"]), "ok": ok,
+            row ={"id": pid, "db": p["db"], "question": p["question"], "bucket": classify_sql(p["sql"]), "ok": ok,
                    "runs": ran, "tokens": {w: ctx[w].tokens for w in ctx}, "sql": sql, "features": features(r, p["question"], ctx)}
             f.write(json.dumps(row) + "\n")
             f.flush()
@@ -106,7 +110,7 @@ def main():
             if n % 10 == 0:
                 print(f"{n}/{len(pairs)}", flush=True)
     rows = list(done.values())
-    print(f"\nmodel {name}: {len(rows)} questions scored, {skipped} skipped (gold SQL returns no rows) -> {out}")
+    print(f"\nmodel {name}: {len(rows)} questions scored, {skipped} skipped (gold SQL returns no rows or fails) -> {out}")
     if rows:
         print(summary(rows))
 
