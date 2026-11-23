@@ -126,7 +126,7 @@ This harness is shared infrastructure, built collaboratively, and is not attribu
 
 **What it does:** Decides which tables and columns from the database schema are relevant to a given query, and how much of the schema to show (the *width*), so the downstream model isn't handed the entire schema every time.
 
-**Research claim (approved November 2026; replaces column-level pruning as the claim):** for one given small local SQL model, a selector chooses one of four nested schema widths for each question before generation. The selector learns from labels that come from that same model's own execution results (the narrowest width whose SQL returned the correct rows). The study also measures execution accuracy against width, by model size (0.5B to 7B) and by query complexity. The four retrieval modes below are the fixed-width baselines:
+**Research claim (approved November 2026; replaces column-level pruning as the claim):** for one given small local SQL model, a selector chooses one of four nested schema widths for each question before generation. The selector learns from labels that come from that same model's own execution results (the narrowest width whose SQL returned the correct rows). The study also measures execution accuracy against width, by model size (Qwen2.5-Instruct 0.5B, 1.5B and 3B; 7B left out) and by query complexity. The four retrieval modes below are the fixed-width baselines:
 
 | Width | Content | Mode |
 |---|---|---|
@@ -136,6 +136,8 @@ This harness is shared infrastructure, built collaboratively, and is not attribu
 | W4 | full schema | (new) |
 
 **What is and isn't new (literature check, November 2026):** a different amount of schema per question (QCMA-SQL, AttnLink, Adaptive-Elbow, DecoSearch), a router learned from a model's own outcomes (Adaptive-RAG), the "cheapest option that succeeds" label (EllieSQL) and accuracy against schema budget (BudgetSchemaBench, LitE-SQL) all exist separately. The contribution is their combination for schema width: nested structural widths, labels from the deployed small model's own execution results, one choice before generation, and the distraction curves by model size and complexity. Baselines include the best fixed width, a complexity rule, a training-free elbow cut, the same selector with complexity features only, and retry with a wider width. Full table: `reports/agent1_width/README.md`.
+
+**Results so far (23 Nov 2026; Qwen2.5-Instruct FP16, base models not fine-tuned for SQL; numbers and tests in `reports/agent1_width/README.md`):** the learned selector matches the best fixed width but does not beat it (hypothesis 3 not supported); the best width depends on complexity (simple questions are best with the narrowest schema, joins need more) and grows with model size (W1 for 0.5B, W2 for 1.5B, W3 for 3B), but the pre-registered model-size test is not significant (hypothesis 1 not supported); the 1.5B selector transfers to the other sizes (hypothesis 4 not supported). The distraction curves are therefore the main finding; retry with a wider schema is a secondary result. The re-run with Agent 3's fine-tuned model is still to do.
 
 **Why it's necessary:** Small AI models have a limited context window. Handing over 50 tables' worth of columns when only 3–4 matter wastes that budget and increases the chance of the model making mistakes.
 

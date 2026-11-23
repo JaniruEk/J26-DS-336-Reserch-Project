@@ -98,8 +98,9 @@ Answer, rows, or bounded retry
 
 **Owner:** J.K.B. Ekanayake  
 **Estimated completion:** core retrieval **80–85%**; adaptive-width study
-(the main claim since 21 November 2026): code and tests done, **no real model
-run yet**.
+(the main claim since 21 November 2026): code, real runs (Qwen2.5-Instruct
+0.5B / 1.5B / 3B FP16), charts and latency done on 23 November 2026; re-run
+with Agent 3's fine-tuned model still to do.
 
 ### Main claim (approved 21 November 2026)
 
@@ -116,6 +117,18 @@ retrieval modes are now the fixed-width baselines:
 
 Pruning is no longer the novelty claim; its result is "no loss, no gain".
 Plan and run steps: `reports/agent1_width/README.md`.
+
+### Results (23 November 2026; base models, not fine-tuned for SQL)
+
+- Best fixed width by model size: W1 (0.5B), W2 (1.5B), W3 (3B). Simple
+  questions are best with the narrowest schema; join questions need W2 or wider.
+- Hypothesis 3 not supported: the learned selector matches the best fixed
+  width (1.5B: +.010, p = .51) at about half the tokens, but does not beat it.
+- Hypotheses 1 and 4 not supported by their pre-registered tests (size
+  effect +.032, 95% CI [-.009, +.072]; the 1.5B selector transfers).
+- Retry with a wider schema adds accuracy at every size (offline estimate).
+- Selector latency: median 106 ms, p95 189 ms (target 500 ms).
+- The 100-token generation limit changes no test result (checked).
 
 ### Completed (adaptive-width study, 21–22 November 2026)
 

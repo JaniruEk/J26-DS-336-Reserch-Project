@@ -7,13 +7,13 @@ Regulated enterprises want to ask questions of their databases in plain English,
 
 ```
 question ─► Agent 1 Retrieval ─► Agent 3 Generation ─► Agent 4 Execution ─► answer
-            (pruned schema +       (LoRA / HydraLoRA     (quantized model,
+            (selected schema +     (LoRA / HydraLoRA     (quantized model,
              complexity label)      on Agent 2's base)    run SQL, diagnose, retry)
 ```
 
 | Agent | Owner | Status in this repo |
 |---|---|---|
-| 1 Schema retrieval and column-level pruning | J.K.B. Ekanayake (IT23199262) | `agent1_retrieval/`: working, evaluated (Phases 1–8) |
+| 1 Schema retrieval and adaptive context width | J.K.B. Ekanayake (IT23199262) | `agent1_retrieval/`: working, evaluated; width study run on Qwen2.5 0.5B / 1.5B / 3B (`reports/agent1_width/`) |
 | 2 Foundation model (distillation) | W.A.T. Wathsala (IT23282704) | `Agent2/`: distillation notebooks; `MultiTask_Research/`: distilled Qwen2.5-1.5B multitask student, now the app's question gate (`harness/gates.py`; model files are shared outside git) |
 | 3 Fine-tuned generation (LoRA vs HydraLoRA) | K.G.Y.V. Thathsarani (IT23404250) | `agent3_finetune/`: LoRA vs HydraLoRA on Qwen2.5-1.5B-Instruct, preliminary results |
 | 4 Quantized execution (adaptive mixed-precision INT4/INT8) | K.M.I.N. Karunanayake (IT23179912) | `src/`, `scripts/qwen_*`, `results/qwen/`: adaptive INT4/INT8 Qwen2.5-1.5B-Instruct, usable in the app |
@@ -81,7 +81,7 @@ There are three sub-agents, and each makes one bounded decision:
 2. **FK traversal** decides which related tables are needed to join. It walks the foreign-key graph read live from the database and adds bridge tables between anchors. Foreign keys can be inferred from column names when none are declared.
 3. **Column pruning** decides which columns inside those tables reach the model. Keys are always kept. Other columns are kept on value, lemma, split-name, synonym or word-vector evidence. Each column records the reason it was kept or pruned.
 
-There are four switchable modes: `semantic`, `structural`, `hybrid` (the table-level baseline) and `hybrid_pruned` (the proposed method). The handoff to Agent 3 is a JSON-serialisable dict with these fields: `query`, `complexity`, `mode`, `anchor`, `matched`, `tables`, `ddl`, `tokens`, `latency_ms` and `trace`.
+There are four switchable modes: `semantic`, `structural`, `hybrid` (the table-level baseline) and `hybrid_pruned`. The handoff to Agent 3 is a JSON-serialisable dict with these fields: `query`, `complexity`, `mode`, `width`, `anchor`, `matched`, `tables`, `ddl`, `tokens`, `latency_ms` and `trace`.
 
 Results for hybrid_pruned with the `RECOMMENDED` configuration (column recall at tokens):
 
@@ -92,6 +92,8 @@ Results for hybrid_pruned with the `RECOMMENDED` configuration (column recall at
 | Spider (120, never used for tuning) | .98 at 138 | .99 at 161 |
 
 Warm retrieval latency is about 80–120 ms on average, against a 500 ms target. Execution accuracy with phi3 is reported in `CLAUDE.md` (Phases 5 and 7). On the evidence so far, pruning breaks even on accuracy and saves tokens. Full detail: `reports/agent1_phase8/README.md`, `pp1/01_Ekanayake_PP1_Response.md`.
+
+**Main claim since November 2026: adaptive context width.** The modes are four nested widths: W1 = anchor table (`semantic`), W2 = `hybrid_pruned`, W3 = `hybrid`, W4 = full schema. A selector picks one width per question before generation, trained on the SQL results of the small model in use. Results (Qwen2.5-Instruct 0.5B / 1.5B / 3B FP16, 869 test questions): the best fixed width grows with model size (W1, W2, W3) and depends on complexity; the selector matches the best fixed width at about half the tokens but does not beat it. Numbers, tests and charts: `reports/agent1_width/README.md`.
 
 ## Repository map
 
