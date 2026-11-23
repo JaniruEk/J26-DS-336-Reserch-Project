@@ -273,8 +273,20 @@ answer were correct: all cut W4 answers correct -> +.007 [-.036, +.049]; all cut
 [+.008, +.093]. So the H1 verdict depends on the 100-token limit in the extreme case. The limit was not changed
 (decision for the user: a re-run with a higher limit for all sizes and widths).
 
+## Latency with the selector (23 November 2026)
+
+`python -m scripts.width_latency`: warm, `LIVE` config, the 148 routing questions (Chinook 14, Spider 120, TPC-H 14),
+laptop CPU with the GPU idle. With the selector Agent 1 builds all four contexts per question.
+
+| Agent 1 | median | p95 | max |
+|---|---|---|---|
+| with the selector, whole `run()` | 106 ms | 189 ms | 251 ms |
+| without the selector, whole `run()` | 53 ms | 135 ms | 182 ms |
+
+The selector about doubles the retrieval time but stays well under the 500 ms target. The shared-retrieval
+optimisation (queue step 8) is not needed.
+
 ## Not done yet
 
 - 7B (left out, see the rules above). A re-run with a higher token limit (see the limit above), only if the user decides so.
-- With the selector, Agent 1 builds all four contexts for each question. Measure the retrieval time against the
-  500 ms target.
+

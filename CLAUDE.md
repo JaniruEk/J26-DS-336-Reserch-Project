@@ -209,7 +209,7 @@ If hypothesis 3 fails, hypotheses 1 and 2 (the distraction curves) are the main 
 - Verify all citations (references were compiled without live lookup).
 - Add MATS, HydraLoRA (arXiv 2404.19245), arXiv 2607.25583 to literature reviews.
 - Agree handoff formats between agents (the Agent 1 handoff gained `width` on 21 Nov 2026: tell Thathsarani).
-- Width study: queue steps 1-6 done for 1.5B, plus 0.5B/3B sweeps and H1/H4 (23 Nov 2026). Open: charts (step 7), selector latency (step 8), Agent 3 adapter (step 9), documents (step 10), token-limit re-run decision.
+- Width study: queue steps 1-6 done for 1.5B, plus 0.5B/3B sweeps and H1/H4 (23 Nov 2026). Done: charts (step 7, `scripts/width_charts.py`), selector latency (step 8: whole Agent1.run median 106 ms / p95 189 with the selector, 53 / 135 without; under 500 ms). Open: Agent 3 adapter (step 9), documents (step 10), token-limit re-run decision.
 - Typo in Ekanayake proposal §1.1: "Road-scale enterprise data querying" (likely "Large-scale"); combined proposal refers to "Pillar 2" for fine-tuning component.
 
 ## Working conventions
