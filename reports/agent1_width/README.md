@@ -166,12 +166,12 @@ Retry rows are offline: the retry sees a wider schema but no error hint.
 
 ### Hypotheses (1.5B only)
 
-1. Best fixed width narrower for smaller models: **not testable yet** (needs the 0.5B / 3B / 7B sweeps).
+1. Best fixed width narrower for smaller models: tested on 0.5B / 3B, see "Results: model sizes" below.
 2. Best width differs by complexity: **supported descriptively** (test set: simple W1 .79 vs W4 .61; single-join
    W1 .18 vs W2 .47). No formal test run yet.
 3. Learned selector beats every fixed width and the complexity rule at p < .0125: **not supported.** It equals the
    best fixed width (+.010, p = .51) at 84 against 151 tokens, and does not beat the complexity rule (p = .555).
-4. Selector transfer across models: **not testable yet.**
+4. Selector transfer across models: tested on 0.5B / 3B, see "Results: model sizes" below.
 
 Secondary: the schema and retrieval features add information over complexity alone (+.038, p < .001). Retry with a
 wider schema adds accuracy (offline estimate), and the selector + retry reaches .63 at 129 tokens.
@@ -192,8 +192,86 @@ Runs: Qwen2.5 0.5B and 3B Instruct FP16 (dev + train); same prompt and decoding 
   at p < 0.025 (0.05 / 2) for at least one of the two models.
 - Not done in these weeks: 7B (any precision); changing the label or the selector (post-hoc; separate decisions).
 
+## Results: model sizes 0.5B, 1.5B, 3B FP16 (23 November 2026)
+
+Same laptop GPU (mid-range hardware), prompt, decoding and Retriever as the 1.5B run; only the model id changes.
+Runs: `scripts/local_size_runs.sh` (0.5B and 3B, dev + train, all with `--elbow`). Same questions in every file
+(dev 869 scored, 40 skipped; train 1,144 scored, 56 skipped). Commands:
+
+    python -m scripts.width_sizes results/width/dev_qwen0.5b_fp16.jsonl results/width/dev_qwen1.5b_fp16.jsonl results/width/dev_qwen3b_fp16.jsonl --h1 results/width/dev_qwen0.5b_fp16.jsonl results/width/dev_qwen3b_fp16.jsonl
+    python -m scripts.width_selector results/width/train_qwen<size>_fp16.jsonl --test results/width/dev_qwen<size>_fp16.jsonl --transfer results/width/train_qwen1.5b_fp16.jsonl
+
+### Execution accuracy by width and model size (test set, n = 869)
+
+| Model | Bucket | n | W1 | W2 | W3 | W4 | any width |
+|---|---|---|---|---|---|---|---|
+| 0.5B | simple | 245 | .64 | .35 | .36 | .27 | .73 |
+| 0.5B | single-join | 104 | .06 | .27 | .31 | .19 | .42 |
+| 0.5B | multi-join | 37 | .00 | .00 | .00 | .11 | .14 |
+| 0.5B | aggregation | 483 | .33 | .25 | .26 | .19 | .46 |
+| 0.5B | **ALL** | 869 | **.37** | .27 | .28 | .21 | .52 |
+| 1.5B | **ALL** | 869 | .51 | **.57** | .57 | .53 | .71 |
+| 3B | simple | 245 | .84 | .71 | .74 | .69 | .90 |
+| 3B | single-join | 104 | .21 | .60 | .59 | .53 | .69 |
+| 3B | multi-join | 37 | .05 | .32 | .32 | .35 | .41 |
+| 3B | aggregation | 483 | .51 | .64 | .64 | .60 | .75 |
+| 3B | **ALL** | 869 | .55 | .64 | **.65** | .61 | .77 |
+| | mean tokens | | 58 | 151 | 180 | 245 | |
+
+1.5B by bucket: see the 1.5B section above. Training set ALL (W1/W2/W3/W4): 0.5B .27/.23/.23/.18; 1.5B
+.35/.50/.50/.52; 3B .38/.64/.64/.62.
+
+| Model | best fixed width | D = acc(W4) - acc(W2) | simple: acc(W1) - acc(W4) |
+|---|---|---|---|
+| 0.5B | W1 | -.064 | +.37 |
+| 1.5B | W2 | -.044 | +.18 |
+| 3B | W3 | -.032 | +.15 |
+
+### Selectors and transfer (each against that model's best fixed width)
+
+| System (ALL) | 0.5B (vs W1 .37) | 3B (vs W3 .65) |
+|---|---|---|
+| complexity rule | .33, -.038 [-.068, -.008], p = .017 | .66, +.009 [-.012, +.029], p = .43 |
+| adaptive elbow | .38, +.005 [-.016, +.025], p = .73 | .61, -.040 [-.070, -.013], p = .008 |
+| learned selector (own train rows) | .39, +.017 [+.005, +.031], 24/9, p = .014 | .62, -.029 [-.055, -.002], 56/81, p = .040 |
+| transfer selector (1.5B train rows) | .39, +.020 [+.005, +.036], p = .019 | .63, -.018 [-.045, +.008], p = .19 |
+| W2 + retry wider | .31, -.058, p = .003 | .67, +.022 [+.006, +.038], p = .011 |
+| selector + retry | .44, +.069 [+.049, +.089], p < .001 | .67, +.018 [-.005, +.043], p = .15 |
+| oracle (limit) | .51 | .77 |
+
+Learned selector against the complexity rule: 0.5B +.055 [+.026, +.084], p < .001; 3B -.038 [-.059, -.017],
+p = .001. Mean tokens of the learned selector: 0.5B 79, 3B 80. Widths picked: 0.5B W1 713 / W2 119 / W4 37;
+3B W1 688 / W2 172 / W3 3 / W4 6. Training labels: 0.5B W1 309, W2 116, W3 6, W4 53 (660 with no correct width);
+3B W1 432, W2 342, W3 13, W4 68 (289 with no correct width).
+
+### Hypotheses 1 and 4 (pre-registered rules above)
+
+- **H1 (primary): not supported.** D(3B) - D(0.5B) = +.032, 95% CI [-.009, +.072] (n = 869, paired bootstrap,
+  10,000 resamples, seed 0). Descriptively the direction is the one H1 predicts: the best fixed width grows with
+  model size (W1, W2, W3), D moves toward 0 (-.064, -.044, -.032), and the narrow-width advantage on simple
+  questions shrinks (+.37, +.18, +.15).
+- **H4: not supported.** Own selector against the 1.5B (transfer) selector: 0.5B -.002 [-.015, +.012], 17/19,
+  p = .87; 3B -.010 [-.024, +.001], 11/20, p = .15. The 1.5B selector works as well as each model's own selector.
+
+Secondary (not pre-registered as tests):
+- The same H3 comparison on the other sizes: at 0.5B the learned selector beats W1 (+.017, p = .014, just above the
+  .0125 threshold) and the complexity rule (p < .001) at 79 tokens; at 3B it is worse than W3 (p = .040) and the
+  rule (p = .001). The narrowest-correct label favours W1 (simple questions are often right at W1), and with a
+  stronger model the selector picks W1 too often for joins (3B single-join .41 vs W3 .59).
+- Retry with a wider schema helps at every size (offline estimate); for 3B the simple "W2 + retry wider" is the
+  best non-oracle row (.67, p = .011).
+
+### Limit: the 100-token cut at 0.5B
+
+Answers of 95 or more Qwen tokens, test set (W1 / W2 / W3 / W4 / E, of 869): 0.5B 10 / 21 / 18 / 30 / 12
+(W4 3.5%, above the 3% threshold in the plan); 1.5B 10 / 3 / 3 / 7 / 11; 3B 2 / 5 / 6 / 8 / 4. The long 0.5B answers
+are cut SQL, not repetition loops; none of them is correct as run (one of each width runs). Bound on H1 if every cut
+answer were correct: all cut W4 answers correct -> +.007 [-.036, +.049]; all cut W2 answers correct -> +.051
+[+.008, +.093]. So the H1 verdict depends on the 100-token limit in the extreme case. The limit was not changed
+(decision for the user: a re-run with a higher limit for all sizes and widths).
+
 ## Not done yet
 
-- Other model sizes (0.5B, 3B, 7B) and hypotheses 1 and 4.
+- 7B (left out, see the rules above). A re-run with a higher token limit (see the limit above), only if the user decides so.
 - With the selector, Agent 1 builds all four contexts for each question. Measure the retrieval time against the
   500 ms target.
