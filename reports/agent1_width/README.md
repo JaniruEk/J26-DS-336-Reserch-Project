@@ -268,10 +268,19 @@ Secondary (not pre-registered as tests):
 
 Answers of 95 or more Qwen tokens, test set (W1 / W2 / W3 / W4 / E, of 869): 0.5B 10 / 21 / 18 / 30 / 12
 (W4 3.5%, above the 3% threshold in the plan); 1.5B 10 / 3 / 3 / 7 / 11; 3B 2 / 5 / 6 / 8 / 4. The long 0.5B answers
-are cut SQL, not repetition loops; none of them is correct as run (one of each width runs). Bound on H1 if every cut
-answer were correct: all cut W4 answers correct -> +.007 [-.036, +.049]; all cut W2 answers correct -> +.051
-[+.008, +.093]. So the H1 verdict depends on the 100-token limit in the extreme case. The limit was not changed
-(decision for the user: a re-run with a higher limit for all sizes and widths).
+are cut SQL, not repetition loops; none of them is correct as run (one of each width runs).
+
+**Check with a higher limit (23 November 2026, `scripts/width_token_check.py`).** Decoding is greedy, so only an
+answer that reached 100 new tokens can change with a higher limit. The script re-generated, with a 300-token limit
+and Agent 4's `generate_sql` unchanged (only `max_new_tokens` differs), every test answer of 70 or more SQL tokens
+(0.5B 329, 1.5B 156, 3B 107) and a random sample of 100 shorter answers per size (seed 0). Results:
+- Sampled shorter answers: 0 reached 100 tokens, 0 changed, 0 schema contexts differed from the sweep (all sizes).
+- Answers that really reached 100 tokens: 0.5B 93, 1.5B 34, 3B 23; every one had 94 or more SQL tokens in the sweep.
+- Correct/wrong flags that changed with the 300-token limit: **0 at every size and width.**
+
+So the 100-token limit does not change any test-set result, and H1 stands as reported. Files:
+`results/width/dev_qwen{0.5b,1.5b,3b}_fp16_tok300.jsonl` (same rows with the re-generated answers; `cut100` marks the
+answers that reached the limit). Not checked: the training files (selector labels).
 
 ## Latency with the selector (23 November 2026)
 
@@ -288,5 +297,5 @@ optimisation (queue step 8) is not needed.
 
 ## Not done yet
 
-- 7B (left out, see the rules above). A re-run with a higher token limit (see the limit above), only if the user decides so.
+- 7B (left out, see the rules above).
 
