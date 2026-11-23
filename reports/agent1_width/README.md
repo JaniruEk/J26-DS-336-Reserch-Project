@@ -218,6 +218,9 @@ Runs: `scripts/local_size_runs.sh` (0.5B and 3B, dev + train, all with `--elbow`
 | 3B | **ALL** | 869 | .55 | .64 | **.65** | .61 | .77 |
 | | mean tokens | | 58 | 151 | 180 | 245 | |
 
+Charts (greyscale, `python -m scripts.width_charts --set dev|train`): `distraction_curves_dev.png`,
+`distraction_curves_train.png`.
+
 1.5B by bucket: see the 1.5B section above. Training set ALL (W1/W2/W3/W4): 0.5B .27/.23/.23/.18; 1.5B
 .35/.50/.50/.52; 3B .38/.64/.64/.62.
 
