@@ -33,11 +33,11 @@ The above candidates are conducting research for their undergraduate dissertatio
 
 # ABSTRACT
 
-Enterprises need natural-language access to internal databases and data warehouses, but sending proprietary schemas and customer data into a third-party generative-AI system is restricted at most such organisations — by internal AI-governance and vendor-risk policy, reinforced by data-protection regulation such as GDPR and CCPA — while locally hosted Small Language Models (SLMs) hallucinate severely on complex multi-table joins and aggregations — the real-world problem this project addresses. The individual research problem is that no existing framework simultaneously investigates schema-retrieval granularity, fine-tuning architecture, compression strategy, and foundation-model construction as a coordinated set of independent, hardware-constrained comparisons feeding into one deployable system. Key evidence for this gap comes from Text-to-SQL retrieval, PEFT, edge-inference, and model-compression literature reviewed in Section 1.2, each of which addresses one dimension of the problem in isolation.
+Enterprises need natural-language access to internal databases and data warehouses, but sending proprietary schemas and customer data into a third-party generative-AI system is restricted at most such organisations — by internal AI-governance and vendor-risk policy, reinforced by data-protection regulation such as GDPR and CCPA — while locally hosted Small Language Models (SLMs) hallucinate severely on complex multi-table joins and aggregations — the real-world problem this project addresses. The individual research problem is that no existing framework simultaneously investigates schema context width, fine-tuning architecture, compression strategy, and foundation-model construction as a coordinated set of independent, hardware-constrained comparisons feeding into one deployable system. Key evidence for this gap comes from Text-to-SQL retrieval, PEFT, edge-inference, and model-compression literature reviewed in Section 1.2, each of which addresses one dimension of the problem in isolation.
 
-The identified gap spans four dimensions: (1) schema retrieval operates at table-level granularity, wasting limited context on irrelevant columns; (2) standard fine-tuning applies one undifferentiated adapter across heterogeneous query complexity; (3) quantization is applied without systematically comparing training-time versus post-hoc compression for reasoning preservation; and (4) foundation-model construction relies on off-the-shelf small models never optimised for multi-step reasoning.
+The identified gap spans four dimensions: (1) schema retrieval gives every question the same amount of schema, although the best amount can depend on the question and on the small model that uses it; (2) standard fine-tuning applies one undifferentiated adapter across heterogeneous query complexity; (3) quantization is applied without systematically comparing training-time versus post-hoc compression for reasoning preservation; and (4) foundation-model construction relies on off-the-shelf small models never optimised for multi-step reasoning.
 
-This project's proposed research contribution is a Distributed Multi-Agent SLM Framework organised as four independently evaluated, controlled comparisons: column-level schema pruning versus table-level retrieval; an asymmetric multi-head LoRA (HydraLoRA) architecture versus standard LoRA, specialised by query complexity; Quantization-Aware Training versus Post-Training Quantization; and a knowledge-distilled base model versus a natively small model, evaluated under identical fine-tuning. The fine-tuning-architecture and quantization-strategy comparisons connect through a single, lightweight cross-check — the winning quantization strategy is additionally applied to the runner-up fine-tuning architecture — testing whether the two decisions interact without requiring either component to own or depend on the other's internal implementation. The proposed product component is an on-premise, natural-language-to-SQL query engine for regulated enterprises.
+This project's proposed research contribution is a Distributed Multi-Agent SLM Framework organised as four independently evaluated, controlled comparisons: a per-question schema-width selector, learned from the small model's own execution results, versus fixed schema widths; an asymmetric multi-head LoRA (HydraLoRA) architecture versus standard LoRA, specialised by query complexity; Quantization-Aware Training versus Post-Training Quantization; and a knowledge-distilled base model versus a natively small model, evaluated under identical fine-tuning. The fine-tuning-architecture and quantization-strategy comparisons connect through a single, lightweight cross-check — the winning quantization strategy is additionally applied to the runner-up fine-tuning architecture — testing whether the two decisions interact without requiring either component to own or depend on the other's internal implementation. The proposed product component is an on-premise, natural-language-to-SQL query engine for regulated enterprises.
 
 The research follows a Design Science methodology with an iterative, prototype-driven development approach. Evaluation uses token efficiency, schema-linking precision/recall, exact-match and JOIN/aggregation-specific SQL accuracy, and VRAM/latency footprint, stratified by a shared query-complexity taxonomy (simple, single-join, multi-join, aggregation) across all four studies. Following independent evaluation, the best-performing configuration from each study is assembled into an end-to-end pipeline, and this integration is validated as a feasibility demonstration — not an additional novelty claim — confirming that regulation-compliant, fully local natural-language database querying is achievable on mid-range hardware without sacrificing multi-table reasoning accuracy.
 
@@ -115,7 +115,9 @@ This project addresses the problem through a Distributed Multi-Agent SLM Framewo
 
 The following peer-reviewed and benchmark sources were critically evaluated for their relevance to this project's four components:
 
-### Ekanayake's Component — Dynamic Schema Retrieval and Column-Level Pruning for Resource-Constrained Text-to-SQL
+### Ekanayake's Component — Adaptive Schema Context Width for Small Local Text-to-SQL Models
+
+> **Revision note:** Revised 23 November 2026: research claim changed from column-level pruning to adaptive schema context width (approved 21 November 2026). Results: reports/agent1_width/README.md.
 
 **[1] AID-SQL: Adaptive In-Context Learning of Text-to-SQL with Difficulty-Aware Instruction and Retrieval-Augmented Generation (2025)**
 
@@ -125,7 +127,7 @@ The following peer-reviewed and benchmark sources were critically evaluated for 
 | Dataset / Context | Cross-domain Text-to-SQL benchmarks with varying query difficulty levels. |
 | Key Findings | Adaptive retrieval strategies that account for query difficulty improve generation accuracy over static retrieval. |
 | Strengths | Demonstrates that retrieval strategy should not be one-size-fits-all across query types. |
-| Limitations | Operates at table/example level; does not address column-level context pruning within a selected table. |
+| Limitations | Adapts examples and instructions to difficulty; does not adapt the amount of schema shown to the model. |
 
 Motivates this component's decision to stratify evaluation by query complexity rather than reporting a single aggregate accuracy figure.
 
@@ -137,9 +139,9 @@ Motivates this component's decision to stratify evaluation by query complexity r
 | Dataset / Context | Ambiguous-query subsets of standard Text-to-SQL benchmarks. |
 | Key Findings | Retrieval augmentation helps disambiguate schema references, but excess retrieved context can itself introduce noise. |
 | Strengths | Highlights that retrieval quantity, not just presence, affects generation accuracy. |
-| Limitations | Does not isolate table-level versus column-level retrieval granularity as a variable. |
+| Limitations | Does not measure how the best amount of context changes with model size or query complexity. |
 
-Directly supports the hypothesis underlying this component: that reducing retrieved context to only relevant columns, not just relevant tables, should reduce noise and improve accuracy.
+Supports the premise of this component: more schema is not always better, so the amount of schema is a variable to choose for each question.
 
 **[3] Efficient Inference Scheduling With Edge and Cloud Collaboration for LLMs Under Resource Constraints (2026)**
 
@@ -149,9 +151,59 @@ Directly supports the hypothesis underlying this component: that reducing retrie
 | Dataset / Context | Simulated and real edge-hardware inference workloads. |
 | Key Findings | Context length is a first-order determinant of inference latency and memory footprint on constrained hardware. |
 | Strengths | Provides quantitative grounding for why context-window efficiency matters on edge-class GPUs. |
-| Limitations | General-purpose inference scheduling; does not address domain-specific context construction (e.g. schema pruning). |
+| Limitations | General-purpose inference scheduling; does not address domain-specific context construction (e.g. schema width). |
 
 Provides the technical justification for treating token count as a primary evaluation metric in this component.
+
+**[4] QCMA-SQL (Findings of NAACL 2025)**
+
+| Aspect | Detail |
+|---|---|
+| Method | Multi-agent Text-to-SQL with a learned, per-question schema selector; a difficulty class (simple/complex) chooses the agent. |
+| Dataset / Context | Standard Text-to-SQL benchmarks; API-scale LLMs. |
+| Key Findings | A per-question schema selection can be learned. |
+| Strengths | Closest prior design for a learned, per-question amount of schema. |
+| Limitations | Selector labels come from gold-SQL schema relevance, not from the generator's own results; the difficulty class chooses the agent, not the amount of schema; no small local models. |
+
+Shows that per-question schema selection is not new. This component credits it and differs in the label source and the model scale.
+
+**[5] AttnLink (arXiv 2608.00693)**
+
+| Aspect | Detail |
+|---|---|
+| Method | Schema linking with a per-question top-p cut on schema-item scores. |
+| Dataset / Context | Text-to-SQL benchmarks. |
+| Key Findings | States that the best precision/recall balance of schema linking "is generator-dependent". |
+| Strengths | Closest recent work on a per-question amount of schema. |
+| Limitations | The cut is a fixed rule, not learned from the generator's own execution results. |
+
+Motivates learning the width for each generator, rather than fixing one rule for all models.
+
+**[6] Adaptive-RAG (Jeong et al., NAACL 2024)**
+
+| Aspect | Detail |
+|---|---|
+| Method | A question-complexity classifier, trained with labels from model outcomes, chooses the retrieval strategy for each question. |
+| Dataset / Context | Open-domain question answering, not Text-to-SQL. |
+| Key Findings | Routing by question complexity improves the cost/accuracy balance of retrieval. |
+| Strengths | Establishes the idea of a router learned from the model's own outcomes. |
+| Limitations | Chooses a retrieval strategy, not a schema width; uses complexity features only. |
+
+This component credits the outcome-learned router to Adaptive-RAG and uses a complexity-only selector as a baseline that copies its design.
+
+**[7] BudgetSchemaBench (arXiv 2610.00092) and LitE-SQL (arXiv 2510.09014)**
+
+| Aspect | Detail |
+|---|---|
+| Method | BudgetSchemaBench: Text-to-SQL accuracy at fixed schema budgets. LitE-SQL: vector-based schema linking at a fixed top-k, with execution-guided SQL correction. |
+| Dataset / Context | Text-to-SQL benchmarks; API-scale models (BudgetSchemaBench); models from 1.5B to 7B parameters (LitE-SQL). |
+| Key Findings | Accuracy depends on the schema budget; LitE-SQL reports that smaller models are less robust to irrelevant columns. |
+| Strengths | Direct prior studies of accuracy against schema amount, and evidence for the distraction effect in small models. |
+| Limitations | Fixed budgets or a fixed k for all questions; BudgetSchemaBench has no small open models and no split by model size or query difficulty. |
+
+Shows that accuracy-against-schema-amount studies are not new. This component adds a per-question choice and the split by small model size and query complexity.
+
+**Further related work.** CHESS, Adaptive-Elbow (arXiv 2611.20979, a training-free per-question cut) and DecoSearch (arXiv 2606.17821, selection by an LLM) also vary the amount of schema per question. EllieSQL (arXiv 2503.22402) routes each question to "the most efficient capable" pipeline, the same idea as this component's label (the cheapest option that succeeds), applied to pipelines. RSL-SQL chooses between a pruned and a full schema after two generations. AutoLink (arXiv 2511.17190) widens the schema on verification errors before generation. The bibliographic details of these November 2026 additions are to be verified before submission.
 
 ### Thathsarani's Component — Complexity-Specialised Parameter-Efficient Fine-Tuning for SQL Reasoning (Standard LoRA vs. HydraLoRA)
 
@@ -269,7 +321,7 @@ Reinforces why this component's controlled distilled-versus-native comparison ma
 
 ### Existing Products and Systems
 
-**Ekanayake:** Cloud-hosted Text-to-SQL copilots (e.g. general-purpose LLM-based BI assistants) achieve high accuracy but require transmitting schema and query data into a third-party generative-AI vendor — a data flow most regulated enterprises' internal AI-governance policy does not currently permit for live, sensitive data, regardless of the vendor's contractual terms. Locally-run open-source Text-to-SQL tools typically perform table-level schema linking via either keyword matching or embedding similarity, then inject the full DDL of every retrieved table into the prompt. None of the locally-run tools reviewed perform column-level pruning within a selected table; this is the specific limitation this component addresses.
+**Ekanayake:** Cloud-hosted Text-to-SQL copilots (e.g. general-purpose LLM-based BI assistants) achieve high accuracy but require transmitting schema and query data into a third-party generative-AI vendor — a data flow most regulated enterprises' internal AI-governance policy does not currently permit for live, sensitive data, regardless of the vendor's contractual terms. Locally-run open-source Text-to-SQL tools typically perform table-level schema linking via either keyword matching or embedding similarity, then inject the full DDL of every retrieved table into the prompt, with one fixed setting for all questions. Research systems already vary the amount of schema per question (CHESS, QCMA-SQL, AttnLink, Adaptive-Elbow, DecoSearch), and MATS (arXiv 2512.18622) already combines several small language models in one Text-to-SQL pipeline. They set the amount of schema with a fixed rule, gold-schema labels, model confidence or a large model. To our knowledge, as of November 2026, none of the reviewed systems learns the width from the execution results of the small local model that will use it, and chooses it once, before generation; this narrow combination is the limitation this component addresses.
 
 **Thathsarani:** Reviewed open-source Text-to-SQL fine-tuning pipelines uniformly apply a single LoRA (or QLoRA) adapter across the full training set. None of the locally-run tools reviewed implement task-heterogeneity-aware adapter architectures specifically for SQL query complexity; this is the specific limitation this component addresses.
 
@@ -282,7 +334,7 @@ Reinforces why this component's controlled distilled-versus-native comparison ma
 Four specific, complementary gaps motivate this project's four research components, sharing one root cause: the fixed mid-range hardware budget that rules out simply using bigger, cloud-hosted models.
 
 > **Ekanayake — Research Gap Statement**
-> Existing schema-retrieval approaches for local, SLM-scale Text-to-SQL systems operate at table-level granularity, injecting complete table schemas into a constrained context window regardless of column relevance; it is not yet established whether column-level pruning, evaluated under a fixed token budget and across varying query complexity, improves retrieval efficiency and downstream SQL accuracy over table-level-only retrieval strategies.
+> Per-question schema selection exists, and accuracy against schema amount has been measured for API-scale models and for fixed budgets on 1.5B–7B models. It is not yet established, for small local Text-to-SQL models, (a) how the best schema width changes with model size and query complexity, and (b) whether a selector that chooses one of several nested widths for each question before generation, trained on labels from the deployed model's own execution results, gives higher execution accuracy than the best fixed width and a simple complexity rule. Research question: for a given small local SQL model, how much schema (width) should each question get?
 
 > **Thathsarani — Research Gap Statement**
 > Standard LoRA fine-tuning applies one shared low-rank adapter across the full heterogeneity of Text-to-SQL query complexity; it is not established whether an asymmetric multi-head LoRA architecture, specialised by query-complexity bucket, improves multi-join and aggregation reasoning accuracy over standard LoRA without a proportional increase in trainable parameters.
@@ -305,14 +357,16 @@ Four specific, complementary gaps motivate this project's four research componen
 
 Each member's specific objectives are designed as an independent, controlled comparison, sharing a common query-complexity taxonomy (simple / single-join / multi-join / aggregation) and the same mid-range hardware budget.
 
-### J.K.B. Ekanayake — Dynamic Schema Retrieval and Column-Level Pruning for Resource-Constrained Text-to-SQL
+### J.K.B. Ekanayake — Adaptive Schema Context Width for Small Local Text-to-SQL Models
 
 - To implement a dynamic schema-reflection engine that automatically extracts table structures and foreign-key relationships from a live relational database without hardcoded schema definitions.
-- To implement four retrieval configurations — semantic-only, structural-only, hybrid, and hybrid with column-level pruning — as switchable modes of a single retrieval engine.
-- To design a column-level relevance-ranking mechanism that determines which columns within a selected table are retained in the generation context.
+- To implement four retrieval configurations — semantic-only, structural-only, hybrid, and hybrid with column-level pruning — as switchable modes of a single retrieval engine, and to use them, with the full schema, as four nested widths: W1 (anchor table only), W2 (anchor and related tables, columns pruned), W3 (the same tables, all columns) and W4 (full schema).
+- To implement the column-level relevance-ranking mechanism that builds width W2.
 - To build a query-complexity classification module (simple, single-join, multi-join, aggregation) shared across the project's evaluation pipeline.
-- To evaluate all four retrieval configurations on token count, schema-linking precision/recall, and downstream SQL execution accuracy, stratified by query complexity.
-- To identify the retrieval configuration that best balances context efficiency and accuracy for deployment on the project's target hardware.
+- To measure execution accuracy and token count at each width W1–W4 for Qwen2.5-Instruct 0.5B, 1.5B and 3B (FP16) on the full non-nested Spider development set, Chinook and Northwind, stratified by query complexity (the distraction curves; tests H1 and H2), before PP2.
+- To train a width selector on 1,200 Spider training questions, each labelled with the narrowest width whose SQL returns the correct rows, and to compare it with the fixed widths, the complexity rule, the adaptive elbow, the complexity-only selector, retry with a wider width and the oracle, using paired bootstrap CIs and exact McNemar tests (tests H3), before PP2.
+- To test whether a selector trained for one model size is the best selector for another model size (tests H4), before PP2.
+- To keep Agent 1's retrieval time, including the selector, under 500 ms per question, and to repeat the width study with Agent 3's fine-tuned model before the final submission.
 
 ### K.G.Y.V. Thathsarani — Complexity-Specialised Parameter-Efficient Fine-Tuning for SQL Reasoning (Standard LoRA vs. HydraLoRA)
 
@@ -353,19 +407,25 @@ This study follows a Design Science research methodology across all four compone
 - Database proxies: the Chinook relational database serves as the primary enterprise-database proxy; the Spider dataset and TPC-H decision-support benchmark provide additional, more complex schema structures.
 - Query-complexity taxonomy: every natural-language/SQL pair used in evaluation is classified as simple, single-join, multi-join, or aggregation-heavy, shared across all four components so results can be compared directly.
 
-## J.K.B. Ekanayake's Methodology — Dynamic Schema Retrieval and Column-Level Pruning for Resource-Constrained Text-to-SQL
+## J.K.B. Ekanayake's Methodology — Adaptive Schema Context Width for Small Local Text-to-SQL Models
 
 **1. Research Methodology**
-The research question — whether retrieval granularity affects context efficiency and downstream accuracy — is best answered through controlled, quantitative experimentation rather than qualitative or observational methods, since the outcome variables (token count, precision/recall, execution accuracy) are directly measurable and the four retrieval configurations can be isolated as a single controlled variable. A Design Science approach is appropriate because the research produces an evaluated artefact (the retrieval engine) alongside empirical findings.
+The research question — for a given small local SQL model, how much schema (width) each question should get — is best answered through controlled, quantitative experimentation, since the outcome variables (execution accuracy, token count) are directly measurable and width can be isolated as the single controlled variable: for every question, the same model generates SQL once at each of four nested widths (W1 anchor table only; W2 anchor and related tables, columns pruned; W3 the same tables, all columns; W4 full schema), with the same prompt and greedy decoding. A Design Science approach is appropriate because the research produces evaluated artefacts (the retrieval engine and the width selector) alongside empirical findings (the distraction curves). The hypotheses are:
+- **H1.** The best fixed width becomes narrower when the model becomes smaller. Primary test (pre-registered before the runs of other model sizes): with D(model) = accuracy(W4) − accuracy(W2), the difference D(3B) − D(0.5B) is greater than 0, and its 95% paired bootstrap CI excludes 0.
+- **H2.** The best width is different for each complexity label.
+- **H3.** The learned selector beats every fixed width and the complexity rule (threshold p < 0.0125).
+- **H4.** A selector trained for one model is not the best selector for a different model (exact McNemar; supported if p < 0.025 for at least one of the two other sizes).
+
+If H3 is not supported, H1 and H2 (the distraction curves) are the main finding.
 
 > **Selected Methodology**
-> Design Science Research, incorporating a controlled quantitative experiment comparing four retrieval configurations.
+> Design Science Research, incorporating a controlled quantitative experiment that compares four nested schema widths and several width-selection methods for small local SQL models of different sizes.
 
 **2. Data / Participants / Experimental Inputs**
-The Chinook relational database serves as the primary enterprise-database proxy, supplemented by the Spider dataset and TPC-H decision-support benchmark for schema complexity beyond Chinook's scope. A labelled evaluation set of natural-language-question and ground-truth-SQL pairs is required, tagged by query complexity; where an existing labelled set does not provide sufficient examples per complexity bucket, additional synthetic pairs will be generated using Python-based scripts, consistent with the project's synthetic-data approach for avoiding proprietary data dependency.
+The test set is all non-nested questions of the Spider development set, plus the Chinook and Northwind question sets; questions whose gold SQL returns no rows are skipped. The selector trains on 1,200 Spider training questions from databases that are not in the test set; every split is by database. For each question and model, the label is the narrowest width whose SQL returns the gold rows; a question with no correct width is not used for training. The selector's inputs are known before the SQL model runs: the four complexity probabilities, the top-3 table similarities and their gap, schema size, schema features, the token count at each width, and question length. The models are Qwen2.5-Instruct 0.5B, 1.5B and 3B at FP16, with one prompt and greedy decoding; Qwen2.5-1.5B-Instruct is the project's shared base model. A 7B model is not included, because it does not fit at FP16 on the mid-range hardware used. Agent 3's fine-tuned model replaces the base model in a later re-run.
 
 **3. Baseline / Benchmark**
-The table-level hybrid retrieval approach (semantic anchor selection plus foreign-key graph traversal, without column pruning) serves as the primary internal baseline, representing the retrieval strategy typical of existing schema-linking literature. Semantic-only and structural-only configurations serve as secondary baselines to isolate the contribution of each retrieval signal independently.
+Every method is compared with the best fixed width. The baselines are the fixed widths W1–W4 (the existing semantic-only, hybrid+pruning and hybrid retrieval modes, plus the full schema); a complexity rule (W1 if P(simple) ≥ 0.5, else W2); an adaptive elbow, a training-free per-question cut (simplified from Adaptive-Elbow); the learned selector with complexity features only (the Adaptive-RAG design); retry with the next wider width after SQL that fails to run (an ablation, close to AutoLink, not a claim); and the oracle, the narrowest correct width for each question (upper limit).
 
 **4. Evaluation Metrics**
 
@@ -373,15 +433,16 @@ The table-level hybrid retrieval approach (semantic anchor selection plus foreig
 
 | Metric | Why Relevant | Target / Comparison |
 |---|---|---|
-| Token count per query | Directly measures context-window efficiency, the primary constraint on mid-range hardware. | Minimise, relative to table-level baseline |
-| Schema-linking precision/recall | Measures whether the correct tables/columns were retrieved against ground truth. | Maximise, ≥ hybrid baseline |
-| Downstream SQL execution accuracy | Measures end-task success — whether the generated SQL, given this context, executes correctly. | Outperform table-level-only baseline, especially on multi-join/aggregation buckets |
+| Execution accuracy (strict match of result rows against the gold SQL) | Measures end-task success at each width and for each selection method. | Selector > best fixed width and complexity rule (H3); reported per model size and complexity bucket (H1, H2) |
+| Token count per question | Measures context-window use, the primary constraint on mid-range hardware. | Reported for every width and method; lower at equal accuracy is better |
+| Agent 1 retrieval time per question (with the selector) | The selector builds all four widths, so it adds retrieval work. | Median and 95th percentile under 500 ms |
+| Schema-linking precision/recall | Measures whether the needed tables/columns are present at each width (engine quality). | Reported per width |
 
 **5. Validation Strategy**
-Results are validated through stratified evaluation across the shared query-complexity taxonomy, allowing the analysis to determine not only whether column-pruning helps on average but specifically where it helps or hurts. Statistical comparison (e.g. paired accuracy differences per query) between configurations will be used rather than relying on a single aggregate accuracy number, consistent with accepted evaluation practice in the retrieval-augmented generation literature reviewed above.
+All comparisons are paired: each question is answered by every width and every method. Differences in accuracy are reported with a 95% paired bootstrap confidence interval (10,000 resamples of questions) and an exact McNemar test. The threshold for H3 is p < 0.0125, fixed in advance; the elbow, complexity-only and retry rows are secondary. The H1 and H4 tests were written down before the runs of the other model sizes. The selector is tested only on databases that it did not train on. Results are reported per complexity bucket, not only as one overall number. A negative result is a valid result and will be reported as such.
 
 **6. Development Approach**
-An iterative prototyping approach is appropriate given the exploratory nature of the research: each retrieval configuration is implemented, tested against a small validation subset, and refined before full-scale evaluation, allowing early detection of implementation issues (e.g. FK-graph traversal errors) without committing to a fixed design upfront.
+An iterative prototyping approach is used. The retrieval engine and its four modes were built and tuned first. The width sweep and the selector were then built and tested with synthetic rows and stub models, then checked on a 20-question run, before the full runs. Each sweep is resumable, so a long run can stop and continue without loss.
 
 ## K.G.Y.V. Thathsarani's Methodology — Complexity-Specialised Parameter-Efficient Fine-Tuning for SQL Reasoning (Standard LoRA vs. HydraLoRA)
 
@@ -492,8 +553,10 @@ The proposed system is a privacy-preserving, natural-language-to-SQL query engin
 | [Ekanayake] Schema Reflection Module | Extracts table structures and foreign-key relationships via database system-catalog queries |
 | [Ekanayake] Vector Index (ChromaDB) | Stores table-level DDL embeddings for semantic anchor search |
 | [Ekanayake] Retrieval Mode Switch | Selects among semantic-only, structural-only, hybrid, hybrid+pruned configurations |
-| [Ekanayake] Column Pruning Stage | Ranks and filters columns within each selected table based on query relevance |
-| [Ekanayake] Output | Pruned schema context, passed to the fine-tuned SQL-generation component |
+| [Ekanayake] Column Pruning Stage | Ranks and filters columns within each selected table based on query relevance (builds width W2) |
+| [Ekanayake] Width Builder | Builds the four nested contexts: W1 anchor table only, W2 hybrid+pruned, W3 hybrid, W4 full schema |
+| [Ekanayake] Width Selector | Chooses one width for the question from features known before generation; trained on the SQL model's own execution results |
+| [Ekanayake] Output | Schema context at the selected width, the width and the complexity label, passed to the fine-tuned SQL-generation component |
 | [Thathsarani] Input | Pruned schema context (from retrieval component); base model checkpoint (from model-construction component); complexity-labelled training data |
 | [Thathsarani] Standard LoRA Module | Single shared adapter (A, B matrices) fine-tuned on the full dataset — control condition |
 | [Thathsarani] HydraLoRA Module | Shared A matrix; multiple complexity-specialised B-matrix heads |
@@ -513,7 +576,7 @@ The proposed system is a privacy-preserving, natural-language-to-SQL query engin
 
 ## Internal Sub-Agent Structure — Agent 1 (Retrieval)
 
-Agent 1 is itself internally composed of three cooperating sub-agents, mirroring the project's overall multi-agent design philosophy at the component level rather than being a single monolithic module. Anchor Selection decides where retrieval begins, using either semantic similarity (ChromaDB embedding search) or structural keyword matching, depending on the active retrieval mode. Traversal decides which additional tables to pull in, walking the foreign-key graph outward from the anchor table when the active mode calls for it. Pruning decides, for hybrid-pruned mode specifically, which individual columns within each selected table are retained. Each sub-agent makes one bounded decision and passes its output to the next, composing into the single pruned schema context that Agent 1 as a whole hands to Agent 3.
+Agent 1 is itself internally composed of three cooperating sub-agents, mirroring the project's overall multi-agent design philosophy at the component level rather than being a single monolithic module. Anchor Selection decides where retrieval begins, using either semantic similarity (ChromaDB embedding search) or structural keyword matching, depending on the active retrieval mode. Traversal decides which additional tables to pull in, walking the foreign-key graph outward from the anchor table when the active mode calls for it. Pruning decides, for hybrid-pruned mode specifically, which individual columns within each selected table are retained. Together these sub-agents build the nested widths. The Width Selector then makes one more bounded decision: which width to send for this question. Each step makes one decision and passes its output to the next, composing into the single schema context that Agent 1 as a whole hands to Agent 3.
 
 ## Internal Sub-Agent Structure — Agent 3 (Fine-Tuned Generation)
 
