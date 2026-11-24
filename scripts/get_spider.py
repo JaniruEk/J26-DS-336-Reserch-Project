@@ -49,7 +49,8 @@ def build_width_sets(train_n=1200):
     """For the adaptive-width study (python -m scripts.get_spider --width):
     eval/spider_dev_full.json     every dev question that is not nested/compound (the test set, about 1,000)
     eval/spider_train_width.json  train_n train questions, equal numbers per complexity bucket where possible
-                                  (the selector's training set; train and dev databases are different)."""
+                                  (the selector's training set; train and dev databases are different).
+    Extracts the databases of both (existing files are kept)."""
     z = zipfile.ZipFile(ZIP)
     nested = re.compile(r"\bSELECT\b.*\bSELECT\b|\bINTERSECT\b|\bUNION\b|\bEXCEPT\b", re.I | re.S)
     path = lambda d: f"data/spider/{d['db_id']}/{d['db_id']}.sqlite"
@@ -62,7 +63,7 @@ def build_width_sets(train_n=1200):
     for b in BUCKETS:
         pool = sorted((d for d in train if classify_sql(d["query"]) == b), key=lambda d: (d["db_id"], d["question"]))
         picked += rnd.sample(pool, min(train_n // len(BUCKETS), len(pool)))
-    for db in sorted({d["db_id"] for d in picked}):
+    for db in sorted({d["db_id"] for d in picked + dev}):  # dev too: a fresh checkout has no data/spider yet
         os.makedirs(f"data/spider/{db}", exist_ok=True)
         if not os.path.exists(f"data/spider/{db}/{db}.sqlite"):
             with open(f"data/spider/{db}/{db}.sqlite", "wb") as f:
