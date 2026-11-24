@@ -192,6 +192,17 @@ Runs: Qwen2.5 0.5B and 3B Instruct FP16 (dev + train); same prompt and decoding 
   at p < 0.025 (0.05 / 2) for at least one of the two models.
 - Not done in these weeks: 7B (any precision); changing the label or the selector (post-hoc; separate decisions).
 
+**Amendment 24 November 2026 (written before any 7B run; the 0.5B / 1.5B / 3B results above were already known).**
+A shared cluster GPU (hive, the team's HTCondor pool) can hold Qwen2.5-7B-Instruct at FP16, so 7B is added. Because it
+is added after the other results were seen, it is a **secondary, exploratory** analysis:
+- H1 and H4 keep the tests above (H1 = D(3B) - D(0.5B), already reported). No 7B result changes their verdicts.
+- Reported for 7B, with the same statistics: accuracy by width and bucket, best fixed width, D(7B), D(7B) - D(0.5B)
+  with its 95% CI, own selector against the 1.5B selector (exact McNemar), all labelled "added after the results".
+- Hardware check: the 7B runs on different hardware (`scripts/cluster_width_runs.sh`; torch build recorded in `env.txt`).
+  1.5B and 3B are run again on the same cluster GPU; size comparisons that include 7B use only cluster runs, and the
+  agreement of the per-width correct flags between the laptop and the cluster runs is reported.
+- Same prompt, decoding (greedy, 100 new tokens), retriever, question files and databases (sha256-checked) as the laptop.
+
 ## Results: model sizes 0.5B, 1.5B, 3B FP16 (23 November 2026)
 
 Same laptop GPU (mid-range hardware), prompt, decoding and Retriever as the 1.5B run; only the model id changes.
