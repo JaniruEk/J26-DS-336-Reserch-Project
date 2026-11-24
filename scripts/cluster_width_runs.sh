@@ -13,7 +13,12 @@ set -euo pipefail
 SIZE=$1; LIMIT=${2:-}
 BRANCH=${J26_BRANCH:-janiru/finish-agent1-unblocked}
 JOB=$PWD
-export HF_HOME="$JOB/hf" TOKENIZERS_PARALLELISM=false PIP_DISABLE_PIP_VERSION_CHECK=1
+# The job folder is copied back to hive at the end: keep the model (15 GB for 7B) on the shared scratch drive
+# (cleaned after 7 days) and delete the clone, venv and caches when the job ends.
+export HF_HOME=/cluster/scratch/$(id -un)/hf XDG_CACHE_HOME="$JOB/j26/.cache" PIP_NO_CACHE_DIR=1 \
+  TOKENIZERS_PARALLELISM=false PIP_DISABLE_PIP_VERSION_CHECK=1
+mkdir -p "$HF_HOME"
+trap 'cd "$JOB"; rm -rf j26' EXIT
 
 git clone -q --depth 1 -b "$BRANCH" https://github.com/JaniruEk/J26-DS-336-Reserch-Project.git j26
 cd j26
@@ -49,3 +54,4 @@ DEV="eval/spider_dev_full.json eval/chinook_pairs.json eval/northwind_pairs.json
 python -c "from huggingface_hub import snapshot_download as s; s('Qwen/Qwen2.5-${SIZE^^}-Instruct')"  # one download for both runs
 if [ -n "$LIMIT" ]; then run dev "$DEV"; else run dev "$DEV" & run train eval/spider_train_width.json & wait; fi
 tail -n 9 "$JOB"/*.log
+mkdir -p "/cluster/scratch/$(id -un)/j26-width" && cp "$JOB"/*.jsonl "$JOB/env.txt" "/cluster/scratch/$(id -un)/j26-width/"
