@@ -431,7 +431,7 @@ how ya been,GENERAL,TASK1_QUERY_CLASSIFICATION
 can you play music by the beatles,GENERAL,TASK1_QUERY_CLASSIFICATION
 give me a cool fact about new orleans,GENERAL,TASK1_QUERY_CLASSIFICATION
 "Which Series has an Opponent of new york rangers, and a Score of 3–2 ot?",DATABASE,TASK1_QUERY_CLASSIFICATION
-The theme Auditioner's Choice	has what song choice?,DATABASE,TASK1_QUERY_CLASSIFICATION
+"The theme Auditioner's Choice	has what song choice?",DATABASE,TASK1_QUERY_CLASSIFICATION
 what time is it in france,GENERAL,TASK1_QUERY_CLASSIFICATION
 "Where did the Jet's play with an attendance of 11,309?",DATABASE,TASK1_QUERY_CLASSIFICATION
 What years did J. Smith Young serve as a Representative?,DATABASE,TASK1_QUERY_CLASSIFICATION

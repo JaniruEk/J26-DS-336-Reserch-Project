@@ -22,17 +22,20 @@ trap 'cd "$JOB"; rm -rf j26' EXIT
 
 git clone -q --depth 1 -b "$BRANCH" https://github.com/JaniruEk/J26-DS-336-Reserch-Project.git j26
 cd j26
-python3 -m venv .venv && . .venv/bin/activate
+curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$PWD/.uv" UV_NO_MODIFY_PATH=1 sh -s -- -q
+export PATH="$PWD/.uv:$PATH"
+uv venv -q --python 3.12 .venv
+. .venv/bin/activate
 if [ "$(uname -m)" = aarch64 ]; then
   # ponytail: the laptop's torch 2.6.0+cu124 has no ARM/GB10 build; the newest CUDA build is used and recorded in env.txt
-  pip install -q torch --index-url https://download.pytorch.org/whl/cu130
+  uv pip install -q torch --index-url https://download.pytorch.org/whl/cu130
 else
-  pip install -q torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+  uv pip install -q torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 fi
-pip install -q transformers==5.20.2 accelerate==1.15.0 tokenizers==0.23.3 scikit-learn==1.9.1 joblib==1.5.2 \
+uv pip install -q transformers==5.20.2 accelerate==1.15.0 tokenizers==0.23.3 scikit-learn==1.9.1 joblib==1.5.2 \
   numpy==2.2.6 spacy==3.8.14 tiktoken==0.12.0 chromadb==1.5.9 onnxruntime==1.29.0 SQLAlchemy==2.0.44 fastapi httpx \
   https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl
-{ git log -1 --format='code %h %s'; uname -m; nvidia-smi --query-gpu=name,driver_version --format=csv,noheader
+{ git log -1 --format='code %h %s'; uname -m; uv --version; python --version; nvidia-smi --query-gpu=name,driver_version --format=csv,noheader
   python -c "import torch, transformers; print('torch', torch.__version__, 'cuda', torch.version.cuda, '| transformers', transformers.__version__)"
 } | tee "$JOB/env.txt"
 
