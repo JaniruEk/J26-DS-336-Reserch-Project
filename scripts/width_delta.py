@@ -38,6 +38,11 @@ def make(base, new):
                 d[k] = {"=": v}
         out.append({"id": r["id"], "d": d} if d else {"id": r["id"]})
     payload = {"sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(), "rows": out}
+    changed = lambda k: sum(len(e.get("d", {}).get(k, {})) for e in out)
+    same_order = [e.get("id") for e in out] == list(b)
+    print(f"{new}: {len(out)} rows ({sum('row' in e for e in out)} not in the base), same order as the base: "
+          f"{same_order}; changed values: sql {changed('sql')}, ok {changed('ok')}, runs {changed('runs')}, "
+          f"tokens {changed('tokens')}, features {changed('features')}", file=sys.stderr)
     return base64.b64encode(gzip.compress(json.dumps(payload).encode(), 9)).decode()
 
 
