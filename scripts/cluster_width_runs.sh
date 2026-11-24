@@ -15,8 +15,9 @@ BRANCH=${J26_BRANCH:-janiru/finish-agent1-unblocked}
 JOB=$PWD
 # The job folder is copied back to hive at the end: keep the model (15 GB for 7B) on the shared scratch drive
 # (cleaned after 7 days) and delete the clone, venv and caches when the job ends.
-export HF_HOME=/cluster/scratch/$(id -un)/hf XDG_CACHE_HOME="$JOB/j26/.cache" PIP_NO_CACHE_DIR=1 \
-  TOKENIZERS_PARALLELISM=false PIP_DISABLE_PIP_VERSION_CHECK=1
+# Job users have HOME=/nonexistent and the system Python cannot make a venv: uv brings its own Python.
+export HOME="$JOB" HF_HOME=/cluster/scratch/$(id -un)/hf XDG_CACHE_HOME="$JOB/j26/.cache" \
+  UV_CACHE_DIR="$JOB/j26/.cache/uv" UV_PYTHON_INSTALL_DIR="$JOB/j26/.cache/python" TOKENIZERS_PARALLELISM=false
 mkdir -p "$HF_HOME"
 trap 'cd "$JOB"; rm -rf j26' EXIT
 
