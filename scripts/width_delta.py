@@ -1,6 +1,6 @@
 """Copy a sweep file through a narrow channel (cluster job output) as its difference from a file both sides have.
 
-  python -m scripts.width_delta make  <base.jsonl> <new.jsonl>            -> prints the delta (gzip + base64)
+  python -m scripts.width_delta make  <base.jsonl> <new.jsonl>            -> prints the delta (xz + base64)
   python -m scripts.width_delta apply <base.jsonl> <delta.txt> <out.jsonl>  -> rebuilds new.jsonl, checks sha256
 
 The base is the laptop's committed file for the same questions; rows that share an id with the base are sent as
@@ -10,6 +10,7 @@ original byte for byte, or apply fails.
 import base64
 import gzip
 import hashlib
+import lzma
 import json
 import sys
 from pathlib import Path
@@ -43,12 +44,13 @@ def make(base, new):
     print(f"{new}: {len(out)} rows ({sum('row' in e for e in out)} not in the base), same order as the base: "
           f"{same_order}; changed values: sql {changed('sql')}, ok {changed('ok')}, runs {changed('runs')}, "
           f"tokens {changed('tokens')}, features {changed('features')}", file=sys.stderr)
-    return base64.b64encode(gzip.compress(json.dumps(payload).encode(), 9)).decode()
+    return base64.b64encode(lzma.compress(json.dumps(payload).encode(), preset=9 | lzma.PRESET_EXTREME)).decode()
 
 
 def apply(base, delta, out):
     b = {r["id"]: r for r in _rows(base)}
-    payload = json.loads(gzip.decompress(base64.b64decode("".join(Path(delta).read_text().split()))))
+    raw = base64.b64decode("".join(Path(delta).read_text().split()))
+    payload = json.loads(gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else lzma.decompress(raw))  # old gzip or xz
     lines = []
     for e in payload["rows"]:
         if "row" in e:
