@@ -307,11 +307,57 @@ cluster as a difference from the 3B files with `scripts/width_delta.py`; sha256 
 cluster originals: dev fb085805..., train 517b117c...). Same questions as the other sizes (dev 869 scored, 40 skipped;
 train 1,144 scored, 56 skipped); token counts per width equal the laptop runs.
 
-**Deviation from the amendment.** The amendment planned to re-run 1.5B and 3B on the same cluster machine, so that
-size comparisons with 7B use one machine. That was not done: 1.5B and 3B were re-run on a second desktop GPU of
-the cluster instead (it agreed closely with the laptop runs; those files are not kept in the repository, so no
-numbers are reported here). The comparisons below therefore set the 7B cluster run against the laptop runs of the
-smaller models; part of any difference can come from the hardware and library versions.
+**Same-machine runs (as the amendment planned).** 1.5B and 3B were re-run on the 7B's cluster machine (25-26 November
+2026; same script and library versions as the 7B): `results/width/cluster/{dev,train}_qwen{1.5b,3b}_fp16.jsonl`. No
+0.5B run exists on that machine, so the comparison with 0.5B (in the tables further below) stays cross-hardware.
+A first re-run of 1.5B and 3B on a second desktop GPU is reported as an extra hardware check.
+
+### Sizes on one machine (1.5B, 3B, 7B, all on the cluster machine)
+
+Commands: `python -m scripts.width_sizes results/width/cluster/<set>_qwen{1.5b,3b,7b}_fp16.jsonl --h1 <smaller> <7B file>`.
+
+| Set | D 1.5B | D 3B | D 7B | D(7B) - D(1.5B), 95% CI | D(7B) - D(3B), 95% CI | best fixed width 1.5B / 3B / 7B |
+|---|---|---|---|---|---|---|
+| test (n = 869) | -.047 | -.032 | -.012 | +.036 [+.002, +.069] | +.021 [-.013, +.055] | W3 / W3 / W3 |
+| train (n = 1,144) | +.017 | -.010 | +.011 | -.006 [-.038, +.026] | +.021 [-.010, +.053] | W4 / W3 / W4 |
+
+7B selector with the same-machine 1.5B selector as the transfer selector (test set, against W3 .72): own 7B selector
+.68, -.039 [-.060, -.017], p = .001; transfer selector .69, -.033 [-.054, -.012], p = .003; own against transfer
+-.006 [-.015, +.003], 6/11, p = .33.
+
+Reading: on one machine the size pattern is **mixed**. On the test set distraction shrinks with size
+(-.047, -.032, -.012) and D(7B) - D(1.5B) has a CI just above 0; on the training set it does not (1.5B already has
+D > 0 there, W4 best). Above 1.5B the change is not significant on either set. The clearer size effect in the
+cross-hardware tables below comes mostly from 0.5B, the smallest model. The selector results do not change.
+
+### Hardware check: laptop against the cluster machine (1.5B and 3B)
+
+| Set | Model | per-width correct flags that agree | D laptop -> cluster machine | difference, 95% CI | best fixed width |
+|---|---|---|---|---|---|
+| test | 1.5B | .998 | -.044 -> -.047 | -.003 [-.009, +.001] | W2 -> W3 (W2 and W3 tied within .01) |
+| test | 3B | .998 | -.032 -> -.032 | +.000 [-.003, +.003] | W3 -> W3 |
+| train | 1.5B | .995 | +.020 -> +.017 | -.003 [-.009, +.003] | W4 -> W4 |
+| train | 3B | .998 | -.012 -> -.010 | +.003 [-.002, +.007] | W3 -> W3 |
+
+The cluster machine uses a different GPU, an ARM CPU and torch 2.14.1+cu130 (laptop 2.6.0+cu124); the results agree
+with the laptop as closely as the second desktop GPU below.
+
+### Hardware check: laptop against a second desktop GPU (1.5B and 3B)
+
+Same script, same torch build as the laptop (2.6.0+cu124), different desktop GPU. Files:
+`results/width/cluster/yomith-pc/{dev,train}_qwen{1.5b,3b}_fp16.jsonl`, record `results/width/cluster/yomith-pc/env.txt`.
+Command per file pair: `python -m scripts.width_sizes <laptop file> <second file> --same <laptop file> <second file>`.
+
+| Set | Model | per-width correct flags that agree | D laptop -> second GPU | difference, 95% CI | best fixed width |
+|---|---|---|---|---|---|
+| test | 1.5B | .998 | -.044 -> -.045 | -.001 [-.006, +.003] | W2 -> W3 (W2 and W3 tied within .01) |
+| test | 3B | .999 | -.032 -> -.032 | +.000 [-.003, +.003] | W3 -> W3 |
+| train | 1.5B | .997 | +.020 -> +.014 | -.006 [-.011, -.002] | W4 -> W4 |
+| train | 3B | .998 | -.012 -> -.010 | +.002 [-.003, +.006] | W3 -> W3 |
+
+The laptop results are reproducible on another GPU: about 0.2% of the correct/wrong flags change (floating-point
+differences between GPUs under greedy decoding), and no conclusion changes. Token counts are identical; the
+selector features differ only in the last decimal places (embedding model on a different CPU).
 
 Commands:
 
@@ -361,10 +407,11 @@ labels: W1 480, W2 347, W3 13, W4 66 (238 with no correct width).
 
 ### Reading (secondary, added after the results)
 
-- The 7B extends the descriptive H1 pattern: distraction shrinks with model size (D -.064, -.044, -.032, -.012) and
-  the best fixed width is W3 (test) or W4 (train). D(7B) - D(0.5B) is positive with a 95% CI above 0 on both sets.
-  H1 itself stays **not supported** (its pre-registered test is D(3B) - D(0.5B)); this is an exploratory result,
-  across different hardware, and must be reported as such.
+- Across sizes (laptop 0.5B-3B, cluster 7B) distraction shrinks with model size (test D -.064, -.044, -.032, -.012)
+  and D(7B) - D(0.5B) is positive with a 95% CI above 0 on both sets. On one machine (1.5B, 3B, 7B, section above)
+  the pattern holds on the test set only and is not significant above 1.5B. So the size effect is mostly between
+  0.5B and 1.5B. H1 itself stays **not supported** (its pre-registered test is D(3B) - D(0.5B)); all 7B results are
+  exploratory, added after the results, and must be reported as such.
 - The selector result repeats the 3B pattern: the learned selector picks W1 too often for a strong model and is
   worse than the best fixed width (p = .001). H4-style comparison: the 7B's own selector is no better than the 1.5B
   selector (p = .82).
@@ -386,5 +433,5 @@ optimisation (queue step 8) is not needed.
 
 ## Not done yet
 
-- 7B on the same machine as 1.5B and 3B (see the deviation in the 7B section); 100-token check for 7B.
+- 0.5B on the cluster machine; 100-token check for 7B.
 
