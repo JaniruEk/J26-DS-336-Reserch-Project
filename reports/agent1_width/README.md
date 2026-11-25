@@ -293,6 +293,84 @@ So the 100-token limit does not change any test-set result, and H1 stands as rep
 `results/width/dev_qwen{0.5b,1.5b,3b}_fp16_tok300.jsonl` (same rows with the re-generated answers; `cut100` marks the
 answers that reached the limit). Not checked: the training files (selector labels).
 
+## Secondary analysis: 7B FP16 (added after the results; run 24-25 November 2026)
+
+Rules: "Amendment 24 November 2026" above. Everything in this section was added after the 0.5B / 1.5B / 3B results
+were known; it is exploratory and changes no pre-registered verdict.
+
+**Setup.** Qwen2.5-7B-Instruct FP16 on a shared cluster machine of the team (different GPU and an ARM CPU), job script
+`scripts/cluster_width_runs.sh` at commit 8d0aee5, same prompt, greedy decoding with 100 new tokens, Retriever,
+question files and databases (sha256-checked) as the laptop. Library versions differ from the laptop: torch
+2.14.1+cu130 (laptop 2.6.0+cu124, which has no ARM build), Python 3.12.3; transformers 5.20.2 as on the laptop.
+Record: `results/width/cluster/env.txt`. Files: `results/width/cluster/{dev,train}_qwen7b_fp16.jsonl` (copied from the
+cluster as a difference from the 3B files with `scripts/width_delta.py`; sha256 of the rebuilt files equal to the
+cluster originals: dev fb085805..., train 517b117c...). Same questions as the other sizes (dev 869 scored, 40 skipped;
+train 1,144 scored, 56 skipped); token counts per width equal the laptop runs.
+
+**Deviation from the amendment.** The amendment planned to re-run 1.5B and 3B on the same cluster machine, so that
+size comparisons with 7B use one machine. That was not done: 1.5B and 3B were re-run on a second desktop GPU of
+the cluster instead (it agreed closely with the laptop runs; those files are not kept in the repository, so no
+numbers are reported here). The comparisons below therefore set the 7B cluster run against the laptop runs of the
+smaller models; part of any difference can come from the hardware and library versions.
+
+Commands:
+
+    python -m scripts.width_sizes results/width/dev_qwen0.5b_fp16.jsonl results/width/dev_qwen1.5b_fp16.jsonl results/width/dev_qwen3b_fp16.jsonl results/width/cluster/dev_qwen7b_fp16.jsonl --h1 results/width/dev_qwen0.5b_fp16.jsonl results/width/cluster/dev_qwen7b_fp16.jsonl
+    python -m scripts.width_sizes results/width/train_qwen0.5b_fp16.jsonl results/width/train_qwen1.5b_fp16.jsonl results/width/train_qwen3b_fp16.jsonl results/width/cluster/train_qwen7b_fp16.jsonl --h1 results/width/train_qwen0.5b_fp16.jsonl results/width/cluster/train_qwen7b_fp16.jsonl
+    python -m scripts.width_selector results/width/cluster/train_qwen7b_fp16.jsonl --test results/width/cluster/dev_qwen7b_fp16.jsonl --transfer results/width/train_qwen1.5b_fp16.jsonl
+
+(`width_sizes` labels its `--h1` line "H1 (pre-registered)" for any pair of files; for 0.5B against 7B it is the
+secondary comparison named in the amendment, not H1.)
+
+### 7B execution accuracy by width (test set, n = 869)
+
+| Bucket | n | W1 | W2 | W3 | W4 | any width |
+|---|---|---|---|---|---|---|
+| simple | 245 | .83 | .80 | .81 | .80 | .88 |
+| single-join | 104 | .49 | .77 | .77 | .78 | .88 |
+| multi-join | 37 | .05 | .43 | .43 | .51 | .59 |
+| aggregation | 483 | .58 | .69 | .69 | .66 | .74 |
+| ALL | 869 | .62 | .72 | .72 | .71 | .79 |
+
+Mean prompt tokens W1-W4: 58 / 151 / 180 / 245. Best fixed width W3 (W2 within .001).
+
+### Distraction D = acc(W4) - acc(W2) by model size
+
+| Set | 0.5B | 1.5B | 3B | 7B | D(7B) - D(0.5B), 95% CI |
+|---|---|---|---|---|---|
+| test (n = 869) | -.064 | -.044 | -.032 | -.012 | +.053 [+.020, +.086] |
+| train (n = 1,144) | -.049 | +.020 | -.012 | +.011 | +.060 [+.026, +.093] |
+
+Best fixed width on the test set: 0.5B W1, 1.5B W2, 3B W3, 7B W3; on the training set: W1, W4, W3, W4.
+
+### 7B selector (test set, against the best fixed width W3, .72)
+
+| System (ALL) | accuracy | tokens | diff, 95% CI | +/- | p |
+|---|---|---|---|---|---|
+| complexity rule | .72 | 127 | -.002 [-.016, +.013] | 20/22 | .88 |
+| adaptive elbow | .65 | 84 | -.071 [-.096, -.047] | 33/95 | < .001 |
+| learned selector (own 7B train rows) | .68 | 79 | -.039 [-.060, -.017] | 29/63 | .001 |
+| transfer selector (1.5B train rows) | .68 | 84 | -.037 [-.056, -.015] | 29/61 | .001 |
+| W2 + retry wider | .73 | 164 | +.008 [-.003, +.020] | 16/9 | .23 |
+| selector + retry | .71 | 96 | -.005 [-.022, +.014] | 31/35 | .71 |
+| oracle (limit) | .79 | 80 | +.069 | 60/0 | < .001 |
+
+Own 7B selector against the 1.5B (transfer) selector: -.002 [-.012, +.007], 8/10, McNemar p = .82. Learned selector
+against the complexity rule: -.037 [-.054, -.020], p < .001. Widths picked: W1 690 / W2 178 / W3 1 / W4 0. Training
+labels: W1 480, W2 347, W3 13, W4 66 (238 with no correct width).
+
+### Reading (secondary, added after the results)
+
+- The 7B extends the descriptive H1 pattern: distraction shrinks with model size (D -.064, -.044, -.032, -.012) and
+  the best fixed width is W3 (test) or W4 (train). D(7B) - D(0.5B) is positive with a 95% CI above 0 on both sets.
+  H1 itself stays **not supported** (its pre-registered test is D(3B) - D(0.5B)); this is an exploratory result,
+  across different hardware, and must be reported as such.
+- The selector result repeats the 3B pattern: the learned selector picks W1 too often for a strong model and is
+  worse than the best fixed width (p = .001). H4-style comparison: the 7B's own selector is no better than the 1.5B
+  selector (p = .82).
+- Multi-join questions benefit most from the full schema at 7B (.43 at W2, .51 at W4).
+- Not checked for 7B: the 100-token cut (no 300-token re-generation was run).
+
 ## Latency with the selector (23 November 2026)
 
 `python -m scripts.width_latency`: warm, `LIVE` config, the 148 routing questions (Chinook 14, Spider 120, TPC-H 14),
@@ -308,5 +386,5 @@ optimisation (queue step 8) is not needed.
 
 ## Not done yet
 
-- 7B (left out, see the rules above).
+- 7B on the same machine as 1.5B and 3B (see the deviation in the 7B section); 100-token check for 7B.
 
